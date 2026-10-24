@@ -69,22 +69,22 @@ class Game:
       for player in self.players:
         print(f"{player.name}, ({player.strategy.name})")
       
-    def reset_round(self):
-      for player in self.players:
-        player.reset_player()
-      
-      self.deck = Deck()
-      self.deck.shuffle()
+  def reset_round(self):
+    for player in self.players:
+      player.reset_player()
     
-    def deal_opening_hands(self):
-      discard_card = self.deck.cards.pop()
-      self.discarded_cards.append(discard_card)
-      print(f"Discarded card: {discard_card.name}")
+    self.deck = Deck()
+    self.deck.shuffle()
   
-      for player in self.players:
-        player_card = self.deck.cards.pop()
-        player.hand.append(player_card)
-        print(f"{player.name}'s card: {player_card.name}")
+  def deal_opening_hands(self):
+    discard_card = self.deck.cards.pop()
+    self.discarded_cards.append(discard_card)
+    print(f"Discarded card: {discard_card.name}")
+
+    for player in self.players:
+      player_card = self.deck.cards.pop()
+      player.hand.append(player_card)
+      print(f"{player.name}'s card: {player_card.name}")
 
   
   def eliminate_player(self, player) -> None:
