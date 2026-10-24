@@ -31,8 +31,8 @@ def _choose_from_menu(title: str, options: list[str]) -> int:
 
 
 class Strategy:
-  def __init__(self, name: str) -> None:
-    self.name = name
+  def __init__(self) -> None:
+    self.name = "Base Strategy"
 
   def choose_card(self, player: Player):
     raise NotImplementedError
@@ -60,8 +60,8 @@ class Strategy:
 
 
 class Player_Strategy(Strategy): # asks for user input regarding all actions.
-  def __init__(self, name: str) -> None:
-    super().__init__("Player Input")
+  def __init__(self) -> None:
+    self.name = "Player Input"
 
 
   def choose_card(self, player: Player) -> Card:
@@ -104,7 +104,7 @@ class Player_Strategy(Strategy): # asks for user input regarding all actions.
 
   
   def guard_guess(self, game: Game, player: Player, target: Player) -> Card:
-    options = [Guard(), Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]
+    options = [Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]
     chosen_idx = _choose_from_menu(
       f"{player.name}, guess {target.name}'s card:", 
       [card.name for card in options]
@@ -115,8 +115,8 @@ class Player_Strategy(Strategy): # asks for user input regarding all actions.
 
 
 class Random_Strategy(Strategy): # picks a random target regarding all actions.
-  def __init__(self, name: str) -> None:
-    super().__init__("Random Choice")
+  def __init__(self) -> None:
+    self.name = "Random Strategy"
 
   def choose_card(self, player: Player) -> Card:
     return random.choice(player.hand)
@@ -139,5 +139,5 @@ class Random_Strategy(Strategy): # picks a random target regarding all actions.
 
   
   def guard_guess(self, game: Game, player: Player, target: Player) -> Card:
-    chosen_card = random.choice([Guard(), Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()])
+    chosen_card = random.choice([Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()])
     return chosen_card

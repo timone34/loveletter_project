@@ -3,9 +3,9 @@ from strategy import *
 
 def main():
   players: dict[str, Strategy] = {
-    "Alice": Random_Strategy(name="Alice"),
-    "Bob": Random_Strategy(name="Bob"),
-    "Player": Player_Strategy(name="Player")
+    "Alice": Random_Strategy(),
+    "Bob": Random_Strategy(),
+    "User": Player_Strategy()
   }
 
   game = Game(players)

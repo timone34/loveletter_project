@@ -4,7 +4,7 @@ So, I'm making this to answer the question: How do you play a perfect game of Lo
 
 This is not an easy question to answer by any stretch of the imagination. It raises a bunch of other questions, such as: "What even is perfect play?" or "How much is luck involved?"
 
-### Rules
+## Rules
 In Love Letter, your objective is to get your letter to the princess. To do this you pass your letter to different members of the court, represented by cards.
 
 Every player gets dealt a starting card, valued 1-8. Another card is put aside, face-down.

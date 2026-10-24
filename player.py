@@ -14,7 +14,7 @@ class Player:
     self.discard: list[Card] = []
 
     self.protected: bool = False
-    self.eliminated: bool = False
+    self.rejected: bool = False
 
     self.round_wins: int = 0
   
@@ -22,4 +22,4 @@ class Player:
     self.hand.clear()
     self.discard.clear()
     self.protected = False
-    self.eliminated = False
+    self.rejected = False
