@@ -31,44 +31,15 @@ class Game:
     self.reset_round()
     self.deal_opening_hands()
 
-    first_player = self.players[self.first_player_index]
-    self.play_turn(first_player) 
-  
-
-
-  def play_turn(self, player: Player) -> None:
-    if player.rejected:
-      print(f"{player.name} is rejected. Skipping turn.")
-
-    # drawing a card
-    if self.deck.cards_left() > 0:
-      drawn_card = self.deck.draw_card()
-      player.hand.append(drawn_card)
-      print(f"{player.name} draws a card: {drawn_card.name}")
-    else:
-      print("The deck is empty. On to showdown!")
-      self.trigger_showdown()
-  
-  
-  def play_card(self, player, card) -> None:
-    pass
-
-
-
-  def trigger_showdown(self) -> None:
-    print("\nShowdown! Players still in the game reveal their cards:")
-
-    for player in self.players:
-      if not player.rejected:
-        print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
-
+    while not self.is_round_over():
+      pass
 
 
   def log_round_start(self) -> None:
-      print(f"\nStarting round with players: ")
-      for player in self.players:
-        print(f"{player.name}, ({player.strategy.name})")
-      
+        print(f"\nStarting round with players: ")
+        for player in self.players:
+          print(f"{player.name}, ({player.strategy.name})")
+        
   def reset_round(self):
     for player in self.players:
       player.reset_player()
@@ -85,14 +56,57 @@ class Game:
       player_card = self.deck.cards.pop()
       player.hand.append(player_card)
       print(f"{player.name}'s card: {player_card.name}")
+  
 
+
+  def play_turn(self, player: Player) -> None:
+    # first, check if player is rejected.
+    if player.rejected:
+      print(f"{player.name} is rejected. Skipping turn.")
+
+    # if player were protected by handmaid, remove protection
+    player.protected = False
+
+    # draw a second card
+    if self.deck.cards_left() > 0:
+      drawn_card = self.deck.draw_card()
+      player.hand.append(drawn_card)
+      print(f"{player.name} draws a card: {drawn_card.name}")
+    else:
+      print("The deck is empty. On to showdown!")
+      self.trigger_showdown()
+
+    # choose a card to play
+    chosen_card = player.strategy.choose_card(player)
+    player.hand.remove(chosen_card)
+    player.discard.append(chosen_card)
+
+    # resolve chosen card's effect
+    chosen_card.resolve(self, player)
+
+    
+  def is_round_over(self):
+    pass
+
+
+
+
+  def trigger_showdown(self) -> None:
+    print("\nShowdown! Players still in the game reveal their cards:")
+
+    for player in self.players:
+      if not player.rejected:
+        print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
+
+
+
+  
   
   def eliminate_player(self, player) -> None:
     player.rejected = True
     print(f"{player.name} is rejected, and therefore out of the round!")
-  
 
-  
+
   def get_valid_targets(self, player: Player, allow_self: bool = False) -> list[Player]:
     valid_targets: list[Player] = []
 

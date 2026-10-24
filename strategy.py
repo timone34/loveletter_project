@@ -34,7 +34,7 @@ class Strategy:
   def __init__(self) -> None:
     self.name = "Base Strategy"
 
-  def choose_card(self, player: Player):
+  def choose_card(self, player: Player) -> Card:
     raise NotImplementedError
 
 

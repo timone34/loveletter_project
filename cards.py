@@ -54,6 +54,24 @@ class Baron(Card):
       targets = game.get_valid_targets(player, allow_self=False)
       target = player.strategy.choose_baron_target(player, targets)
 
+      player_card_value = player.hand[0].value
+      target_card_value = target.hand[0].value
+
+      # determine winner
+      if player_card_value > target_card_value:
+          winner = player
+          loser = target
+      elif player_card_value < target_card_value:
+          winner = target
+          loser = player
+      elif player_card_value == target_card_value:
+          print(f"The comparison between {player.name} and {target.name} ended in a draw...")
+          return
+
+      # eliminate loser
+      game.eliminate_player(loser)
+      print(f"The winner is {winner.name}! {loser.name} is rejected!")
+
 
 class Handmaid(Card):
     def __init__(self):
@@ -69,7 +87,13 @@ class Prince(Card):
         super().__init__(5, "Prince")
 
     def resolve(self, game, player) -> None:
-        pass
+        targets = game.get_valid_targets(player, allow_self=True)
+        target = player.strategy.choose_prince_target(player, targets)
+
+        discarded_card = target.hand.pop()
+        target.discard.append(discarded_card)
+        print(f"{target.name} discards a {discarded_card.name}")
+        
 
 
 class King(Card):
