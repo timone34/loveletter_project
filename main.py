@@ -10,6 +10,6 @@ def main():
   }
 
   game = Game(players)
-  game.start_game()
+  game.play_game()
 
 main()

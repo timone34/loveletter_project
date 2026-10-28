@@ -13,7 +13,7 @@ class Card:
         self.name = name
     
     def resolve(self, game, player) -> None:
-        pass
+        raise RuntimeError("Card class should not be instantiated and thus can't be resolved.")
 
 
 class Guard(Card):
@@ -24,6 +24,7 @@ class Guard(Card):
       targets = game.get_valid_targets(player, allow_self=False)
       target = player.strategy.choose_guard_target(player, targets)
       guess = player.strategy.guard_guess(game, player, target)
+      print(f"{player.name} guesses that {target.name} has a {guess.name}.")
 
       if target.hand[0].value == guess.value:
         game.eliminate_player(target)
@@ -32,6 +33,8 @@ class Guard(Card):
         return
       
       print(f"\nIncorrect!")
+
+      return
 
 
 
@@ -42,8 +45,11 @@ class Priest(Card):
     def resolve(self, game, player) -> None:
       targets = game.get_valid_targets(player, allow_self=False)
       target = player.strategy.choose_priest_target(player, targets)
+      print(f"{player.name} targets {target.name} with a Priest.")
 
       print(f"{target.name} has a {target.hand[0].name}.")
+
+      return
 
 
 class Baron(Card):
@@ -53,6 +59,7 @@ class Baron(Card):
     def resolve(self, game, player) -> None:
       targets = game.get_valid_targets(player, allow_self=False)
       target = player.strategy.choose_baron_target(player, targets)
+      print(f"{player.name} targets {target.name} with a Baron.")
 
       player_card_value = player.hand[0].value
       target_card_value = target.hand[0].value
@@ -67,10 +74,14 @@ class Baron(Card):
       elif player_card_value == target_card_value:
           print(f"The comparison between {player.name} and {target.name} ended in a draw...")
           return
-
+      else:
+          raise RuntimeError("Baron comparison failed. Something went wrong.")
+      
       # eliminate loser
-      game.eliminate_player(loser)
       print(f"The winner is {winner.name}! {loser.name} is rejected!")
+      game.eliminate_player(loser)
+
+      return
 
 
 class Handmaid(Card):
@@ -81,6 +92,8 @@ class Handmaid(Card):
         player.protected = True
         print(f"{player.name} is now protected.")
 
+        return
+
 
 class Prince(Card):
     def __init__(self):
@@ -89,11 +102,28 @@ class Prince(Card):
     def resolve(self, game, player) -> None:
         targets = game.get_valid_targets(player, allow_self=True)
         target = player.strategy.choose_prince_target(player, targets)
+        print(f"{player.name} targets {target.name} with a Prince.")
 
         discarded_card = target.hand.pop()
         target.discard.append(discarded_card)
-        print(f"{target.name} discards a {discarded_card.name}")
-        
+        print(f"{player.name}'s Prince makes {target.name} discard a {discarded_card.name}")
+
+        # check if discarded card was Princess and eliminate accordingly
+        if isinstance(discarded_card, Princess):
+            print(f"{player.name}'s Prince makes {target.name} discard the Princess. {target.name} is rejected!")
+            game.eliminate_player(target)
+            return
+
+        # draw new card for target
+        if game.deck.cards_left() > 0:
+            drawn_card = game.deck.draw_card()
+            target.hand.append(drawn_card)
+            print(f"{target.name} draws a card: {drawn_card.name}")
+        else:
+            print(f"The deck is empty. {target.name} draws the discarded card: {game.discarded_card.name}")
+            target.hand.append(game.discarded_card)
+
+        return
 
 
 class King(Card):
@@ -101,7 +131,19 @@ class King(Card):
         super().__init__(6, "King")
 
     def resolve(self, game, player) -> None:
-        pass
+        targets = game.get_valid_targets(player, allow_self=False)
+        target = player.strategy.choose_king_target(player, targets)
+        print(f"{player.name} targets {target.name} with a King.")
+
+        # swap hands
+        player.hand, target.hand = target.hand, player.hand
+        print(f"{player.name} and {target.name} swap hands.")
+
+        # debug
+        # print(f"{player.name}'s hand: {[card.name for card in player.hand]}")
+        # print(f"{target.name}'s hand: {[card.name for card in target.hand]}")
+
+        return
 
 
 class Countess(Card):
@@ -117,4 +159,5 @@ class Princess(Card):
         super().__init__(8, "Princess")
 
     def resolve(self, game, player) -> None:
-        pass
+        print(f"If you see this, you're an idiot.")
+        return

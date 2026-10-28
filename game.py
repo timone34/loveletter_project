@@ -11,58 +11,48 @@ class Game:
     self.num_players = len(self.players)
 
     self.deck = Deck()
-    self.discarded_cards: list[Card] = []
+    self.discarded_card: Card | None = None
 
     self.round: int = 1
 
     self.dealer_index = 0
     self.first_player_index = self.dealer_index + 1 % self.num_players
+    self.current_player_index = self.first_player_index
 
     self.target_round_wins: int = 3 # Number of round wins to win the game
 
   
+
   
-  def start_game(self) -> None:
+  def play_game(self) -> None:
     self.play_round()
 
   
   def play_round(self) -> None:
     self.log_round_start()
     self.reset_round()
-    self.deal_opening_hands()
+
+    starting_player = self.players[self.first_player_index]
+    self.deal_opening_hands(starting_player)
+    self.current_player_index = self.first_player_index
 
     while not self.is_round_over():
-      pass
+      player = self.players[self.current_player_index]
 
+      self.play_turn(player)
 
-  def log_round_start(self) -> None:
-        print(f"\nStarting round with players: ")
-        for player in self.players:
-          print(f"{player.name}, ({player.strategy.name})")
-        
-  def reset_round(self):
-    for player in self.players:
-      player.reset_player()
-    
-    self.deck = Deck()
-    self.deck.shuffle()
+      # move to next player
+      self.current_player_index = (self.current_player_index + 1) % self.num_players
+
   
-  def deal_opening_hands(self):
-    discard_card = self.deck.cards.pop()
-    self.discarded_cards.append(discard_card)
-    print(f"Discarded card: {discard_card.name}")
-
-    for player in self.players:
-      player_card = self.deck.cards.pop()
-      player.hand.append(player_card)
-      print(f"{player.name}'s card: {player_card.name}")
   
-
-
   def play_turn(self, player: Player) -> None:
+    print(f"\nNext player is {self.players[self.current_player_index].name}.")
+
     # first, check if player is rejected.
     if player.rejected:
       print(f"{player.name} is rejected. Skipping turn.")
+      return
 
     # if player were protected by handmaid, remove protection
     player.protected = False
@@ -80,16 +70,71 @@ class Game:
     chosen_card = player.strategy.choose_card(player)
     player.hand.remove(chosen_card)
     player.discard.append(chosen_card)
+    print(f"{player.name} plays a {chosen_card.name}.")
 
     # resolve chosen card's effect
     chosen_card.resolve(self, player)
 
+    # check for Princess play/discard
+    if chosen_card is Princess:
+      print(f"{player.name} played the Princess and is rejected.")
+      self.eliminate_player(player)
+      return
+    for card in player.discard:
+      if isinstance(card, Princess):
+        print(f"{player.name} discarded the Princess and is rejected.")
+        self.eliminate_player(player)
+        return
+
+    return
+
+
+
+  # ----- Helping Functions ----- #
+
+  def log_round_start(self) -> None:
+    print(f"\nStarting round {self.round} with players: ")
+    for player in self.players:
+      if self.players.index(player) == self.dealer_index:
+        print(f"{player.name}, ({player.strategy.name}) - Dealer")
+      else:
+        print(f"{player.name}, ({player.strategy.name})")
+            
+  def reset_round(self):
+    for player in self.players:
+      player.reset_player()
     
-  def is_round_over(self):
-    pass
+    self.deck = Deck()
+    self.deck.shuffle()
+  
+  def deal_opening_hands(self, starting_player: Player) -> None:
+    discard_card = self.deck.cards.pop()
+    self.discarded_card = discard_card
+    print(f"\nDealing opening hands.")
+    print(f"Discarded card: {discard_card.name}\n")
 
+    # deal cards starting from player after dealer.
+    starting_index = self.players.index(starting_player)
 
+    for i in range(len(self.players)):
+      player = self.players[(starting_index + i) % len(self.players)]
+      player_card = self.deck.cards.pop()
+      player.hand.append(player_card)
+      print(f"{player.name}'s card: {player_card.name}")
+ 
+  def is_round_over(self)  -> bool:
+    active_players = [p for p in self.players if not p.rejected]
 
+    if len(active_players) == 1:
+      winner = active_players[0]
+      print(f"\n{winner.name} is the last player standing and wins the round!")
+      return True
+    
+    if len(active_players) < 1:
+      raise RuntimeError("No players left in round. Something went wrong.")
+
+    # no end conditions met
+    return False
 
   def trigger_showdown(self) -> None:
     print("\nShowdown! Players still in the game reveal their cards:")
@@ -97,15 +142,10 @@ class Game:
     for player in self.players:
       if not player.rejected:
         print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
-
-
-
-  
-  
+        
   def eliminate_player(self, player) -> None:
     player.rejected = True
     print(f"{player.name} is rejected, and therefore out of the round!")
-
 
   def get_valid_targets(self, player: Player, allow_self: bool = False) -> list[Player]:
     valid_targets: list[Player] = []
