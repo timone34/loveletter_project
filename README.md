@@ -1,4 +1,4 @@
-# Love Letter Strategy
+# Love Letter Strategy v1
 This is my Love Letter Strategy project. I played (a version of) this game with my friends, and, naturally, we discussed the optimal strategy. 
 So, I'm making this to answer the question: How do you play a perfect game of Love Letter?
 

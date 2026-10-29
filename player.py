@@ -4,7 +4,6 @@ from strategy import Strategy
 from cards import Card
 
 
-
 class Player:
   def __init__(self, name: str, strategy: Strategy):
     self.name = name

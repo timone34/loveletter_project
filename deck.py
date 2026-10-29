@@ -1,8 +1,6 @@
 import random
 from cards import *
 
-
-
 class Deck:
   def __init__(self):
     self.cards: list[Card] = [

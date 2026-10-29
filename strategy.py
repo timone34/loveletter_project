@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 @staticmethod
 def _choose_from_menu(title: str, options: list[str]) -> int:
+        
     while True:
         print(f"\n{title}\n")
 

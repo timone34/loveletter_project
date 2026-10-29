@@ -20,14 +20,27 @@ class Game:
     self.current_player_index = self.first_player_index
 
     self.target_round_wins: int = 3 # Number of round wins to win the game
+    self.winner: Player | None = None
 
 
 
   # ----- Core Game Functions ----- #
 
   def play_game(self) -> None:
-    self.play_round()
+    print("Starting Love Letter Game!\n")
 
+    while all(player.round_wins < self.target_round_wins for player in self.players):
+      self.play_round()
+      self.round += 1
+      self.dealer_index = (self.dealer_index + 1) % self.num_players
+      self.first_player_index = (self.dealer_index + 1) % self.num_players
+
+    for player in self.players:
+      if player.round_wins == self.target_round_wins:
+        self.winner = player
+        print(f"\n{self.winner.name} has {self.target_round_wins} round wins and wins the game! \nGG!")
+
+    return
   
   def play_round(self) -> None:
     self.log_round_start()
@@ -39,13 +52,15 @@ class Game:
 
     while not self.is_round_over():
       player = self.players[self.current_player_index]
-
       self.play_turn(player)
 
       # move to next player
       self.current_player_index = (self.current_player_index + 1) % self.num_players
 
     winner = [p for p in self.players if not p.rejected][0]
+    winner.round_wins += 1
+    print(f"{winner.name} wins round {self.round} and has {winner.round_wins} round wins. \n")
+    return
 
   
   
@@ -68,6 +83,7 @@ class Game:
     else:
       print("The deck is empty. On to showdown!")
       self.trigger_showdown()
+      return
 
     # choose a card to play
     chosen_card = player.strategy.choose_card(player)
@@ -96,7 +112,7 @@ class Game:
   # ----- Helping Functions ----- #
 
   def log_round_start(self) -> None:
-    print(f"\nStarting round {self.round} with players: ")
+    print(f"Starting round {self.round} with players: ")
     for player in self.players:
       if self.players.index(player) == self.dealer_index:
         print(f"{player.name}, ({player.strategy.name}) - Dealer")
@@ -139,8 +155,13 @@ class Game:
     # no end conditions met
     return False
         
-  def eliminate_player(self, player) -> None:
+  def eliminate_player(self, player: Player) -> None:
     player.rejected = True
+
+    for card in player.hand:
+      player.hand.remove(card)
+      player.discard.append(card)
+    
     print(f"{player.name} is rejected, and therefore out of the round!")
 
   def get_valid_targets(self, player: Player, allow_self: bool = False) -> list[Player]:
@@ -149,7 +170,7 @@ class Game:
     for p in self.players:
       if p.rejected: continue                       # if player is dead, skip
       if p is player and not allow_self: continue   # if you aren't allowed to target yourself, skip
-      if p.protected: continue                      # if handmaid protects target, skip
+      # if p.protected: continue                      # if handmaid protects target, skip
       valid_targets.append(p)
 
     if not valid_targets:

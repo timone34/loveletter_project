@@ -5,8 +5,7 @@ if TYPE_CHECKING:
     from game import Game
     from player import Player
 
-
-
+# --- Base Card Class --- #
 class Card:
     def __init__(self, value: int, name: str):
         self.value = value
@@ -15,7 +14,7 @@ class Card:
     def resolve(self, game, player) -> None:
         raise RuntimeError("Card class should not be instantiated and thus can't be resolved.")
 
-
+# --- Card Implementations --- #
 class Guard(Card):
     def __init__(self):
         super().__init__(1, "Guard")
