@@ -40,11 +40,11 @@ All cards get shortened to a letter, just like pieces in chess notation.
 
 
 Every game of Love Letter is determined most of all by the order of the deck. I've come up with a system that uses this to its advantage.
-At the very start of a round, the deck is shuffled. Its order is saved in a string of 16 card letters. For example: CBpBQgpgggHPgPKH. Cards at the front of the string represent the top of the deck.
+At the very start of a round, the deck is shuffled. Its order is saved in a string of 16 card letters. For example: "CBpBQgpgggHPgPKH". Cards at the front of the string represent the top of the deck.
 Thus we can immediately see the discarded card is the Countess.
 If we know who is dealing this round, the starting hands are determined as well. The player who is after the dealer in rotation receives the second card in the deck string, the next player the third, etc.
 
-```[Version "LLN 1.0"]
+```
 [Players "Alice" "Bob" "Charlie" "Diane"]
 
 [Round 1]
@@ -52,19 +52,19 @@ If we know who is dealing this round, the starting hands are determined as well.
 [Deck "CBpBQgpgggHPgPKH"]
 [Result "W3"] 
 
-1.1. g4:H  // Bob speelt een Guard tegen speler 4 (Alice) en raadt een Handmaid, dit is fout. Iedereen weet dat Alice GEEN Handmaid heeft.
-1.2. p1:-  // Charlie speelt een Priest tegen speler 1 (Bob) en weet nu dat Bob een Baron heeft. - omdat het af te leiden is, kan ook B staan, dan hoeven we niet terug te rekenen.
-1.3. g4:Q#  // Diane speelt Guard tegen Alice en raadt Princess, een goeie gok! Alice is (#) afgewezen. Iedereen weet dat Alice een Princess had.
-1.4. -  // Geen beurt voor de afgewezen Alice.
-2.1. g2:H // Bob zit in de penarie, Charlie weet dat hij een Baron heeft. Echter heeft hij een Guard gepakt en wil niet vergelijken. Hij speelt de Guard en hoopt dat hij het goed heeft. Dat heeft hij niet.
-2.2. g1:B# // Helaas voor Bob trekt Charlie een Guard. Hij gebruikt zijn kennis en wijst Bob af. Iedereen weet dat Bob een Baron had.
-2.3. H3:- // Diane trekt een Handmaid en speelt deze gelijk. Ze is beschermd. - omdat Handmaid geen target heeft
+1.1. g4:H
+1.2. p1:-
+1.3. g4:Q#
+1.4. -
+2.1. g2:H
+2.2. g1:B#
+2.3. H3:-
 2.4. -
 3.1. -
-3.2. p3:-?  // Charlie speelt Priest op de beschermde (?) Diane.
-3.3. g2:K // Diane speelt een Guard tegen Charlie en raadt een King. Niet de meest waarschijnlijke kaart (Prins, daar zijn er nog 2 van), en het is tevens fout.
+3.2. p3:-?
+3.3. g2:K
 3.4. -
 4.1. -
-4.2. P3:- // Charlie heeft nu twee Prinsen en speelt er een op zichzelf en legt zijn andere Prins af, hopend op een Countess (waarvan hij niet weet dat die is afgelegd aan het begin). Hij trekt de King (de hoogste kaart nog in het spel)!
-4.3. B2:-- // Diane trekt de laatste kaart van de stapel, en heeft nu een Baron en een Handmaid op hand. De hoogste kaart die ze heeft is een Handmaid (value 4), dus ze speelt haar Baron. De Baron zorgt voor een showdown (die er anders toch was gekomen) en Diane verliest (##)
-W3```
+4.2. P3:-
+4.3. B2:--
+W3
