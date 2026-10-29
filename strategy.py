@@ -37,6 +37,15 @@ class Strategy:
   def choose_card(self, player: Player) -> Card:
     raise NotImplementedError
 
+  def countess_check(self, player:Player) -> bool:
+    # check if player has countess and either king or prince in hand
+    has_countess = any(isinstance(card, Countess) for card in player.hand)
+    has_king_or_prince = any(isinstance(card, King) or isinstance(card, Prince) for card in player.hand)
+
+    return has_countess and has_king_or_prince
+
+  def _choose_card(self, player: Player) -> Card:
+    raise NotImplementedError
 
   def choose_guard_target(self, player: Player, targets: list[Player]) -> Player:
     raise NotImplementedError
@@ -66,6 +75,13 @@ class Player_Strategy(Strategy): # asks for user input regarding all actions.
 
   def choose_card(self, player: Player) -> Card:
     options = [f"{card.name} ({card.value})" for card in player.hand]
+    
+    if self.countess_check(player):
+      print(f"{player.name} must play Countess.")
+      for card in player.hand:
+        if isinstance(card, Countess):
+          options = [f"{card.name} ({card.value})"]
+
     chosen_idx = _choose_from_menu(f"{player.name}, choose a card to play:", options)
     chosen_card = player.hand[chosen_idx]
     
@@ -119,7 +135,15 @@ class Random_Strategy(Strategy): # picks a random target regarding all actions.
     self.name = "Random Strategy"
 
   def choose_card(self, player: Player) -> Card:
-    return random.choice(player.hand)
+    options = [card for card in player.hand]
+
+    if self.countess_check(player):
+          print(f"{player.name} must play Countess.")
+          for card in player.hand:
+            if isinstance(card, Countess):
+              options = [card]
+
+    return random.choice(options)
 
 
   def choose_guard_target(self, player: Player, targets: list[Player]) -> Player:

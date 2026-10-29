@@ -26,8 +26,8 @@ The following are the possible cards (starting at value 1, ending at value 8), a
 In this project, I'll be using my system for saving games of Love Letter called Love Letter Notation (or LLN for short).
 It's inspired by PGN and FEN, chess notation systems.
 
-All cards get shortened to a letter, just like pieces in chess notation.
-| Card | Letter |
+All cards get shortened to a letter, just like pieces in chess notation. Some turn results are also stored as symbols.
+| Card/Result | Letter |
 | :-------- | :-------: |
 | Guard | g |
 | Priest | p |
@@ -37,6 +37,11 @@ All cards get shortened to a letter, just like pieces in chess notation.
 | King | K |
 | Countess | C |  
 | Princess | Q |
+| Player rejected | - |
+| Turn results in rejection of target | # |
+| Player wins Baron comparison | + |
+| Player loses Baron comparison | - |
+| Target protected by Handmaid | ? |
 
 
 Every game of Love Letter is determined most of all by the order of the deck. I've come up with a system that uses this to its advantage.
@@ -44,8 +49,9 @@ At the very start of a round, the deck is shuffled. Its order is saved in a stri
 Thus we can immediately see the discarded card is the Countess.
 If we know who is dealing this round, the starting hands are determined as well. The player who is after the dealer in rotation receives the second card in the deck string, the next player the third, etc.
 
-```
-[Players "Alice" "Bob" "Charlie" "Diane"]
+What does a round of Love Letter look like in LLN?
+
+```[Players "Alice" "Bob" "Charlie" "Diane"]
 
 [Round 1]
 [Dealer "Alice"]
@@ -68,3 +74,4 @@ If we know who is dealing this round, the starting hands are determined as well.
 4.2. P3:-
 4.3. B2:--
 W3
+

@@ -151,7 +151,7 @@ class Countess(Card):
         super().__init__(7, "Countess")
 
     def resolve(self, game, player) -> None:
-        pass
+        return
 
 
 class Princess(Card):

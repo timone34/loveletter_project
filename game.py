@@ -21,9 +21,10 @@ class Game:
 
     self.target_round_wins: int = 3 # Number of round wins to win the game
 
-  
 
-  
+
+  # ----- Core Game Functions ----- #
+
   def play_game(self) -> None:
     self.play_round()
 
@@ -43,6 +44,8 @@ class Game:
 
       # move to next player
       self.current_player_index = (self.current_player_index + 1) % self.num_players
+
+    winner = [p for p in self.players if not p.rejected][0]
 
   
   
@@ -135,13 +138,6 @@ class Game:
 
     # no end conditions met
     return False
-
-  def trigger_showdown(self) -> None:
-    print("\nShowdown! Players still in the game reveal their cards:")
-
-    for player in self.players:
-      if not player.rejected:
-        print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
         
   def eliminate_player(self, player) -> None:
     player.rejected = True
@@ -161,3 +157,16 @@ class Game:
     
     return valid_targets
 
+  def trigger_showdown(self) -> None:
+      print("\nShowdown! Players still in the game reveal their cards:")
+  
+      active_players = [p for p in self.players if not p.rejected]
+      for player in active_players:
+        print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
+  
+      winner = max(active_players, key=lambda player: player.hand[0].value)
+      print(f"\n{winner.name} has the highest card and wins the round!")
+  
+      for player in active_players:
+          if player != winner:
+              self.eliminate_player(player)
