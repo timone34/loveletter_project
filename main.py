@@ -21,4 +21,4 @@ main()
 
 end = time.perf_counter()
 
-print(f"Executed in {(end - start) * 1000:.1f} ms.")
+print(f"\nExecuted in {(end - start) * 1000:.1f} ms.")
