@@ -22,3 +22,6 @@ class Player:
     self.discard.clear()
     self.protected = False
     self.rejected = False
+
+  def discard_total(self) -> int:
+    return sum(card.value for card in self.discard)

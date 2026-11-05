@@ -8,8 +8,6 @@ if TYPE_CHECKING:
   from player import Player
 
 
-
-@staticmethod
 def _choose_from_menu(title: str, options: list[str]) -> int:
         
     while True:
@@ -81,7 +79,7 @@ class Player_Strategy(Strategy): # asks for user input regarding all actions.
       playable = [c for c in player.hand if isinstance(c, Countess)]
 
     chosen_idx = _choose_from_menu(f"{player.name}, choose a card to play:", [f"{c.name} ({c.value})" for c in playable])
-    chosen_card = player.hand[chosen_idx]
+    chosen_card = playable[chosen_idx]
     
     return chosen_card
 
