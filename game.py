@@ -51,8 +51,7 @@ class Game:
         print(f"{names} have both reached {self.target_round_wins - 1} wins!"
               f"Target raised to  {self.target_round_wins} wins.\n")
 
-    print(f"\n{self.winner.name} has {self.winner.round_wins} round wins and wins the game!"
-          "GG!")
+    print(f"\n{self.winner.name} has {self.winner.round_wins} round wins and wins the game!\nGG!")
     return
 
   
