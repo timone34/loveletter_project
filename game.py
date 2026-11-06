@@ -26,7 +26,7 @@ class Game:
     # Diagnostics
     self.rounds_to_showdown: int = 0
     self.round_ties: int = 0
-    self.game_tiebreaks: int = 0 
+    self.target_round_win_increases: int = 0 
 
 
 
@@ -46,7 +46,7 @@ class Game:
         self.winner = leaders[0]
       elif len(leaders) > 1:
         self.target_round_wins += 1
-        self.game_tiebreaks += 1
+        self.target_round_win_increases += 1
         names = " and ".join(p.name for p in leaders)
         print(f"{names} have both reached {self.target_round_wins - 1} wins!"
               f"Target raised to  {self.target_round_wins} wins.\n")
@@ -110,78 +110,78 @@ class Game:
 
 
   def play_showdown(self) -> None:
-        self.rounds_to_showdown += 1
-        print("\nShowdown! Players still in the game reveal their cards:")
-    
-        active_players = [p for p in self.players if not p.rejected]
-        for player in active_players:
-          print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
-  
-        # 1st tiebreak level: highest card in hand
-        best_value = max(p.hand[0].value for p in active_players)
-        contenders = [p for p in active_players if p.hand[0].value == best_value]
-  
-        # 2nd tiebreak level: highest total discard value
-        if len(contenders) > 1:
-          print(f"\nTie on card value ({best_value}). Comparing discard piles:")
-          for p in contenders:
-            print(f"{p.name}'s discard total: {p.discard_total()}.")
-          
-          best_total = max(p.discard_total() for p in contenders)
-          contenders = [p for p in contenders if p.discard_total() == best_total]
-    
-        winners = contenders
-        if len(winners) == 1:
-          print(f"\n{winners[0].name} wins the round!")
-        else:
-          print(f"\n{' and '.join(p.name for p in winners)} are still tied and share the round win!")
-          self.round_ties += 1
-        for player in active_players:
-            if player not in winners:
-                self.eliminate_player(player)
+    self.rounds_to_showdown += 1
+    print("\nShowdown! Players still in the game reveal their cards:")
+
+    active_players = [p for p in self.players if not p.rejected]
+    for player in active_players:
+      print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
+
+    # 1st tiebreak level: highest card in hand
+    best_value = max(p.hand[0].value for p in active_players)
+    contenders = [p for p in active_players if p.hand[0].value == best_value]
+
+    # 2nd tiebreak level: highest total discard value
+    if len(contenders) > 1:
+      print(f"\nTie on card value ({best_value}). Comparing discard piles:")
+      for p in contenders:
+        print(f"{p.name}'s discard total: {p.discard_total()}.")
+      
+      best_total = max(p.discard_total() for p in contenders)
+      contenders = [p for p in contenders if p.discard_total() == best_total]
+
+    winners = contenders
+    if len(winners) == 1:
+      print(f"\n{winners[0].name} wins the round!")
+    else:
+      print(f"\n{' and '.join(p.name for p in winners)} are still tied and share the round win!")
+      self.round_ties += 1
+    for player in active_players:
+        if player not in winners:
+            self.eliminate_player(player)
 
 
 
   # --- Helping functions --- #
 
-  def are_multiple_players_left(self)  -> bool:
-      active_players = [p for p in self.players if not p.rejected]
-      if not active_players:
-        raise RuntimeError("No players left in round. Something went wrong.")
-  
-      return len(active_players) > 1
+  def are_multiple_players_left(self) -> bool:
+    active_players = [p for p in self.players if not p.rejected]
+    if not active_players:
+      raise RuntimeError("No players left in round. Something went wrong.")
+
+    return len(active_players) > 1
 
   def deal_opening_hands(self, starting_player: Player) -> None:
-      burn_card = self.deck.cards.pop()
-      self.burn_card = burn_card
-      print(f"\nDealing opening hands.")
-      print(f"Burn card: {burn_card.name}\n")
-  
-      # deal cards starting from player after dealer.
-      starting_index = self.players.index(starting_player)
-  
-      for i in range(len(self.players)):
-        player = self.players[(starting_index + i) % len(self.players)]
-        player_card = self.deck.cards.pop()
-        player.hand.append(player_card)
-        print(f"{player.name}'s card: {player_card.name}")
+    burn_card = self.deck.cards.pop()
+    self.burn_card = burn_card
+    print(f"\nDealing opening hands.")
+    print(f"Burn card: {burn_card.name}\n")
+
+    # deal cards starting from player after dealer.
+    starting_index = self.players.index(starting_player)
+
+    for i in range(len(self.players)):
+      player = self.players[(starting_index + i) % len(self.players)]
+      player_card = self.deck.cards.pop()
+      player.hand.append(player_card)
+      print(f"{player.name}'s card: {player_card.name}")
 
   def eliminate_player(self, player: Player) -> None:
-      player.rejected = True
-      player.discard.extend(player.hand)
-      player.hand.clear()
-      
-      print(f"{player.name} is rejected, and therefore out of the round!")
+    player.rejected = True
+    player.discard.extend(player.hand)
+    player.hand.clear()
+    
+    print(f"{player.name} is rejected, and therefore out of the round!")
 
   def get_valid_targets(self, player: Player, allow_self: bool = False) -> list[Player]:
-      valid_targets: list[Player] = []
-  
-      for p in self.players:
-        if p.rejected: continue                       # if player is dead, skip
-        if p is player and not allow_self: continue   # if you aren't allowed to target yourself, skip
-        valid_targets.append(p)
-      
-      return valid_targets
+    valid_targets: list[Player] = []
+
+    for p in self.players:
+      if p.rejected: continue                       # if player is dead, skip
+      if p is player and not allow_self: continue   # if you aren't allowed to target yourself, skip
+      valid_targets.append(p)
+    
+    return valid_targets
 
   def log_round_start(self) -> None:
     print(f"Starting round {self.round} with {self.num_players} players: ")
