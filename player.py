@@ -5,7 +5,8 @@ from cards import Card
 
 
 class Player:
-  def __init__(self, name: str, strategy: Strategy):
+  def __init__(self, seat: int, name: str, strategy: Strategy):
+    self.seat = seat
     self.name = name
     self.strategy = strategy
 
