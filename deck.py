@@ -19,7 +19,7 @@ class Deck:
   
   def draw_card(self) -> Card:
     if self.cards:
-      return self.cards.pop()
+      return self.cards.pop(0)
     
     raise RuntimeError("Cannot draw from an empty deck.")
 

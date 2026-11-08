@@ -46,7 +46,7 @@ class Game:
       self.history.rounds.append(rnd.history)
       self.obs.on_round_end(self.history, rnd.history)
 
-      self.dealer = (self.dealer + 1) % self.num_players
+      self.dealer = self._next_dealer(rnd)
 
       self.winner = self._check_winner()
 
@@ -66,6 +66,15 @@ class Game:
     if len(leaders) > 1:
       self.target_round_wins += 1
     return None
+
+  def _next_dealer(self, rnd: Round) -> int:
+    # winner starts; on a tied round, the first winner in turn order starts
+    first = (self.dealer + 1) % self.num_players
+    for i in range(self.num_players):
+      seat = (first + i) % self.num_players
+      if seat in rnd.history.winners:
+        return (seat - 1) % self.num_players
+    raise RuntimeError("Round finished without winners.")
 
 
 
@@ -112,8 +121,6 @@ class Round:
     else:
       self.winners = self.alive_players
 
-    for w in self.winners:
-      w.round_wins += 1
     self.history.winners = [p.seat for p in self.winners]
 
     return
@@ -196,12 +203,11 @@ class Turn:
 
     self.player.protected = False
 
-    if self.rnd.deck.cards_left > 0:
-      held = self.player.hand[0]
-      drawn = self.rnd.deck.draw_card()
-      self.history.held = held
-      self.history.drawn = drawn
-      self.player.hand.append(drawn)
+    held = self.player.hand[0]
+    drawn = self.rnd.deck.draw_card()
+    self.history.held = held
+    self.history.drawn = drawn
+    self.player.hand.append(drawn)
 
     self.rnd.obs.on_turn_start(self.game.history, self.rnd.history, self.history)
 

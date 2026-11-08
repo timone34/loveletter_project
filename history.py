@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class Outcome(Enum):
   NONE = auto()
-  NO_TARGET = auto()
+  # NO_TARGET = auto()
   PROTECTED = auto()    # Target protected
   CORRECT = auto()      # Guard
   INCORRECT = auto()    # Guard

@@ -24,10 +24,10 @@ class Card:
     # The card does require a target
     targets = rnd.get_valid_targets(player, allow_self=self.self_target)
 
-    # ... but can't find one
-    if not targets:
-      turn.history.outcome = Outcome.NO_TARGET
-      return
+    # # ... but can't find one
+    # if not targets:
+    #   turn.history.outcome = Outcome.NO_TARGET
+    #   return
 
     # ... and finds targets
     target = player.strategy.choose_target(player, self, targets)

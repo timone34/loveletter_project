@@ -33,10 +33,10 @@ class ConsoleLogger(Observer):
 
     line = f"  Plays {card.name}"
 
-    if turn.outcome is Outcome.NO_TARGET:
-      line += ", but there is no valid target."
+    # if turn.outcome is Outcome.NO_TARGET:
+    #   line += ", but there is no valid target."
 
-    elif turn.target is not None:
+    if turn.target is not None:
       target = "themself" if turn.target == turn.seat else self.names[turn.target]
       line += f" on {target}"
 
