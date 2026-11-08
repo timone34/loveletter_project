@@ -11,12 +11,12 @@ if TYPE_CHECKING:
 class Outcome(Enum):
   NONE = auto()
   NO_TARGET = auto()
-  PROTECTED = auto()
+  PROTECTED = auto()    # Target protected
   CORRECT = auto()      # Guard
   INCORRECT = auto()    # Guard
   WIN = auto()          # Baron, from the player's perspective
-  LOSE = auto()
-  DRAW = auto()
+  LOSE = auto()         # Baron
+  DRAW = auto()         # Baron
 
 
 @dataclass
