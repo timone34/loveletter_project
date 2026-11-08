@@ -1,199 +1,222 @@
+from __future__ import annotations
+
+from cards import Card
 from deck import Deck
 from player import Player
 from strategy import Strategy
-from cards import *
+
+from history import GameHistory, RoundHistory, TurnHistory, ShowdownHistory
+from observers import Observer, Observers
 
 
-
-class Game:
-  def __init__(self, players: dict[str, Strategy]):
-    # Game variables
-    self.players = [Player(name, strategy) for name, strategy in players.items()]
+class Game:  
+  def __init__(self, 
+               players: dict[str, Strategy], 
+               target_round_wins: int = 3,
+               observers: Observer | None = None
+               ):
+    self.players = [Player(seat, name, strategy) for seat, (name, strategy) in enumerate(players.items())]
     self.num_players = len(self.players)
 
-    self.deck = Deck()
-    self.burn_card: Card
+    self.obs = observers or Observers()
 
-    self.round: int = 1
-
-    self.dealer_index = 0
-    self.first_player_index = (self.dealer_index + 1) % self.num_players
-    self.current_player_index = self.first_player_index
-
-    self.target_round_wins: int = 3 # Number of round wins to win the game
+    self.target_round_wins: int = target_round_wins # Number of round wins to win the game
+    
+    self.dealer = 0
+    self.round = 0
     self.winner: Player | None = None
 
-    # Diagnostics
-    self.rounds_to_showdown: int = 0
-    self.round_ties: int = 0
-    self.target_round_win_increases: int = 0 
+    self.history = GameHistory(
+      players = [p.name for p in self.players],
+      strategies = [p.strategy.name for p in self.players],
+    )
 
 
-
-  # --- Core functions --- #
-  def play_game(self) -> None:
-    print("Starting Love Letter Game!\n")
+  def play(self) -> None:
+    self.obs.on_game_start(self.history)
 
     while self.winner is None:
-      self.play_round()
       self.round += 1
-      self.dealer_index = (self.dealer_index + 1) % self.num_players
-      self.first_player_index = (self.dealer_index + 1) % self.num_players
 
-      leaders = [p for p in self.players if p.round_wins >= self.target_round_wins]
-
-      if len(leaders) == 1:
-        self.winner = leaders[0]
-      elif len(leaders) > 1:
-        self.target_round_wins += 1
-        self.target_round_win_increases += 1
-        names = " and ".join(p.name for p in leaders)
-        print(f"{names} have both reached {self.target_round_wins - 1} wins!"
-              f"Target raised to  {self.target_round_wins} wins.\n")
-
-    print(f"\n{self.winner.name} has {self.winner.round_wins} round wins and wins the game!\nGG!")
-    return
-
-  
-  def play_round(self) -> None:
-    self.log_round_start()
-    self.reset_round()
-
-    starting_player = self.players[self.first_player_index]
-    self.deal_opening_hands(starting_player)
-    self.current_player_index = self.first_player_index
-
-    while self.are_multiple_players_left():
-      player = self.players[self.current_player_index]
-      self.play_turn(player)
-
-      # move to next player
-      self.current_player_index = (self.current_player_index + 1) % self.num_players
-
-    winners = [p for p in self.players if not p.rejected]
-    for w in winners:
-      w.round_wins += 1
-      print(f"{w.name} wins round {self.round} and has {w.round_wins} round wins. \n")
-    
-    return
-
-  
-  def play_turn(self, player: Player) -> None:
-    print(f"\n{self.players[self.current_player_index].name}'s turn.")
-
-    # First, check if player is rejected.
-    if player.rejected:
-      print(f"{player.name} is rejected. Skipping turn.")
-      return
-
-    # If player was protected by Handmaid, remove protection
-    player.protected = False
-
-    # Draw a second card
-    if self.deck.cards_left() > 0:
-      drawn_card = self.deck.draw_card()
-      player.hand.append(drawn_card)
-      print(f"{player.name} draws a card: {drawn_card.name}")
-
-    # Choose a card to play
-    chosen_card = player.strategy.choose_card(player)
-    player.hand.remove(chosen_card)
-    player.discard.append(chosen_card)
-    print(f"{player.name} plays a {chosen_card.name}.")
-
-    # Resolve chosen card's effect
-    chosen_card.resolve(self, player)
-
-    if self.are_multiple_players_left() and self.deck.cards_left() == 0:
-      self.play_showdown()
-    return
-
-
-  def play_showdown(self) -> None:
-    self.rounds_to_showdown += 1
-    print("\nShowdown! Players still in the game reveal their cards:")
-
-    active_players = [p for p in self.players if not p.rejected]
-    for player in active_players:
-      print(f"{player.name} has a {player.hand[0].name} ({player.hand[0].value}).")
-
-    # 1st tiebreak level: highest card in hand
-    best_value = max(p.hand[0].value for p in active_players)
-    contenders = [p for p in active_players if p.hand[0].value == best_value]
-
-    # 2nd tiebreak level: highest total discard value
-    if len(contenders) > 1:
-      print(f"\nTie on card value ({best_value}). Comparing discard piles:")
-      for p in contenders:
-        print(f"{p.name}'s discard total: {p.discard_total()}.")
+      rnd = Round(self, self.players, self.dealer, self.round, self.obs)
+      rnd.play()
       
-      best_total = max(p.discard_total() for p in contenders)
-      contenders = [p for p in contenders if p.discard_total() == best_total]
+      self._score(rnd)
 
-    winners = contenders
-    if len(winners) == 1:
-      print(f"\n{winners[0].name} wins the round!")
+      self.history.rounds.append(rnd.history)
+      self.obs.on_round_end(self.history, rnd.history)
+
+      self.dealer = (self.dealer + 1) % self.num_players
+
+      self.winner = self._check_winner()
+
+    self.history.winner = self.winner.seat
+    self.history.scores = {p.seat: p.round_wins for p in self.players}
+    self.obs.on_game_end(self.history)
+    return
+
+  def _score(self, rnd: Round) -> None:
+    for player in rnd.winners:
+      player.round_wins += 1
+
+  def _check_winner(self) -> Player | None:
+    leaders = [p for p in self.players if p.round_wins >= self.target_round_wins]
+    if len(leaders) == 1:
+      return leaders[0]
+    if len(leaders) > 1:
+      self.target_round_wins += 1
+    return None
+
+
+
+class Round:
+  def __init__(self, game: Game, players: list[Player], dealer: int, number: int, observers: Observer, deck: Deck | None = None):
+    self.game = game
+    self.players = players
+    self.num_players = len(self.players)
+    self.dealer = dealer
+    self.rnd_number = number
+    self.obs = observers
+
+    self.deck: Deck = deck if deck is not None else Deck()
+    if deck is None: self.deck.shuffle()
+
+    self.burn_card: Card
+    self.turn_count: int = 0
+
+    self.winners: list[Player] = []
+
+    self.history = RoundHistory(number=number, dealer=dealer, deck_order=list(self.deck.cards))
+
+  def play(self) -> None:
+    for player in self.players:
+      player.reset_player()
+
+    self._deal()
+    self.obs.on_round_start(self.game.history, self.history)
+
+    seat = (self.dealer + 1) % self.num_players
+    while True:
+      turn = Turn(game=self.game, round=self, player=self.players[seat])
+      turn.play()
+
+      self.history.turns.append(turn.history)
+      self.turn_count += 1
+
+      if not self.multiple_alive or self.deck.cards_left == 0:
+        break
+      seat = (seat + 1) % self.num_players
+
+    if self.multiple_alive:
+      self.winners = self._showdown()
     else:
-      print(f"\n{' and '.join(p.name for p in winners)} are still tied and share the round win!")
-      self.round_ties += 1
-    for player in active_players:
-        if player not in winners:
-            self.eliminate_player(player)
+      self.winners = self.alive_players
+
+    for w in self.winners:
+      w.round_wins += 1
+    self.history.winners = [p.seat for p in self.winners]
+
+    return
 
 
+  def _deal(self) -> None:
+    self.burn_card = self.deck.draw_card()
+    self.history.burn = self.burn_card
 
-  # --- Helping functions --- #
+    for i in range(self.num_players):
+      player = self.players[(self.dealer + 1 + i) % self.num_players]
+      card = self.deck.draw_card()
+      player.hand.append(card)
+      self.history.starting_hands[player.seat] = card
 
-  def are_multiple_players_left(self) -> bool:
-    active_players = [p for p in self.players if not p.rejected]
-    if not active_players:
-      raise RuntimeError("No players left in round. Something went wrong.")
+  def _showdown(self) -> list[Player]:
+    contenders = self.alive_players
 
-    return len(active_players) > 1
+    best = max(p.hand[0].value for p in contenders)
+    winners = [p for p in contenders if p.hand[0].value == best]
 
-  def deal_opening_hands(self, starting_player: Player) -> None:
-    burn_card = self.deck.cards.pop()
-    self.burn_card = burn_card
-    print(f"\nDealing opening hands.")
-    print(f"Burn card: {burn_card.name}\n")
+    discard_totals: dict[int,int] = {}
+    if len(winners) > 1:
+      discard_totals = {p.seat: p.discard_total for p in winners}
+      best_total = max(discard_totals.values())
+      winners = [p for p in winners if discard_totals[p.seat] == best_total]
 
-    # deal cards starting from player after dealer.
-    starting_index = self.players.index(starting_player)
 
-    for i in range(len(self.players)):
-      player = self.players[(starting_index + i) % len(self.players)]
-      player_card = self.deck.cards.pop()
-      player.hand.append(player_card)
-      print(f"{player.name}'s card: {player_card.name}")
+    self.history.showdown = ShowdownHistory(
+      contender_hands = {p.seat: p.hand[0] for p in contenders},
+      discard_totals = discard_totals,
+      winners = [p.seat for p in winners],
+    )
+    self.obs.on_showdown(self.game.history, self.history, self.history.showdown)
+    return winners
 
-  def eliminate_player(self, player: Player) -> None:
+  def eliminate(self, player: Player, turn: Turn):
     player.rejected = True
     player.discard.extend(player.hand)
     player.hand.clear()
-    
-    print(f"{player.name} is rejected, and therefore out of the round!")
+    turn.history.rejected.append(player.seat)
 
   def get_valid_targets(self, player: Player, allow_self: bool = False) -> list[Player]:
     valid_targets: list[Player] = []
 
     for p in self.players:
-      if p.rejected: continue                       # if player is dead, skip
-      if p is player and not allow_self: continue   # if you aren't allowed to target yourself, skip
-      valid_targets.append(p)
-    
+        if p.rejected: continue                       # if player is dead, skip
+        if p is player and not allow_self: continue   # if you aren't allowed to target yourself, skip
+        valid_targets.append(p)
+      
     return valid_targets
 
-  def log_round_start(self) -> None:
-    print(f"Starting round {self.round} with {self.num_players} players: ")
-    for player in self.players:
-      if self.players.index(player) == self.dealer_index:
-        print(f"{player.name}, ({player.strategy.name}) - Dealer")
-      else:
-        print(f"{player.name}, ({player.strategy.name})")
-            
-  def reset_round(self):
-    for player in self.players:
-      player.reset_player()
+  def draw_replacement(self) -> Card:
+    return self.deck.draw_card() if self.deck.cards_left > 0 else self.burn_card
+
+  @property
+  def cycle(self) -> int:
+    return self.turn_count // self.num_players + 1
+  @property
+  def alive_players(self) -> list[Player]:
+    return [p for p in self.players if not p.rejected]
+  @property
+  def multiple_alive(self) -> bool:
+    return len(self.alive_players) > 1
+
+
+
+class Turn:
+  def __init__(self, game: Game, round: Round, player: Player):
+    self.game = game
+    self.rnd = round
+    self.player = player
+    self.history = TurnHistory(cycle=self.rnd.cycle, seat=self.player.seat)
+
+
+  def play(self) -> None:    
+    if self.player.rejected:
+      self.rnd.obs.on_turn_skipped(self.game.history, self.rnd.history, self.history)
+      return
+
+    self.player.protected = False
+
+    if self.rnd.deck.cards_left > 0:
+      held = self.player.hand[0]
+      drawn = self.rnd.deck.draw_card()
+      self.history.held = held
+      self.history.drawn = drawn
+      self.player.hand.append(drawn)
+
+    self.rnd.obs.on_turn_start(self.game.history, self.rnd.history, self.history)
+
+    playable = self.player.playable_cards
+    card = self.player.strategy.choose_card(self.player, playable)
+    if card not in playable:
+      raise ValueError(f"{self.player.strategy.name} chose an illegal card.")
     
-    self.deck = Deck()
-    self.deck.shuffle()
+    self.history.played = card
+    self.player.hand.remove(card)
+    self.player.discard.append(card)
+
+    card.resolve(self.player, self.rnd, self)
+
+    self.rnd.obs.on_turn_end(self.game.history, self.rnd.history, self.history)
+
+
+

@@ -1,206 +1,129 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from history import Outcome
+
 if TYPE_CHECKING:
-  from game import Game
+  from game import Round, Turn
   from player import Player
 
-# --- Base Card Class --- #
+
+
 class Card:
-  def __init__(self, value: int, name: str):
-    self.value = value
-    self.name = name
-  
-  def resolve(self, game, player) -> None:
-    raise RuntimeError("Card class should not be instantiated and thus can't be resolved.")
+  value: int
+  name: str
+  targeted: bool = False      # does the card need a target?
+  self_target: bool = False   # may the player target themself?
 
-# --- Card Implementations --- #
-class Guard(Card):
-  def __init__(self):
-    super().__init__(1, "Guard")
-    
-  def resolve(self, game: Game, player: Player) -> None:
-    # Targeting
-    targets = game.get_valid_targets(player, allow_self=False)
+  def resolve(self, player: Player, rnd: Round, turn: Turn) -> None:
+    # The card does not require a target
+    if not self.targeted:
+      self.apply(player, player, rnd, turn)
+      return
+
+    # The card does require a target
+    targets = rnd.get_valid_targets(player, allow_self=self.self_target)
+
+    # ... but can't find one
     if not targets:
-      print(f"No valid targets. {player.name}'s {self.name} has no effect.")
+      turn.history.outcome = Outcome.NO_TARGET
       return
-    target = player.strategy.choose_guard_target(player, targets)
 
+    # ... and finds targets
+    target = player.strategy.choose_target(player, self, targets)
+    if target not in targets:
+      raise ValueError(f"{player.strategy.name} chose an illegal target for the {self.name}")
+    turn.history.target = target.seat
+
+    # verify target protection
     if target.protected:
-      print(f"{target.name} is protected. {player.name}'s {self.name} has no effect.")
+      turn.history.outcome = Outcome.PROTECTED
       return
 
-    guess = player.strategy.guard_guess(game, player, target)
-    print(f"{player.name} guesses that {target.name} has a {guess.name}.")
+    # if all is in order, apply effect to target
+    self.apply(player, target, rnd, turn)
+
+  
+  def apply(self, player: Player, target: Player, rnd: Round, turn: Turn) -> None:
+    pass
+
+  
+
+class Guard(Card):
+  value, name, targeted, self_target = 1, "Guard", True, False
+    
+  def apply(self, player, target, rnd, turn):
+    guess = player.strategy.guard_guess(player, target)
+    if isinstance(guess, Guard):
+      raise ValueError("Guard cannot guess Guard.")
+    turn.history.guess = guess
 
     if target.hand[0].value == guess.value:
-      game.eliminate_player(target)
-
-      print(f"\nCorrect! {target.name} is eliminated.")
+      rnd.eliminate(target, turn)
+      turn.history.outcome = Outcome.CORRECT
       return
-    
-    print(f"\nIncorrect!")
-
-    return
+    else:
+      turn.history.outcome = Outcome.INCORRECT
 
 
 class Priest(Card):
-  def __init__(self):
-    super().__init__(2, "Priest")
+  value, name, targeted, self_target = 2, "Priest", True, False
 
-  def resolve(self, game: Game, player: Player) -> None:
-    # Targeting
-    targets = game.get_valid_targets(player, allow_self=False)
-    if not targets:
-      print(f"No valid targets. {player.name}'s {self.name} has no effect.")
-      return
-    target = player.strategy.choose_priest_target(player, targets)
-
-    if target.protected:
-            print(f"{target.name} is protected. {player.name}'s {self.name} has no effect.")
-            return
-    
-    print(f"{player.name} targets {target.name} with a Priest.")
-    print(f"{target.name} has a {target.hand[0].name}.")
-
-    return
-
+  def apply(self, player, target, rnd, turn):
+    turn.history.seen = target.hand[0]
 
 class Baron(Card):
-  def __init__(self):
-    super().__init__(3, "Baron")
+  value, name, targeted, self_target = 3, "Baron", True, False
 
-  def resolve(self, game: Game, player: Player) -> None:
-    # Targeting
-    targets = game.get_valid_targets(player, allow_self=False)
-    if not targets:
-      print(f"No valid targets. {player.name}'s {self.name} has no effect.")
-      return
-    target = player.strategy.choose_baron_target(player, targets)
+  def apply(self, player, target, rnd, turn):
+      mine, theirs = player.hand[0].value, target.hand[0].value
 
-    if target.protected:
-      print(f"{target.name} is protected. {player.name}'s {self.name} has no effect.")
-      return
-    
-    print(f"{player.name} targets {target.name} with a Baron.")
-
-    # Compare hands
-    player_card_value = player.hand[0].value
-    target_card_value = target.hand[0].value
-
-    # Determine winner
-    if player_card_value > target_card_value:
-      winner = player
-      loser = target
-    elif player_card_value < target_card_value:
-      winner = target
-      loser = player
-    elif player_card_value == target_card_value:
-      print(f"The comparison between {player.name} and {target.name} ended in a draw...")
-      return
-    else:
-      raise RuntimeError("Baron comparison failed. Something went wrong.")
-    
-    # eliminate loser
-    print(f"The winner is {winner.name}! {loser.name} is rejected!")
-    game.eliminate_player(loser)
-
-    return
-
+      if mine > theirs:
+        turn.history.outcome = Outcome.WIN
+        rnd.eliminate(target, turn)
+      if mine < theirs:
+        turn.history.outcome = Outcome.LOSE
+        rnd.eliminate(player, turn)
+      if mine == theirs:
+        turn.history.outcome = Outcome.DRAW
 
 class Handmaid(Card):
-  def __init__(self):
-    super().__init__(4, "Handmaid")
+  value, name, targeted, self_target = 4, "Handmaid", False, False
 
-  def resolve(self,game: Game, player: Player) -> None:
-    player.protected = True
-    print(f"{player.name} is now protected.")
-
-    return
-
+  def apply(self, player, target, rnd, turn):
+      player.protected = True
 
 class Prince(Card):
-  def __init__(self):
-    super().__init__(5, "Prince")
+  value, name, targeted, self_target = 5, "Prince", True, True
+  
+  def apply(self, player, target, rnd, turn):
+      discarded = target.hand.pop()
+      target.discard.append(discarded)
+      turn.history.discarded = discarded
 
-  def resolve(self, game: Game, player: Player) -> None:
-    targets = game.get_valid_targets(player, allow_self=True)
-    if not targets:
-      print(f"No valid targets. {player.name}'s {self.name} has no effect.")
-      return
-    target = player.strategy.choose_prince_target(player, targets)
+      if isinstance(discarded, Princess):
+        rnd.eliminate(target, turn)
+        return
 
-    if target.protected:
-      print(f"{target.name} is protected. {player.name}'s {self.name} has no effect.")
-      return
-    
-    print(f"{player.name} targets {target.name} with a Prince.")
-
-    discarded_card = target.hand.pop()
-    target.discard.append(discarded_card)
-    print(f"{player.name}'s Prince makes {target.name} discard a {discarded_card.name}")
-
-    # Check if discarded card was Princess and eliminate accordingly
-    if isinstance(discarded_card, Princess):
-      print(f"{player.name}'s Prince makes {target.name} discard the Princess. {target.name} is rejected!")
-      game.eliminate_player(target)
-      return
-
-    # Draw new card for target
-    if game.deck.cards_left() > 0:
-      drawn_card = game.deck.draw_card()
-      target.hand.append(drawn_card)
-      print(f"{target.name} draws a card: {drawn_card.name}")
-    else:
-      print(f"The deck is empty. {target.name} draws the burn card: {game.burn_card.name}")
-      target.hand.append(game.burn_card)
-
-    return
-
+      redrawn = rnd.draw_replacement()
+      target.hand.append(redrawn)
+      turn.history.redrawn = redrawn
 
 class King(Card):
-  def __init__(self):
-    super().__init__(6, "King")
+  value, name, targeted, self_target = 6, "King", True, False
 
-  def resolve(self, game: Game, player: Player) -> None:
-    targets = game.get_valid_targets(player, allow_self=False)
-    if not targets:
-      print(f"No valid targets. {player.name}'s {self.name} has no effect.")
-      return
-    target = player.strategy.choose_king_target(player, targets)
-
-    if target.protected:
-      print(f"{target.name} is protected. {player.name}'s {self.name} has no effect.")
-      return
-
-    
-    print(f"{player.name} targets {target.name} with a King.")
-
-    # swap hands
-    player.hand, target.hand = target.hand, player.hand
-    print(f"{player.name} and {target.name} swap hands.")
-
-    # debug
-    # print(f"{player.name}'s hand: {[card.name for card in player.hand]}")
-    # print(f"{target.name}'s hand: {[card.name for card in target.hand]}")
-
-    return
-
+  def apply(self, player, target, rnd, turn):
+      player.hand, target.hand = target.hand, player.hand
 
 class Countess(Card):
-  def __init__(self):
-    super().__init__(7, "Countess")
-
-  def resolve(self, game: Game, player: Player) -> None:
-    return
-
+  value, name, targeted, self_target = 7, "Countess", False, False
 
 class Princess(Card):
-  def __init__(self):
-    super().__init__(8, "Princess")
+  value, name, targeted, self_target = 8, "Princess", False, False
 
-  def resolve(self, game: Game, player: Player) -> None:
-    print(f"{player.name} played the Princess and is rejected.")
-    game.eliminate_player(player)
-    return
+  def apply(self, player, target, rnd, turn):
+      rnd.eliminate(player, turn)
+
+
+def guessable() -> list[Card]:
+  return [Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]

@@ -2,6 +2,7 @@ import time
 
 from game import Game
 from strategy import Strategy, Random_Strategy, Player_Strategy
+from observers import Observer, Observers, ConsoleLogger
 
 def main():
   players: dict[str, Strategy] = {
@@ -12,8 +13,10 @@ def main():
     # "User": Player_Strategy(),
   }
 
-  game = Game(players)
-  game.play_game()
+  observers = ConsoleLogger()
+
+  game = Game(players=players, target_round_wins=3, observers=observers)
+  game.play()
 
 
 if __name__ == "__main__":
@@ -24,4 +27,3 @@ if __name__ == "__main__":
   end = time.perf_counter()
   
   print(f"\nExecuted in {(end - start) * 1000:.1f} ms.")
-

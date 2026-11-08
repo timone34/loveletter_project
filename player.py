@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from strategy import Strategy
-from cards import Card
+from cards import Card, Countess, Prince, King
 
 
 class Player:
@@ -24,5 +24,15 @@ class Player:
     self.protected = False
     self.rejected = False
 
+  @property
   def discard_total(self) -> int:
     return sum(card.value for card in self.discard)
+
+  @property
+  def playable_cards(self) -> list[Card]:
+    countess: list[Card] = [c for c in self.hand if isinstance(c, Countess)]
+    prince = [c for c in self.hand if isinstance(c, Prince)]
+    king = [c for c in self.hand if isinstance(c, King)]
+    if countess and (prince or king):
+      return countess
+    return list(self.hand)

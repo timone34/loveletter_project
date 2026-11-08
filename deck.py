@@ -23,5 +23,6 @@ class Deck:
     
     raise RuntimeError("Cannot draw from an empty deck.")
 
+  @property
   def cards_left(self) -> int:
     return len(self.cards)

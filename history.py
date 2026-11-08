@@ -23,8 +23,9 @@ class Outcome(Enum):
 class TurnHistory:
   cycle: int
   seat: int
-  drawn: Card | None = None
-  played: Card | None = None          # None = skipped turn (player rejected)
+  held: Card | None = None
+  drawn: Card | None = None           # None = skipped turn (player rejected)
+  played: Card | None = None          
   target: int | None = None           # seat
   guess: Card | None = None           # Guard
   outcome: Outcome = Outcome.NONE
@@ -46,6 +47,8 @@ class RoundHistory:
   number: int
   dealer: int
   deck_order: list[Card]
+  burn: Card | None = None
+  starting_hands: dict[int, Card] = field(default_factory=dict)
   turns: list[TurnHistory] = field(default_factory=list)
   showdown: ShowdownHistory | None = None
   winners: list[int] = field(default_factory=list)
@@ -57,3 +60,4 @@ class GameHistory:
   strategies: list[str]
   rounds: list[RoundHistory] = field(default_factory=list)
   winner: int | None = None
+  scores: dict[int, int] = field(default_factory=dict)
