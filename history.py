@@ -1,31 +1,59 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from cards import Card
-from player import Player
+from dataclasses import dataclass, field
+from enum import Enum, auto
+
+if TYPE_CHECKING:
+  from cards import Card
+
+
+class Outcome(Enum):
+  NONE = auto()
+  NO_TARGET = auto()
+  PROTECTED = auto()
+  CORRECT = auto()      # Guard
+  INCORRECT = auto()    # Guard
+  WIN = auto()          # Baron, from the player's perspective
+  LOSE = auto()
+  DRAW = auto()
+
 
 @dataclass
 class TurnHistory:
   cycle: int
   seat: int
   drawn: Card | None = None
-  played: Card | None = None    # None = skipped turn (player rejected)
-  target: Player | None = None
-  guess: Card | None = None     # Guard only
-  outcome: str = ""             # e.g. "no_target", "protected", "correct", "incorrect", "win", "lose", "draw"
-  rejected: list[Player] = field(default_factory=list)
+  played: Card | None = None          # None = skipped turn (player rejected)
+  target: int | None = None           # seat
+  guess: Card | None = None           # Guard
+  outcome: Outcome = Outcome.NONE
+  seen: Card | None = None            # Priest
+  discarded: Card | None = None       # Prince
+  redrawn: Card | None = None         # Prince
+  rejected: list[int] = field(default_factory=list)   # seats
+
+
+@dataclass
+class ShowdownHistory:
+  contender_hands: dict[int, Card]
+  discard_totals: dict[int, int] = field(default_factory=dict)
+  winners: list[int] = field(default_factory=list)
 
 
 @dataclass
 class RoundHistory:
   number: int
   dealer: int
-  burn: Card | None = None
-  deck_order: list[Card] = field(default_factory=list)
+  deck_order: list[Card]
   turns: list[TurnHistory] = field(default_factory=list)
-  winners: list[Player] = field(default_factory=list)
+  showdown: ShowdownHistory | None = None
+  winners: list[int] = field(default_factory=list)
+
 
 @dataclass
 class GameHistory:
-  players: list[Player] = field(default_factory=list)
+  players: list[str]
+  strategies: list[str]
   rounds: list[RoundHistory] = field(default_factory=list)
-  winner: Player | None = None
+  winner: int | None = None
