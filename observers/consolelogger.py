@@ -1,6 +1,7 @@
 from cards import Baron, Guard, Handmaid, King, Priest, Prince, Princess
 from history import Outcome
-from observers import Observer
+
+from .observer import Observer
 
 
 class ConsoleLogger(Observer):
