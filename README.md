@@ -39,8 +39,9 @@ All cards get shortened to a letter, just like pieces in chess notation. Some tu
 | Princess | Q |
 | Player rejected | - |
 | Turn results in rejection of target | # |
-| Player wins Baron comparison | + |
-| Player loses Baron comparison | - |
+| Player wins Baron comparison | > |
+| Player loses Baron comparison | < |
+| Baron comparison ends with tie | = |
 | Target protected by Handmaid | ? |
 
 
@@ -51,27 +52,62 @@ If we know who is dealing this round, the starting hands are determined as well.
 
 What does a round of Love Letter look like in LLN?
 
-```[Players "Alice" "Bob" "Charlie" "Diane"]
+```
+[Seat1: Alice, Random Strategy]
+[Seat2: Bob, Random Strategy]
+[Seat3: Charlie, Random Strategy]
+[Seat4: Diane, Random Strategy]
+[Score: 0-0-1-0]
 
 [Round 1]
-[Dealer "Alice"]
-[Deck "CBpBQgpgggHPgPKH"]
-[Result "W3"] 
+[Dealer: Alice]
+[Deck: CBpBQgpgggHPgPKH]
+[Result: W3]
 
-1.1. g4:H
-1.2. p1:-
-1.3. g4:Q#
-1.4. -
-2.1. g2:H
-2.2. g1:B#
-2.3. H3:-
-2.4. -
+1.2. g1:H
+1.3. p2
+1.4. g1:Q#
+1.1. -
+
+2.2. g3:H
+2.3. g2:B#
+2.4. H
+2.1. -
+
+3.2. -
+3.3. p4*
+3.4. g3:K
 3.1. -
-3.2. p3:-?
-3.3. g2:K
-3.4. -
-4.1. -
-4.2. P3:-
-4.3. B2:--
-W3
 
+4.2. -
+4.3. P3
+4.4. B3<#
+W3
+```
+
+## Statistics
+To compare strategies with each other, we need a way of looking at the game data.
+Various statistics can help us in our journey to find the way to perfect play.
+These different stats can be split into multiple categories
+
+### 1. Outcome stats
+Did the bot win, and how? 
+These stats are important for observing which bot performs best.
+- Game winrate (%)
+- Round winrate (%)
+- Rejection stats (cause, timing, who did it)
+- Seat and dealer specific effects
+
+### 2. Play stats
+What did the bot actually do?
+These stats are important for telling us what to improve.
+- Guard accuracy (%)
+- Baron results (x% win,y% tie, z% loss)
+- Information usage (card counting accuracy)
+
+### 3. Context
+How far can we trust these numbers?
+Maybe the least important, but still useful for our purposes.
+- Luck analysis
+- Drawn cards
+- Comparison setup (head-to-head, rating, confidence interval)
