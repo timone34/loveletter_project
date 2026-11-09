@@ -1,7 +1,8 @@
 import time
 
-from game import *
-from strategy import *
+from game import Game
+from strategy import Strategy, Random_Strategy, Player_Strategy
+from observers import Observer, Observers, ConsoleLogger
 
 def main():
   players: dict[str, Strategy] = {
@@ -12,13 +13,17 @@ def main():
     # "User": Player_Strategy(),
   }
 
-  game = Game(players)
-  game.play_game()
+  observers = ConsoleLogger()
 
-start = time.perf_counter()
+  game = Game(players=players, target_round_wins=3, observers=observers)
+  game.play()
 
-main()
 
-end = time.perf_counter()
-
-print(f"\nExecuted in {(end - start) * 1000:.1f} ms.")
+if __name__ == "__main__":
+  start = time.perf_counter()
+  
+  main()
+  
+  end = time.perf_counter()
+  
+  print(f"\nExecuted in {(end - start) * 1000:.1f} ms.")
