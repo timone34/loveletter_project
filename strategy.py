@@ -109,4 +109,21 @@ class Random_Strategy(Strategy): # picks a random target regarding all actions.
   def guard_guess(self, player: Player, target: Player) -> Card:
     return random.choice(guessable())
   
-  
+
+class No_Princess(Strategy):
+  def __init__(self) -> None:
+    self.name = "No Princess"
+
+  def choose_card(self, player, playable):
+    # never play Princess
+    for card in playable:
+      if isinstance(card, Princess):
+        playable.remove(card)
+
+    return random.choice(playable)
+
+  def choose_target(self, player, card, targets):
+    return random.choice(targets)
+
+  def guard_guess(self, player, target):
+    return random.choice(guessable())
