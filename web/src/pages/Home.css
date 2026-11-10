@@ -1,0 +1,248 @@
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  padding: 1.5rem clamp(20px, 5vw, 64px);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+  color: var(--primary);
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4rem);
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem clamp(20px, 5vw, 64px) 4rem;
+}
+
+.hero__text h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 5.4vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  max-width: 13ch;
+  text-wrap: balance;
+}
+
+.hero__intro {
+  margin-top: 1.5rem;
+  max-width: 46ch;
+  font-size: 1.125rem;
+  color: var(--text);
+}
+
+.hero__hint {
+  margin-top: 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* ---------- Fan of mode cards ---------- */
+
+.fan {
+  --w: clamp(160px, 17vw, 230px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding-block: 2rem;
+}
+
+.card {
+  --card-color: var(--accent);
+  --r: calc((var(--i) - 1) * 7.5deg);
+  --y: calc((var(--i) - 1) * (var(--i) - 1) * 20px);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: var(--w);
+  margin-inline: calc(var(--w) * -0.06);
+  padding: 10px;
+  border: 1px solid var(--secondary);
+  border-radius: 18px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 22px 34px -18px rgb(42 40 41 / 0.45);
+  transform-origin: 50% 120%;
+  transform: translateY(var(--y)) rotate(var(--r));
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.28s ease;
+  /* the deal-in only styles the "before" state; afterwards hover works normally */
+  animation: deal 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(var(--i) * 110ms + 150ms);
+}
+
+.card[data-kind="guard"] {
+  --card-color: var(--card-guard);
+}
+.card[data-kind="prince"] {
+  --card-color: var(--card-prince);
+}
+.card[data-kind="baron"] {
+  --card-color: var(--card-baron);
+}
+
+.card:hover,
+.card:focus-visible {
+  z-index: 2;
+  transform: translateY(calc(var(--y) - 18px)) rotate(0deg);
+  box-shadow: 0 30px 40px -18px rgb(42 40 41 / 0.5);
+}
+
+.card:active {
+  transform: translateY(calc(var(--y) - 10px)) rotate(0deg) scale(0.985);
+}
+
+.card__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1.12;
+  border-radius: 10px;
+  background: var(--card-color);
+  color: #fff;
+}
+
+/* thin inner frame, like the border on a printed card */
+.card__art::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1.5px solid rgb(255 255 255 / 0.35);
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.card__value {
+  position: absolute;
+  top: 14px;
+  left: 17px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.card__silhouette {
+  width: 58%;
+  height: auto;
+}
+
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 0.35rem 0.5rem;
+}
+
+.card__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.card__blurb {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    /* all three cards start stacked in the middle of the fan */
+    transform: translate(calc((1 - var(--i)) * 100%), -36px) rotate(0deg)
+      scale(0.96);
+  }
+}
+
+/* ---------- Tablet: stack text above the fan ---------- */
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .fan {
+    --w: clamp(150px, 27vw, 230px);
+  }
+}
+
+/* ---------- Phone: cards become horizontal rows ---------- */
+
+@media (max-width: 640px) {
+  .fan {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding-block: 1rem 0;
+  }
+
+  .card {
+    --r: 0deg;
+    --y: 0px;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-inline: 0;
+    transform-origin: 50% 50%;
+    animation-name: deal-row;
+    animation-delay: calc(var(--i) * 90ms + 100ms);
+  }
+
+  .card:hover,
+  .card:focus-visible {
+    transform: translateY(-4px);
+  }
+
+  .card__art {
+    flex: 0 0 34%;
+    aspect-ratio: 1 / 1;
+  }
+
+  .card__value {
+    top: 10px;
+    left: 12px;
+    font-size: 1.15rem;
+  }
+
+  .card__body {
+    padding: 0.25rem 0.5rem;
+  }
+
+  @keyframes deal-row {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+    transition: none;
+  }
+}

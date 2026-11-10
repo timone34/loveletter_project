@@ -1,15 +1,10 @@
-import { useEffect, useState } from "react";
-
-type GameEvent = { type: string; [key: string]: unknown };
+import Home, { type Mode } from "./pages/Home";
 
 export default function App() {
-  const [events, setEvents] = useState<GameEvent[]>([]);
+  // Placeholder until the Play / Simulate / Stats screens exist.
+  const handleNavigate = (mode: Mode) => {
+    console.log(`open ${mode}`);
+  };
 
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/spectate");
-    ws.onmessage = (e) => setEvents((prev) => [...prev, JSON.parse(e.data)]);
-    return () => ws.close();
-  }, []);
-
-  return <pre>{events.map((e) => JSON.stringify(e)).join("\n")}</pre>;
+  return <Home onNavigate={handleNavigate} />;
 }
