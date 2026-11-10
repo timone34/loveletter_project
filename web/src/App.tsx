@@ -1,10 +1,20 @@
-import Home, { type Mode } from "./pages/Home";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Play from "./pages/Play";
+// import Simulate from "./pages/Simulate";
+// import Stats from "./pages/Stats";
 
-export default function App() {
-  // Placeholder until the Play / Simulate / Stats screens exist.
-  const handleNavigate = (mode: Mode) => {
-    console.log(`open ${mode}`);
-  };
-
-  return <Home onNavigate={handleNavigate} />;
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/play" element={<Play />} />
+        {/* <Route path="/simulate" element={<Simulate />} /> */}
+        {/* <Route path="/stats" element={<Stats />} /> */}
+      </Routes>
+    </BrowserRouter>
+  );
 }
+
+export default App;

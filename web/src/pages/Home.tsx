@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import { CardArt, type CardKind } from "../components/CardArt";
 import "./Home.css";
 
@@ -36,13 +37,18 @@ const MODES: ModeCard[] = [
   },
 ];
 
-type Props = { onNavigate: (mode: Mode) => void };
+export default function Home() {
+  const navigate = useNavigate();
 
-export default function Home({ onNavigate }: Props) {
   return (
     <div className="page">
       <header className="topbar">
         <span className="wordmark">Love Letter Strategy</span>
+        <span className="version">v1.0</span>
+        <span className="home-button">Home</span>
+        <span className="play-button">Play</span>
+        <span className="sim-button">Simulate</span>
+        <span className="stats-button">Stats</span>
       </header>
 
       <main className="hero">
@@ -65,7 +71,7 @@ export default function Home({ onNavigate }: Props) {
               className="card"
               data-kind={m.kind}
               style={{ "--i": i } as CSSProperties}
-              onClick={() => onNavigate(m.mode)}
+              onClick={() => navigate(`/${m.mode}`)}
             >
               <span className="card__art">
                 <span className="card__value">{m.value}</span>

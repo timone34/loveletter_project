@@ -4,6 +4,8 @@
   flex-direction: column;
 }
 
+/* --------- Top bar --------- */
+
 .topbar {
   padding: 1.5rem clamp(20px, 5vw, 64px);
 }
@@ -16,7 +18,18 @@
   color: var(--primary);
 }
 
+.version {
+  font-family: var(--font-display);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding: 1.0rem;
+}
+
+
+/* --------- Footer --------- */
+
 .footer {
+  font-family: var(--font-display);
   padding: 1.25rem clamp(20px, 5vw, 64px) 1.5rem;
   color: var(--text-muted);
   font-size: 0.75rem;
