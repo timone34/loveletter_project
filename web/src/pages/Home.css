@@ -32,7 +32,7 @@
   align-items: center;
   gap: clamp(2rem, 5vw, 4rem);
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 1rem clamp(20px, 5vw, 64px) 4rem;
 }
@@ -67,6 +67,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-end;
+  margin-left: clamp(2rem, 4vw, 4rem);
   padding-block: 2rem;
 }
 
@@ -79,6 +80,7 @@
   display: flex;
   flex-direction: column;
   width: var(--w);
+  aspect-ratio: 7/12;
   margin-inline: calc(var(--w) * -0.06);
   padding: 10px;
   border: 1px solid var(--secondary);
@@ -110,19 +112,19 @@
 .card:hover,
 .card:focus-visible {
   z-index: 2;
-  transform: translateY(calc(var(--y) - 18px)) rotate(0deg);
+  transform: translateY(calc(var(--y) - 18px)) rotate(var(--r)) scale(1.05);
   box-shadow: 0 30px 40px -18px rgb(42 40 41 / 0.5);
 }
 
 .card:active {
-  transform: translateY(calc(var(--y) - 10px)) rotate(0deg) scale(0.985);
+  transform: translateY(calc(var(--y) - 10px)) rotate(var(--r)) scale(0.985);
 }
 
 .card__art {
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 1 / 1.12;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
   background: var(--card-color);
   color: #fff;
@@ -213,6 +215,7 @@
     align-items: center;
     gap: 6px;
     width: 100%;
+    aspect-ratio: 5/2;
     margin-inline: 0;
     transform-origin: 50% 50%;
     animation-name: deal-row;
@@ -221,8 +224,12 @@
 
   .card:hover,
   .card:focus-visible {
-    transform: translateY(-4px);
+    transform: scale(1.05);
   }
+
+  .card:active {
+  transform: scale(0.985);
+}
 
   .card__art {
     flex: 0 0 34%;
