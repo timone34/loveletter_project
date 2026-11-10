@@ -45,10 +45,6 @@ export default function Home() {
       <header className="topbar">
         <span className="wordmark">Love Letter Strategy</span>
         <span className="version">v1.0</span>
-        <span className="home-button">Home</span>
-        <span className="play-button">Play</span>
-        <span className="sim-button">Simulate</span>
-        <span className="stats-button">Stats</span>
       </header>
 
       <main className="hero">
