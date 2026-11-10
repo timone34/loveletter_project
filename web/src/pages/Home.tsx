@@ -79,6 +79,10 @@ export default function Home({ onNavigate }: Props) {
           ))}
         </div>
       </main>
+
+      <footer className="footer">
+        made with {"<3"} by timone34
+      </footer>
     </div>
   );
 }
