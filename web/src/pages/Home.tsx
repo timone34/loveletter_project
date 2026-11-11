@@ -82,18 +82,18 @@ export default function Home() {
             <button
               key={m.mode}
               type="button"
-              className="card"
+              className="mode-card"
               data-kind={m.kind}
               style={{ "--i": i } as CSSProperties}
               onClick={() => navigate(`/${m.mode}`)}
             >
-              <span className="card__art">
-                <span className="card__value">{m.value}</span>
-                <CardArt kind={m.kind} className="card__silhouette" />
+              <span className="mode-card__art">
+                <span className="mode-card__value">{m.value}</span>
+                <CardArt kind={m.kind} className="mode-card__silhouette" />
               </span>
-              <span className="card__body">
-                <span className="card__title">{m.title}</span>
-                <span className="card__blurb">{m.blurb}</span>
+              <span className="mode-card__body">
+                <span className="mode-card__title">{m.title}</span>
+                <span className="mode-card__blurb">{m.blurb}</span>
               </span>
             </button>
           ))}

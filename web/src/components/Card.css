@@ -10,6 +10,7 @@
   flex: none;
   container-type: inline-size;
   width: var(--card-w);
+  padding: calc(var(--card-w) * 0.05);
   aspect-ratio: 7 / 12;
   border-radius: calc(var(--card-w) * 0.08);
   border: 1px solid var(--secondary);

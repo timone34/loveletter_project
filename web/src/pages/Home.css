@@ -113,7 +113,7 @@
   padding-block: 2rem;
 }
 
-.card {
+.mode-card {
   --card-color: var(--accent);
   --r: calc((var(--i) - 1) * 7.5deg);
   --y: calc((var(--i) - 1) * (var(--i) - 1) * 20px);
@@ -141,28 +141,28 @@
   animation-delay: calc(var(--i) * 110ms + 150ms);
 }
 
-.card[data-kind="guard"] {
+.mode-card[data-kind="guard"] {
   --card-color: var(--card-guard);
 }
-.card[data-kind="prince"] {
+.mode-card[data-kind="prince"] {
   --card-color: var(--card-prince);
 }
-.card[data-kind="baron"] {
+.mode-card[data-kind="baron"] {
   --card-color: var(--card-baron);
 }
 
-.card:hover,
-.card:focus-visible {
+.mode-card:hover,
+.mode-card:focus-visible {
   z-index: 2;
   transform: translateY(calc(var(--y) - 18px)) rotate(var(--r)) scale(1.05);
   box-shadow: 0 30px 40px -18px rgb(42 40 41 / 0.5);
 }
 
-.card:active {
+.mode-card:active {
   transform: translateY(calc(var(--y) - 10px)) rotate(var(--r)) scale(0.985);
 }
 
-.card__art {
+.mode-card__art {
   position: relative;
   display: grid;
   place-items: center;
@@ -173,7 +173,7 @@
 }
 
 /* thin inner frame, like the border on a printed card */
-.card__art::before {
+.mode-card__art::before {
   content: "";
   position: absolute;
   inset: 8px;
@@ -182,7 +182,7 @@
   pointer-events: none;
 }
 
-.card__value {
+.mode-card__value {
   position: absolute;
   top: 14px;
   left: 17px;
@@ -192,19 +192,19 @@
   line-height: 1;
 }
 
-.card__silhouette {
+.mode-card__silhouette {
   width: 58%;
   height: auto;
 }
 
-.card__body {
+.mode-card__body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   padding: 0.85rem 0.35rem 0.5rem;
 }
 
-.card__title {
+.mode-card__title {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.35rem;
@@ -212,7 +212,7 @@
   color: var(--text);
 }
 
-.card__blurb {
+.mode-card__blurb {
   font-size: 0.875rem;
   line-height: 1.4;
   color: var(--text-muted);
@@ -250,7 +250,7 @@
     padding-block: 1rem 0;
   }
 
-  .card {
+  .mode-card {
     --r: 0deg;
     --y: 0px;
     flex-direction: row;
@@ -264,27 +264,27 @@
     animation-delay: calc(var(--i) * 90ms + 100ms);
   }
 
-  .card:hover,
-  .card:focus-visible {
+  .mode-card:hover,
+  .mode-card:focus-visible {
     transform: scale(1.05);
   }
 
-  .card:active {
+  .mode-card:active {
   transform: scale(0.985);
 }
 
-  .card__art {
+  .mode-card__art {
     flex: 0 0 34%;
     aspect-ratio: 1 / 1;
   }
 
-  .card__value {
+  .mode-card__value {
     top: 10px;
     left: 12px;
     font-size: 1.15rem;
   }
 
-  .card__body {
+  .mode-card__body {
     padding: 0.25rem 0.5rem;
   }
 
@@ -297,7 +297,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card {
+  .mode-card {
     animation: none;
     transition: none;
   }
