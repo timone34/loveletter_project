@@ -5,7 +5,10 @@
 }
 
 .topbar {
+  display: flex;
+  align-items: center;
   padding: 1.5rem clamp(20px, 5vw, 64px);
+  gap: 2rem;
 }
 
 .wordmark {
@@ -14,11 +17,104 @@
   font-size: 1.125rem;
   letter-spacing: -0.01em;
   color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  /* margin-left: auto; */
+}
+
+.navigation__link {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.navigation__link:hover {
+  color: var(--primary);
+}
+
+.navigation__link.active {
+  color: var(--primary);
 }
 
 .version {
   font-family: var(--font-display);
   color: var(--text-muted);
   font-size: 0.75rem;
-  padding-left: 1.0rem;
+  /* padding: 1.0rem; */
+}
+
+.footer {
+  font-family: var(--font-display);
+  padding: 1.0rem clamp(20px, 5vw, 64px) 1.0rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+/* ----- Main Play page content -----*/
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1rem clamp(20px, 5vw, 64px) 4rem;
+}
+
+.preview__title {
+  margin-bottom: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.preview__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+
+.table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  padding: 2rem 1rem;
+  border-radius: 24px;
+  background: var(--accent-soft);
+}
+
+.table__opponents {
+  display: flex;
+  justify-content: center;
+}
+
+.table__back {
+  margin-inline: -10px;
+  transform: rotate(var(--tilt, 0deg));
+}
+
+.table__hand {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.table__card:hover {
+  transform: translateY(-14px);
+  box-shadow: 0 28px 38px -18px rgb(42 40 41 / 0.5);
 }

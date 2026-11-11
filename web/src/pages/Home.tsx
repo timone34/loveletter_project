@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { CardArt, type CardKind } from "../components/CardArt";
 import "./Home.css";
 
@@ -43,8 +43,26 @@ export default function Home() {
   return (
     <div className="page">
       <header className="topbar">
-        <span className="wordmark">Love Letter Strategy</span>
+        <NavLink to="/" className="wordmark">
+          Love Letter Strategy
+        </NavLink>
         <span className="version">v1.0</span>
+
+        <nav className="navigation">
+          <NavLink to="/play" className="navigation__link">
+            Play
+          </NavLink>
+
+          <NavLink to="/simulate" className="navigation__link">
+            Simulate
+          </NavLink>
+
+          <NavLink to="/stats" className="navigation__link">
+            Statistics
+          </NavLink>
+        </nav>
+
+        
       </header>
 
       <main className="hero">
