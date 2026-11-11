@@ -1,0 +1,72 @@
+.player-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.35rem, 0.8vh, 0.75rem);
+  margin-top: auto;
+}
+
+.player-area__label {
+  display: flex;
+  width: min(100%, 460px);
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.player-area__label .eyebrow {
+  color: rgb(250 250 246 / 70%);
+}
+
+.player-area__label strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.player-area__token {
+  color: #e4d7a2;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.player-hand {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: clamp(0.75rem, 3vw, 2.5rem);
+  min-height: 0;
+  padding: 0.15rem 1rem 0;
+}
+
+.player-hand__card {
+  cursor: pointer;
+  box-shadow: 0 15px 25px -15px rgb(25 27 17 / 78%);
+}
+
+.player-hand__card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 24px 32px -17px rgb(25 27 17 / 80%);
+}
+
+@media (max-width: 520px) {
+  .player-area__label {
+    width: 100%;
+    padding-inline: 0.5rem;
+  }
+
+  .player-area__label strong {
+    font-size: 0.67rem;
+  }
+
+  .player-hand {
+    gap: 0.65rem;
+    padding-inline: 0.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-hand__card {
+    transition: none;
+  }
+}

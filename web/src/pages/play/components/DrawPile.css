@@ -1,0 +1,41 @@
+.deck {
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.deck__cards {
+  position: relative;
+  width: clamp(84px, 9vw, 116px);
+  aspect-ratio: 7 / 12;
+}
+
+.deck__card {
+  position: absolute;
+  inset: 0;
+}
+
+.deck__card--back {
+  transform: translate(-5px, -4px) rotate(-5deg);
+}
+
+.deck__card--top {
+  transform: translate(3px, 2px) rotate(3deg);
+}
+
+.deck__label,
+.deck__count {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.deck__count {
+  color: rgb(250 250 246 / 68%);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}

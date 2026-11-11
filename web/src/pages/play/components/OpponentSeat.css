@@ -1,0 +1,127 @@
+.opponent-arc {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: min(100%, 790px);
+  margin: 0 auto;
+}
+
+.opponent {
+  display: flex;
+  flex: 0 1 190px;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
+
+.opponent:nth-child(1),
+.opponent:nth-child(3) {
+  padding-top: 1.4rem;
+}
+
+.opponent__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  text-align: left;
+}
+
+.opponent__avatar {
+  display: grid;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 27%);
+  border-radius: 50%;
+  background: rgb(250 250 246 / 14%);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.opponent__identity strong,
+.opponent__identity small {
+  display: block;
+  max-width: 125px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opponent__identity strong {
+  font-size: 0.75rem;
+}
+
+.opponent__identity small {
+  margin-top: 0.05rem;
+  color: rgb(250 250 246 / 67%);
+  font-size: 0.62rem;
+}
+
+.opponent__hidden-card {
+  transform: rotate(var(--tilt, 0deg));
+  transform-origin: 50% 85%;
+}
+
+.opponent__discard {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  color: rgb(250 250 246 / 67%);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.opponent__discard-card {
+  opacity: 0.9;
+}
+
+@media (max-width: 520px) {
+  .opponent-arc {
+    gap: 0.15rem;
+  }
+
+  .opponent {
+    flex-basis: 33%;
+  }
+
+  .opponent:nth-child(1),
+  .opponent:nth-child(3) {
+    padding-top: 1rem;
+  }
+
+  .opponent__identity {
+    gap: 0.3rem;
+  }
+
+  .opponent__avatar {
+    flex-basis: 1.55rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    font-size: 0.65rem;
+  }
+
+  .opponent__identity strong,
+  .opponent__identity small {
+    max-width: 76px;
+  }
+
+  .opponent__identity strong {
+    font-size: 0.62rem;
+  }
+
+  .opponent__identity small {
+    font-size: 0.52rem;
+  }
+
+  .opponent__discard {
+    gap: 0.2rem;
+    font-size: 0.48rem;
+  }
+}

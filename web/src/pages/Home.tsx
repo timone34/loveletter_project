@@ -41,7 +41,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="page">
+    <div className="page home-page">
       <header className="topbar">
         <NavLink to="/" className="wordmark">
           Love Letter Strategy
