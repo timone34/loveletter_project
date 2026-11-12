@@ -157,15 +157,6 @@
   transform: translateY(calc(var(--y) - 10px)) rotate(var(--r)) scale(0.985);
 }
 
-@keyframes deal {
-  from {
-    opacity: 0;
-    /* all three cards start stacked in the middle of the fan */
-    transform: translate(calc((1 - var(--i)) * 100%), -36px) rotate(0deg)
-      scale(0.96);
-  }
-}
-
 /* ---------- Tablet: stack text above the fan ---------- */
 
 @media (max-width: 900px) {
