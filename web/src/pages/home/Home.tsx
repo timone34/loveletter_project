@@ -1,41 +1,10 @@
 import type { CSSProperties } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { CardArt, type CardKind } from "../components/CardArt";
+import { Card } from "../../components/Card";
+import type { ModeCardId } from "../../components/cardData";
 import "./Home.css";
 
-export type Mode = "play" | "simulate" | "stats";
-
-type ModeCard = {
-  mode: Mode;
-  kind: CardKind;
-  value: number; // the Love Letter value of the character on the card
-  title: string;
-  blurb: string;
-};
-
-const MODES: ModeCard[] = [
-  {
-    mode: "play",
-    kind: "guard",
-    value: 1,
-    title: "Play",
-    blurb: "Sit down at the table against your own bots.",
-  },
-  {
-    mode: "simulate",
-    kind: "prince",
-    value: 5,
-    title: "Simulate",
-    blurb: "Run thousands of games between the bots you pick.",
-  },
-  {
-    mode: "stats",
-    kind: "baron",
-    value: 3,
-    title: "Stats",
-    blurb: "Compare win rates and find out why a bot wins.",
-  },
-];
+const MODES: ModeCardId[] = ["play", "simulate", "stats"];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -78,23 +47,15 @@ export default function Home() {
         </div>
 
         <div className="fan">
-          {MODES.map((m, i) => (
+          {MODES.map((id, i) => (
             <button
-              key={m.mode}
+              key={id}
               type="button"
-              className="mode-card"
-              data-kind={m.kind}
+              className="mode-button"
               style={{ "--i": i } as CSSProperties}
-              onClick={() => navigate(`/${m.mode}`)}
+              onClick={() => navigate(`/${id}`)}
             >
-              <span className="mode-card__art">
-                <span className="mode-card__value">{m.value}</span>
-                <CardArt kind={m.kind} className="mode-card__silhouette" />
-              </span>
-              <span className="mode-card__body">
-                <span className="mode-card__title">{m.title}</span>
-                <span className="mode-card__blurb">{m.blurb}</span>
-              </span>
+              <Card id={id} className="mode-button__card"/>
             </button>
           ))}
         </div>

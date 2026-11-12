@@ -1,9 +1,9 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Play from "./pages/Play";
+import Home from "./pages/home/Home";
+import Play from "./pages/play/Play";
 import ComingSoon from "./pages/ComingSoon"
-// import Simulate from "./pages/Simulate";
-// import Stats from "./pages/Stats";
+// import Simulate from "./pages/simulate/Simulate";
+// import Stats from "./pages/stats/Stats";
 
 function App() {
   return (

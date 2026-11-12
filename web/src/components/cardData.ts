@@ -1,4 +1,4 @@
-export type CardId =
+export type GameCardId =
   | "guard"
   | "priest"
   | "baron"
@@ -7,6 +7,10 @@ export type CardId =
   | "king"
   | "countess"
   | "princess";
+
+export type ModeCardId = "play" | "simulate" | "stats";
+
+export type CardId = GameCardId | ModeCardId;
 
 export type CardInfo = {
   id: CardId;
@@ -17,7 +21,7 @@ export type CardInfo = {
   copies: number; // how many are in the deck
 };
 
-export const CARDS: CardInfo[] = [
+export const GAME_CARDS: CardInfo[] = [
   { id: "guard", value: 1, letter: "g", name: "Guard", copies: 5,
     text: "Guess someone's card. If you're correct, they're rejected." },
   { id: "priest", value: 2, letter: "p", name: "Priest", copies: 2,
@@ -36,6 +40,47 @@ export const CARDS: CardInfo[] = [
     text: "If you play or discard this card, you're rejected." },
 ];
 
+export const MODE_CARDS: CardInfo[] = [
+  { id: "play", value: 1, letter: "L", name: "Play", copies: 1,
+    text: "Sit down at the table against your own bots." },
+  { id: "simulate", value: 2, letter: "L", name: "Simulate", copies: 1,
+    text: "Run thousands of games between the bots you pick." },
+  { id: "stats", value: 3, letter: "S", name: "Stats", copies: 1,
+    text: "Compare win rates and find out why a bot wins." },
+    
+];
+
 export const CARD_BY_ID = Object.fromEntries(
-  CARDS.map((c) => [c.id, c]),
+    [...GAME_CARDS, ...MODE_CARDS].map((c) => [c.id, c]),
 ) as Record<CardId, CardInfo>;
+
+
+// // HOME PAGE CARDS
+
+// export type ModeCardId =
+//   | "play"
+//   | "simulate"
+//   | "stats";
+
+// export type ModeCardInfo = {
+//   id: ModeCardId;
+//   value: number;
+//   letter: string; // the LLN letter, case-sensitive
+//   name: string;
+//   text: string;
+//   copies: number; // how many are in the deck
+// };
+
+// export const MODE_CARDS: ModeCardInfo[] = [
+//   { id: "play", value: 1, letter: "P", name: "Play", copies: 1,
+//     text: "Sit down at the table against your own bots." },
+//   { id: "simulate", value: 2, letter: "s", name: "Simulate", copies: 1,
+//     text: "Run thousands of games between the bots you pick." },
+//   { id: "stats", value: 3, letter: "S", name: "Stats", copies: 1,
+//     text: "Compare win rates and find out why a bot wins." },
+    
+// ];
+
+// export const MODE_CARD_BY_ID = Object.fromEntries(
+//   MODE_CARDS.map((c) => [c.id, c]),
+// ) as Record<ModeCardId, ModeCardInfo>;

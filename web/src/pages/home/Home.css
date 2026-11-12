@@ -113,109 +113,48 @@
   padding-block: 2rem;
 }
 
-.mode-card {
+.mode-button {
   --card-color: var(--accent);
   --r: calc((var(--i) - 1) * 7.5deg);
   --y: calc((var(--i) - 1) * (var(--i) - 1) * 20px);
 
   position: relative;
-  display: flex;
-  flex-direction: column;
+  display: block;
   width: var(--w);
-  aspect-ratio: 7/12;
+  aspect-ratio: 7 / 12;
+  flex-shrink: 0;
   margin-inline: calc(var(--w) * -0.06);
-  padding: 10px;
-  border: 1px solid var(--secondary);
-  border-radius: 18px;
-  background: var(--surface);
-  text-align: left;
+
+  padding: 0;
+  border: none;
+  border-radius: 5rem;
+  background: transparent;
   cursor: pointer;
-  box-shadow: 0 22px 34px -18px rgb(42 40 41 / 0.45);
+
   transform-origin: 50% 120%;
   transform: translateY(var(--y)) rotate(var(--r));
+
   transition:
     transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.28s ease;
-  /* the deal-in only styles the "before" state; afterwards hover works normally */
+
   animation: deal 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
   animation-delay: calc(var(--i) * 110ms + 150ms);
 }
 
-.mode-card[data-kind="guard"] {
-  --card-color: var(--card-guard);
-}
-.mode-card[data-kind="prince"] {
-  --card-color: var(--card-prince);
-}
-.mode-card[data-kind="baron"] {
-  --card-color: var(--card-baron);
+.mode-button__card {
+  width: var(--w)
 }
 
-.mode-card:hover,
-.mode-card:focus-visible {
+.mode-button:hover,
+.mode-button:focus-visible {
   z-index: 2;
   transform: translateY(calc(var(--y) - 18px)) rotate(var(--r)) scale(1.05);
   box-shadow: 0 30px 40px -18px rgb(42 40 41 / 0.5);
 }
 
-.mode-card:active {
+.mode-button:active {
   transform: translateY(calc(var(--y) - 10px)) rotate(var(--r)) scale(0.985);
-}
-
-.mode-card__art {
-  position: relative;
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1 / 1;
-  border-radius: 10px;
-  background: var(--card-color);
-  color: #fff;
-}
-
-/* thin inner frame, like the border on a printed card */
-.mode-card__art::before {
-  content: "";
-  position: absolute;
-  inset: 8px;
-  border: 1.5px solid rgb(255 255 255 / 0.35);
-  border-radius: 5px;
-  pointer-events: none;
-}
-
-.mode-card__value {
-  position: absolute;
-  top: 14px;
-  left: 17px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.4rem;
-  line-height: 1;
-}
-
-.mode-card__silhouette {
-  width: 58%;
-  height: auto;
-}
-
-.mode-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.85rem 0.35rem 0.5rem;
-}
-
-.mode-card__title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.mode-card__blurb {
-  font-size: 0.875rem;
-  line-height: 1.4;
-  color: var(--text-muted);
 }
 
 @keyframes deal {
@@ -272,21 +211,6 @@
   .mode-card:active {
   transform: scale(0.985);
 }
-
-  .mode-card__art {
-    flex: 0 0 34%;
-    aspect-ratio: 1 / 1;
-  }
-
-  .mode-card__value {
-    top: 10px;
-    left: 12px;
-    font-size: 1.15rem;
-  }
-
-  .mode-card__body {
-    padding: 0.25rem 0.5rem;
-  }
 
   @keyframes deal-row {
     from {

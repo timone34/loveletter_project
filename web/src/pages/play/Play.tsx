@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { NavLink } from "react-router-dom";
-import { Card } from "../components/Card";
-import { CARDS } from "../components/cardData";
+import { Card } from "../../components/Card";
+import { GAME_CARDS } from "../../components/cardData";
 import "./Play.css";
 
 
@@ -35,7 +35,7 @@ export default function Play() {
         <section>
           <h2 className="preview__title">All cards</h2>
           <div className="preview__grid">
-            {CARDS.map((c) => (
+            {GAME_CARDS.map((c) => (
               <Card key={c.id} id={c.id} width="200px" className={c.id}/>
             ))}
             <Card faceDown width="200px" className="face-down" />
