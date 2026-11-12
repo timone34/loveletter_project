@@ -1,35 +1,15 @@
 import type { CSSProperties } from "react";
-import { NavLink } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { GAME_CARDS } from "../../components/cardData";
+
+import { Header, Footer } from "../../components/Header";
 import "./Play.css";
 
 
 export default function Play() {
   return (
     <div className="page">
-      <header className="topbar">
-        <NavLink to="/" className="wordmark">
-          Love Letter Strategy
-        </NavLink>
-        <span className="version">v1.0</span>
-
-        <nav className="navigation">
-          <NavLink to="/play" className="navigation__link">
-            Play
-          </NavLink>
-
-          <NavLink to="/simulate" className="navigation__link">
-            Simulate
-          </NavLink>
-
-          <NavLink to="/stats" className="navigation__link">
-            Statistics
-          </NavLink>
-        </nav>
-
-        
-      </header>
+      <Header />
 
       <main className="preview">
         <section>
@@ -65,9 +45,7 @@ export default function Play() {
         </section>
       </main>
 
-      <footer className="footer">
-        made with {"<3"} by timone34
-      </footer>
+      <Footer />
     </div>
   );
 }

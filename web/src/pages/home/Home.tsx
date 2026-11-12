@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import type { ModeCardId } from "../../components/cardData";
+
+import { Header, Footer } from "../../components/Header";
 import "./Home.css";
 
 const MODES: ModeCardId[] = ["play", "simulate", "stats"];
@@ -11,28 +13,7 @@ export default function Home() {
 
   return (
     <div className="page">
-      <header className="topbar">
-        <NavLink to="/" className="wordmark">
-          Love Letter Strategy
-        </NavLink>
-        <span className="version">v1.0</span>
-
-        <nav className="navigation">
-          <NavLink to="/play" className="navigation__link">
-            Play
-          </NavLink>
-
-          <NavLink to="/simulate" className="navigation__link">
-            Simulate
-          </NavLink>
-
-          <NavLink to="/stats" className="navigation__link">
-            Statistics
-          </NavLink>
-        </nav>
-
-        
-      </header>
+      <Header />
 
       <main className="hero">
         <div className="hero__text">
@@ -61,9 +42,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="footer">
-        made with {"<3"} by timone34
-      </footer>
+      <Footer />
     </div>
   );
 }
