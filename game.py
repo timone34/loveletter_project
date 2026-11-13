@@ -31,6 +31,8 @@ class Game:
         self.round = 0
         self.winner: Player | None = None
 
+        self.current_round: Round | None = None
+
         self.history = GameHistory(
             players=[p.name for p in self.players],
             strategies=[p.strategy.name for p in self.players],
@@ -43,6 +45,7 @@ class Game:
             self.round += 1
 
             rnd = Round(self, self.players, self.dealer, self.round, self.obs)
+            self.current_round = rnd
             rnd.play()
 
             self._score(rnd)

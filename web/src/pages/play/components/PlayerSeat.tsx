@@ -8,6 +8,8 @@ type Props = {
   player: PlayerView;
   winsNeeded: number;
   variant?: "opponent" | "you";
+  onPickCard?: (index: number) => void; // set while you're choosing a card
+  pickable?: boolean[];
 };
 
 // The one place to tune card sizes (desktop only, so plain pixels).
@@ -16,7 +18,7 @@ const SIZES = {
   you: { hand: "130px", discard: "100px" },
 };
 
-export function PlayerSeat({ player, winsNeeded, variant = "opponent" }: Props) {
+export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable }: Props) {
   const size = SIZES[variant];
 
   const discardTotal = player.discards.reduce((sum, id) => sum + CARD_BY_ID[id].value, 0)
@@ -54,7 +56,14 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent" }: Props) 
       </div>
 
       <div className="seat__cards">
-        <CardRow cards={player.hand} width={size.hand} overlap={variant === "you" ? -0.025 : 0.6} className="seat__hand" />
+        <CardRow
+          cards={player.hand}
+          width={size.hand}
+          overlap={variant === "you" ? -0.05 : 0.6}
+          className="seat__hand"
+          onPick={onPickCard}
+          pickable={pickable}
+        />
         <div className="seat__discards" style={{ "--hand-card-w": size.hand } as CSSProperties}>
           <p  className="seat__label">Discards · {discardTotal} Total</p>
           <div className="seat__pile">
