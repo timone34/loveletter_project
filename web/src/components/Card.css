@@ -51,11 +51,11 @@
 
 .card__value {
     position: absolute;
-    top: 7cqw;
+    top: 6cqw;
     left: 8cqw;
     font-family: var(--font-display);
     font-weight: 700;
-    font-size: 16cqw;
+    font-size: 22cqw;
     line-height: 1;
 }
 

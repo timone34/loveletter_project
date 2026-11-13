@@ -1,0 +1,10 @@
+.card-row {
+  display: flex;
+  align-items: center;
+  /* keeps the row's height when empty, so the layout doesn't jump */
+  min-height: calc(var(--card-w) * 12 / 7);
+}
+
+.card-row > .card + .card {
+  margin-left: calc(var(--card-w) * var(--overlap) * -1);
+}

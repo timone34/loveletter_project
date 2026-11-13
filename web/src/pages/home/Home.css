@@ -119,7 +119,7 @@
     padding-block: 1rem 0;
   }
 
-  .mode-card {
+  .mode-button {
     --r: 0deg;
     --y: 0px;
     flex-direction: row;
@@ -133,12 +133,12 @@
     animation-delay: calc(var(--i) * 90ms + 100ms);
   }
 
-  .mode-card:hover,
-  .mode-card:focus-visible {
+  .mode-button:hover,
+  .mode-button:focus-visible {
     transform: scale(1.05);
   }
 
-  .mode-card:active {
+  .mode-button:active {
   transform: scale(0.985);
 }
 
@@ -151,7 +151,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mode-card {
+  .mode-button {
     animation: none;
     transition: none;
   }
