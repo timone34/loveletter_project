@@ -7,7 +7,7 @@ type Props = { count: number };
 const CARD_W = 84; // px, matches the opponents' hands
 
 export function DeckPile({ count }: Props) {
-  const layers = Math.min(count, 4); // the stack's thickness, not the real count
+  const layers = Math.min(count, 5); // the stack's thickness, not the real count
 
   return (
     <div className="deck-pile">
@@ -25,7 +25,9 @@ export function DeckPile({ count }: Props) {
           />
         ))}
       </div>
-      <p className="deck-pile__count">{count} cards left</p>
+      <p className="deck-pile__count">
+        <strong>{count} cards left</strong>
+      </p>
     </div>
   );
 }
