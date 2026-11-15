@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect
+    x="7" y="3"
+    width="50" height="58"
+    rx="9"
+    fill="#fafaf6"
+    stroke="#939575"
+    stroke-width="3"
+  />
+  <path
+    d="M32 47
+       C27 42 15 34 15 25
+       C15 15 28 12 32 23
+       C36 12 49 15 49 25
+       C49 34 37 42 32 47Z"
+    fill="#939575"
+  />
+</svg>

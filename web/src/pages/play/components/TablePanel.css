@@ -1,0 +1,87 @@
+.panel {
+  justify-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 340px;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid rgb(250 250 246 / 22%);
+  border-radius: 18px;
+  background: rgb(42 40 41 / 26%);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 14px 30px -20px rgb(0 0 0 / 55%);
+  color: var(--surface);
+  animation: panel-in 0.25s ease-out;
+}
+
+.panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.panel__text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgb(250 250 246 / 78%);
+}
+
+.panel__code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 25%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.panel__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.panel__option {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid rgb(250 250 246 / 35%);
+  border-radius: 999px;
+  background: rgb(250 250 246 / 10%);
+  color: var(--surface);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.panel__option small {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.panel__option:hover,
+.panel__option:focus-visible {
+  outline: none;
+  background: var(--surface);
+  color: var(--primary);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
