@@ -103,6 +103,8 @@ async def spectate(ws: WebSocket):
 
 
 TARGET_ROUND_WINS = 3
+DEFAULT_BOT_NAMES = ["The Oracle", "The Regent", "The Scribe"]
+DEFAULT_TABLE_NAME = "The Royal Court"
 
 # seconds to wait after each kind of message, before sending the next one
 PACE = {
@@ -120,11 +122,20 @@ def card_id(card: Card | None) -> str | None:
     """Card -> the id the frontend uses ("Guard" -> "guard")."""
     return card.name.lower() if card is not None else None
 
-def lineup(session: "Session") -> dict[str, Strategy]:
+def lineup(
+    session: "Session",
+    bots: list[str],
+    bot_names: list[str],
+) -> dict[str, Strategy]:
+    strategies: dict[str, type[Strategy]] = {
+        "random": Random_Strategy,
+        "no-princess": No_Princess,
+    }
     return {
-        "Alice": No_Princess(),
-        "Bob": Random_Strategy(),
-        "Charlie": Random_Strategy(),
+        **{
+            name: strategies[bot]()
+            for bot, name in zip(bots, bot_names)
+        },
         "You": Web_Strategy(session),
     }
 
@@ -175,6 +186,7 @@ class TableObserver(Observer):
         game = self.session.game
         rnd = game.current_round
         return {
+            "name": self.session.table_name,
             "round": game.round,
             "dealer": rnd.dealer if rnd else game.dealer,
             "deckCount": rnd.deck.cards_left if rnd else 0,
@@ -244,18 +256,26 @@ class TableObserver(Observer):
 class Session:
     """One game, and the bridge between its thread and the event loop."""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        bots: list[str],
+        bot_names: list[str],
+        target_round_wins: int,
+        table_name: str,
+    ) -> None:
         self.loop = loop
+        self.table_name = table_name
         self.outbox: asyncio.Queue[dict] = asyncio.Queue()  # game thread -> browser
         self.answers: queue.Queue[int | None] = queue.Queue()  # browser -> game thread
         self.aborted = threading.Event()
 
         self.observer = TableObserver(self)
-        players = lineup(self)
+        players = lineup(self, bots, bot_names)
         self.you = next(
             seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)
         )
-        self.game = Game(players, target_round_wins=TARGET_ROUND_WINS, observers=self.observer)
+        self.game = Game(players, target_round_wins=target_round_wins, observers=self.observer)
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self) -> None:
@@ -302,7 +322,7 @@ class Session:
         self.aborted.set()
         self.answers.put(None)  # wake the thread if it's waiting on a prompt
 
-def redact(msg: dict) -> dict:
+def redact(msg: dict, reveal_hands: bool, reveal_burn: bool) -> dict:
     """Return a copy of msg with everything the human seat can't know removed."""
     if "table" not in msg:
         return msg
@@ -310,17 +330,20 @@ def redact(msg: dict) -> dict:
     table = msg["table"]
     you = table["youSeat"]
 
-    table["burn"] = None
-    if not table["showdown"]:
+    if not reveal_burn:
+        table["burn"] = None
+    if not reveal_hands and not table["showdown"]:
         for p in table["players"]:
             if p["seat"] != you:
                 p["hand"] = [None] * len(p["hand"])
 
     kind = msg["type"]
     if kind == "round_start":
-        msg["burn"] = None
-        msg["starting_hands"] = {s: c for s, c in msg["starting_hands"].items() if s == you}
-    elif kind in ("turn_start", "turn_end"):
+        if not reveal_burn:
+            msg["burn"] = None
+        if not reveal_hands:
+            msg["starting_hands"] = {s: c for s, c in msg["starting_hands"].items() if s == you}
+    elif not reveal_hands and kind in ("turn_start", "turn_end"):
         if msg["seat"] != you:
             msg["held"] = msg["drawn"] = msg["seen"] = None
         if msg["target"] != you:
@@ -340,7 +363,8 @@ class Connection:
         self.running = False
         self.unpaused = asyncio.Event()
         self.unpaused.set()
-        self.reveal = False
+        self.reveal_hands = False
+        self.reveal_burn = False
 
         self.prompt: dict | None = None  # the prompt the browser is answering
         self.last_table: dict | None = None  # unredacted, for resending on reveal
@@ -358,7 +382,52 @@ class Connection:
     async def handle(self, msg: dict) -> None:
         kind = msg.get("type")
         if kind == "new_game":
-            self.start_game()
+            bots = msg.get("bots", ["no-princess", "random", "random"])
+            bot_names = msg.get(
+                "botNames",
+                DEFAULT_BOT_NAMES[:len(bots)] if isinstance(bots, list) else [],
+            )
+            target_round_wins = msg.get("targetRoundWins", TARGET_ROUND_WINS)
+            reveal_hands = msg.get("revealHands", False)
+            reveal_burn = msg.get("revealBurn", False)
+            table_name = msg.get("tableName", DEFAULT_TABLE_NAME)
+            if (
+                not isinstance(bots, list)
+                or not 1 <= len(bots) <= 3
+                or any(
+                    not isinstance(bot, str) or bot not in ("random", "no-princess")
+                    for bot in bots
+                )
+            ):
+                await self.send({"type": "error", "message": "Choose between 1 and 3 supported bots."})
+                return
+            if (
+                not isinstance(bot_names, list)
+                or len(bot_names) != len(bots)
+                or any(
+                    not isinstance(name, str) or not name.strip() or len(name.strip()) > 32
+                    for name in bot_names
+                )
+            ):
+                await self.send({"type": "error", "message": "Each bot needs a name of 1 to 32 characters."})
+                return
+            if type(target_round_wins) is not int or target_round_wins not in (1, 3, 5, 7):
+                await self.send({"type": "error", "message": "Choose a round-win target of 1, 3, 5, or 7."})
+                return
+            if not isinstance(table_name, str) or not table_name.strip() or len(table_name.strip()) > 48:
+                await self.send({"type": "error", "message": "The table name must be 1 to 48 characters."})
+                return
+            if not isinstance(reveal_hands, bool) or not isinstance(reveal_burn, bool):
+                await self.send({"type": "error", "message": "Developer visibility settings must be on or off."})
+                return
+            self.reveal_hands = reveal_hands
+            self.reveal_burn = reveal_burn
+            self.start_game(
+                bots,
+                [name.strip() for name in bot_names],
+                target_round_wins,
+                table_name.strip(),
+            )
             await self.send_status()
         elif kind == "pause":
             self.unpaused.clear()
@@ -366,8 +435,14 @@ class Connection:
         elif kind == "resume":
             self.unpaused.set()
             await self.send_status()
-        elif kind == "reveal":
-            self.reveal = bool(msg.get("on"))
+        elif kind in ("reveal", "visibility"):
+            reveal_hands = msg.get("on") if kind == "reveal" else msg.get("hands", self.reveal_hands)
+            reveal_burn = self.reveal_burn if kind == "reveal" else msg.get("burn", self.reveal_burn)
+            if not isinstance(reveal_hands, bool) or not isinstance(reveal_burn, bool):
+                await self.send({"type": "error", "message": "Developer visibility settings must be on or off."})
+                return
+            self.reveal_hands = reveal_hands
+            self.reveal_burn = reveal_burn
             await self.send_status()
             if self.last_table is not None:
                 await self.send({"type": "table", "table": self.last_table})
@@ -386,9 +461,16 @@ class Connection:
         self.prompt = None  # one answer per prompt, so double clicks do nothing
         session.answers.put(index)
 
-    def start_game(self) -> None:
+    def start_game(
+        self,
+        bots: list[str],
+        bot_names: list[str],
+        target_round_wins: int,
+        table_name: str,
+    ) -> None:
         self.stop_game()
-        self.session = Session(self.loop)
+        self.last_table = None
+        self.session = Session(self.loop, bots, bot_names, target_round_wins, table_name)
         self.running = True
         self.unpaused.set()
         self.pump_task = asyncio.create_task(self.pump(self.session))
@@ -429,8 +511,7 @@ class Connection:
             pass  # the socket closed mid-send; serve() cleans up
 
     async def send(self, msg: dict) -> None:
-        if not self.reveal:
-            msg = redact(msg)
+        msg = redact(msg, self.reveal_hands, self.reveal_burn)
         async with self.send_lock:
             await self.ws.send_json(msg)
 
@@ -440,7 +521,8 @@ class Connection:
                 "type": "status",
                 "running": self.running,
                 "paused": not self.unpaused.is_set(),
-                "reveal": self.reveal,
+                "revealHands": self.reveal_hands,
+                "revealBurn": self.reveal_burn,
             }
         )
 

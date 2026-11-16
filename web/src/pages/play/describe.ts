@@ -1,7 +1,15 @@
 import type { GameEvent, TableView, TurnEvent } from "./types";
 
-// One sentence per game event. Used for the caption on the felt now,
-// and ready to feed the action log later.
+export type HistoryKind = "status" | "action" | "elimination" | "information";
+
+export type HistoryEntry = {
+  text: string;
+  kind: HistoryKind;
+  label: string;
+  turn?: { cycle: number; seat: number };
+};
+
+// One sentence per game event, shared by the felt caption and match history.
 export function describe(event: GameEvent, table: TableView): string {
   const you = table.youSeat;
   const name = (seat: number) => (seat === you ? "You" : table.players[seat].name);
@@ -46,6 +54,38 @@ export function describe(event: GameEvent, table: TableView): string {
     case "game_end":
       return `${name(event.winner)} ${verb(event.winner, "win")} the game!`;
   }
+}
+
+export function historyEntry(event: GameEvent, table: TableView): HistoryEntry | null {
+  const text = describe(event, table);
+  if (!text) return null;
+
+  const turn = event.type === "turn_start" || event.type === "turn_end"
+    ? { cycle: event.cycle, seat: event.seat }
+    : undefined;
+
+  if (
+    event.type === "turn_skipped"
+    || (event.type === "turn_end" && event.rejected.length > 0)
+  ) {
+    return { text, kind: "elimination", label: "ELIMINATION", turn };
+  }
+
+  if (
+    event.type === "showdown"
+    || (event.type === "turn_end" && event.played === "Priest" && event.seen !== null)
+    || (event.type === "round_start" && (
+      event.burn !== null || Object.keys(event.starting_hands).length > 1
+    ))
+  ) {
+    return { text, kind: "information", label: "REVEAL", turn };
+  }
+
+  if (event.type === "turn_start" || event.type === "turn_end") {
+    return { text, kind: "action", label: "TURN", turn };
+  }
+
+  return { text, kind: "status", label: "STATUS" };
 }
 
 function describeTurn(

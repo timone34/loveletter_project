@@ -4,7 +4,7 @@ import "./DeckPile.css";
 
 type Props = { count: number };
 
-const CARD_W = 84; // px, matches the opponents' hands
+const CARD_W = "var(--deck-card-w, 54px)";
 
 export function DeckPile({ count }: Props) {
   const layers = Math.min(count, 5); // the stack's thickness, not the real count
@@ -19,7 +19,7 @@ export function DeckPile({ count }: Props) {
           <Card
             key={i}
             faceDown
-            width={`${CARD_W}px`}
+            width={CARD_W}
             className="deck-pile__card"
             style={{ "--i": i } as CSSProperties}
           />

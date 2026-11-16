@@ -10,31 +10,53 @@ type Props = {
   variant?: "opponent" | "you";
   onPickCard?: (index: number) => void; // set while you're choosing a card
   pickable?: boolean[];
+  onSelectTarget?: () => void;
 };
 
 // The one place to tune card sizes (desktop only, so plain pixels).
 const SIZES = {
-  opponent: { hand: "84px", discard: "70px" },
-  you: { hand: "130px", discard: "100px" },
+  opponent: { hand: "var(--seat-hand-card-w, 84px)", discard: "var(--seat-discard-card-w, 70px)" },
+  you: { hand: "var(--seat-hand-card-w, 130px)", discard: "var(--seat-discard-card-w, 100px)" },
 };
 
-export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable }: Props) {
+export function PlayerSeat({
+  player,
+  winsNeeded,
+  variant = "opponent",
+  onPickCard,
+  pickable,
+  onSelectTarget,
+}: Props) {
   const size = SIZES[variant];
 
   const discardTotal = player.discards.reduce((sum, id) => sum + CARD_BY_ID[id].value, 0)
+  const initials = player.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const classes = [
     "seat",
     `seat--${variant}`,
     player.active && "seat--active",
     player.rejected && "seat--rejected",
+    onSelectTarget && "seat--targetable",
   ]
     .filter(Boolean)
     .join(" ");
   
   return (
-    <div className={classes}>
+    <div
+      className={classes}
+      role={onSelectTarget ? "button" : undefined}
+      tabIndex={onSelectTarget ? 0 : undefined}
+      aria-label={onSelectTarget ? `Target ${player.name}` : undefined}
+      onClick={onSelectTarget}
+      onKeyDown={onSelectTarget ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelectTarget();
+        }
+      } : undefined}
+    >
       <div className="seat__identity">
-        <div className="seat__avatar" aria-hidden="true">{player.name[0]}</div>
+        <div className="seat__avatar" aria-hidden="true">{initials}</div>
         <span className="seat__who">
           <strong className="seat__name">{player.name}</strong>
           <small className="seat__detail">{player.strategy}</small>

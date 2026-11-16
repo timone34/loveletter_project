@@ -14,6 +14,7 @@ export type PlayerView = {
 };
 
 export type TableView = {
+    name: string;
     round: number;
     dealer: number; // seat
     deckCount: number;
@@ -68,5 +69,5 @@ export type ServerMessage =
     | (GameEvent & { table: TableView })
     | { type: "prompt"; prompt: Prompt; table: TableView }
     | { type: "table"; table: TableView }
-    | { type: "status"; running: boolean; paused: boolean; reveal: boolean }
+    | { type: "status"; running: boolean; paused: boolean; revealHands: boolean; revealBurn: boolean }
     | { type: "error"; message: string };

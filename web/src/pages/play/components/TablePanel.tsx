@@ -20,6 +20,14 @@ type Props = {
 export function TablePanel(props: Props) {
   const { table, prompt, status, winner, error } = props;
 
+  if (status.connecting) {
+    return (
+      <Panel title="Setting up your table">
+        <p className="panel__text">Connecting to the game server and dealing the first round…</p>
+      </Panel>
+    );
+  }
+
   if (!status.connected) {
     return (
       <Panel title="Can't reach the game server">
@@ -61,7 +69,7 @@ export function TablePanel(props: Props) {
   if (!status.running) {
     return (
       <Panel title="Ready when you are">
-        <p className="panel__text">Alice, Bob and Charlie are waiting for a fourth.</p>
+        <p className="panel__text">Your table is ready for another game.</p>
         <div className="panel__options">
           <button type="button" className="panel__option" onClick={props.onNewGame}>New game</button>
         </div>
