@@ -109,6 +109,11 @@
   letter-spacing: 0.08em;
 }
 
+.simulate-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .simulate-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
@@ -399,6 +404,12 @@
   background: #4e5135;
 }
 
+.simulate-submit:disabled,
+.simulate-reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .simulate-submit:active,
 .simulate-export:active {
   transform: translateY(1px);
@@ -415,6 +426,12 @@
   background: #f1f2e9;
   color: var(--primary);
   font-size: 0.7rem;
+}
+
+.simulate-notice--error {
+  border-color: #d7b8ad;
+  background: #fbf1ed;
+  color: #8d4636;
 }
 
 .simulate-summary {
@@ -501,6 +518,18 @@
 
 .simulate-summary__dot--no-princess {
   background: #a47c4c;
+}
+
+.simulate-summary__dot--card-counter {
+  background: #777c9a;
+}
+
+.simulate-summary__dot--no-princess-or-suicide {
+  background: #b16e56;
+}
+
+.simulate-summary__dot--random-strategy {
+  background: #73794b;
 }
 
 .simulate-summary__rotation {

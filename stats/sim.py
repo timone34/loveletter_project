@@ -16,6 +16,7 @@ def simulate(
     players: dict[str, Strategy],
     rotate_seats: bool = True,
     obs: Observer | None = None,
+    target_round_wins: int = 3,
 ) -> list[GameHistory]:
 
     player_order = deque(players.items())
@@ -24,7 +25,11 @@ def simulate(
     for i in range(n):
         rotated_players = dict(player_order)
 
-        game = Game(players=rotated_players, target_round_wins=3, observers=obs)
+        game = Game(
+            players=rotated_players,
+            target_round_wins=target_round_wins,
+            observers=obs,
+        )
         game.play()
 
         game_history = game.history

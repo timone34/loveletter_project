@@ -1,207 +1,53 @@
+import { Link, useLocation } from "react-router-dom";
 import { Header, Footer } from "../../components/Header";
+import type { SimulationResult } from "../../types";
 import "./Stats.css";
 
-type BotStats = {
-  name: string;
-  style: string;
-  wins: number;
-  winRate: number;
-  interval: [number, number];
-  roundWinRate: number;
-  guardAccuracy: number;
-  guardAttempts: number;
-  baron: { wins: number; ties: number; losses: number };
-  seatWinRates: number[];
-  dealerWinRate: number;
-};
-
-const bots: BotStats[] = [
-  {
-    name: "Card Counter",
-    style: "Information-first",
-    wins: 3_218,
-    winRate: 32.18,
-    interval: [31.27, 33.1],
-    roundWinRate: 31.7,
-    guardAccuracy: 41.2,
-    guardAttempts: 6_940,
-    baron: { wins: 48.1, ties: 10.2, losses: 41.7 },
-    seatWinRates: [31.2, 32.8, 32.6, 32.1],
-    dealerWinRate: 32.6,
-  },
-  {
-    name: "Patient Prince",
-    style: "Risk-aware",
-    wins: 2_548,
-    winRate: 25.48,
-    interval: [24.63, 26.34],
-    roundWinRate: 25.2,
-    guardAccuracy: 36.8,
-    guardAttempts: 6_721,
-    baron: { wins: 45.6, ties: 11.6, losses: 42.8 },
-    seatWinRates: [25.1, 25.7, 25.2, 25.9],
-    dealerWinRate: 25.5,
-  },
-  {
-    name: "Royal Guard",
-    style: "Guard-focused",
-    wins: 2_316,
-    winRate: 23.16,
-    interval: [22.34, 24.0],
-    roundWinRate: 23.4,
-    guardAccuracy: 39.5,
-    guardAttempts: 7_102,
-    baron: { wins: 43.8, ties: 12.1, losses: 44.1 },
-    seatWinRates: [23.9, 22.8, 23.5, 22.4],
-    dealerWinRate: 23.2,
-  },
-  {
-    name: "Random",
-    style: "Baseline",
-    wins: 1_918,
-    winRate: 19.18,
-    interval: [18.42, 19.96],
-    roundWinRate: 19.7,
-    guardAccuracy: 25.1,
-    guardAttempts: 6_842,
-    baron: { wins: 39.4, ties: 12.9, losses: 47.7 },
-    seatWinRates: [19.8, 18.9, 19.2, 18.8],
-    dealerWinRate: 19.4,
-  },
-];
-
-const winRateHistory = [
-  { label: "2k", values: [30.9, 25.1, 23.7, 20.3] },
-  { label: "4k", values: [31.4, 25.8, 23.2, 19.6] },
-  { label: "6k", values: [32.6, 25.2, 22.8, 19.4] },
-  { label: "8k", values: [31.9, 25.6, 23.1, 19.2] },
-  { label: "10k", values: bots.map((bot) => bot.winRate) },
-];
-
-const rejectionCauses = [
-  { name: "Guard guess", count: 8_242, share: 42, color: "olive" },
-  { name: "Prince discard", count: 5_495, share: 28, color: "sand" },
-  { name: "Baron comparison", count: 3_727, share: 19, color: "clay" },
-  { name: "Princess played", count: 2_157, share: 11, color: "ink" },
-];
-
-const cardUsage = [
-  { name: "Guard", count: 35_420, share: 30.2 },
-  { name: "Prince", count: 14_216, share: 12.1 },
-  { name: "Priest", count: 13_982, share: 11.9 },
-  { name: "Baron", count: 13_544, share: 11.5 },
-  { name: "Handmaid", count: 13_291, share: 11.3 },
-  { name: "Princess", count: 9_104, share: 7.8 },
-  { name: "Countess", count: 9_028, share: 7.7 },
-  { name: "King", count: 8_765, share: 7.5 },
-];
-
-const drawnCardMix = [
-  { name: "Guard", count: 31_200, share: 31.2 },
-  { name: "Priest", count: 12_480, share: 12.5 },
-  { name: "Baron", count: 12_460, share: 12.5 },
-  { name: "Handmaid", count: 12_530, share: 12.5 },
-  { name: "Prince", count: 12_490, share: 12.5 },
-  { name: "King", count: 6_310, share: 6.3 },
-  { name: "Countess", count: 6_260, share: 6.3 },
-  { name: "Princess", count: 6_270, share: 6.3 },
-];
-
 const chartColors = ["#5e6140", "#a47c4c", "#777c9a", "#b16e56"];
-const chartRange = { min: 15, max: 35, top: 14, bottom: 150, left: 36, right: 420 };
 
-function linePoints(botIndex: number) {
-  const { min, max, top, bottom, left, right } = chartRange;
-  return winRateHistory
-    .map(({ values }, index) => {
-      const x = left + (index / (winRateHistory.length - 1)) * (right - left);
-      const y = bottom - ((values[botIndex] - min) / (max - min)) * (bottom - top);
-      return `${x},${y}`;
-    })
-    .join(" ");
+function percentage(value: number | null | undefined) {
+  return value == null ? "—" : `${(value * 100).toFixed(1)}%`;
 }
 
-function downloadCsv() {
+function downloadCsv(result: SimulationResult) {
   const rows = [
-    ["Bot", "Games", "Wins", "Game win rate", "95% CI low", "95% CI high", "Round win rate", "Guard accuracy"],
-    ...bots.map((bot) => [
-      bot.name,
-      "10000",
-      String(bot.wins),
-      `${bot.winRate}%`,
-      `${bot.interval[0]}%`,
-      `${bot.interval[1]}%`,
-      `${bot.roundWinRate}%`,
-      `${bot.guardAccuracy}%`,
-    ]),
+    [
+      "Player",
+      "Bot",
+      "Games",
+      "Game wins",
+      "Game win rate",
+      "95% CI low",
+      "95% CI high",
+      "Round wins",
+      "Rounds",
+      "Round win rate",
+    ],
+    ...result.leaderboard.map((entry) => {
+      const bot = result.run.players.find((player) => player.name === entry.player);
+      return [
+        entry.player,
+        bot?.botName ?? "",
+        String(entry.games),
+        String(entry.wins),
+        percentage(entry.winrate),
+        percentage(entry.ciLow),
+        percentage(entry.ciHigh),
+        String(entry.roundWins),
+        String(entry.rounds),
+        percentage(entry.roundWinrate),
+      ];
+    }),
   ];
-  const csv = rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\n");
+  const csv = rows.map((row) =>
+    row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(","),
+  ).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url;
   link.download = "love-letter-simulation-stats.csv";
   link.click();
   URL.revokeObjectURL(url);
-}
-
-function WinRateChart() {
-  return (
-    <div className="stats-chart">
-      <div className="stats-chart__legend" aria-label="Bot legend">
-        {bots.map((bot, index) => (
-          <span className="stats-chart__legend-item" key={bot.name}>
-            <i style={{ backgroundColor: chartColors[index] }} />
-            {bot.name}
-          </span>
-        ))}
-      </div>
-      <svg
-        className="stats-chart__svg"
-        viewBox="0 0 440 184"
-        role="img"
-        aria-label="Cumulative game win rate by bot over 10,000 simulated games"
-      >
-        {[15, 20, 25, 30, 35].map((rate) => {
-          const y = chartRange.bottom - ((rate - chartRange.min) / (chartRange.max - chartRange.min)) *
-            (chartRange.bottom - chartRange.top);
-          return (
-            <g key={rate}>
-              <line x1={chartRange.left} x2={chartRange.right} y1={y} y2={y} className="stats-chart__grid" />
-              <text x="0" y={y + 4} className="stats-chart__axis-label">{rate}%</text>
-            </g>
-          );
-        })}
-        {winRateHistory.map((point, index) => {
-          const x = chartRange.left + (index / (winRateHistory.length - 1)) * (chartRange.right - chartRange.left);
-          return (
-            <text key={point.label} x={x} y="174" textAnchor="middle" className="stats-chart__axis-label">
-              {point.label}
-            </text>
-          );
-        })}
-        {bots.map((bot, index) => (
-          <g key={bot.name}>
-            <polyline
-              points={linePoints(index)}
-              fill="none"
-              stroke={chartColors[index]}
-              strokeWidth="2.5"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            {winRateHistory.map(({ values, label }, pointIndex) => {
-              const x = chartRange.left + (pointIndex / (winRateHistory.length - 1)) *
-                (chartRange.right - chartRange.left);
-              const y = chartRange.bottom - ((values[index] - chartRange.min) /
-                (chartRange.max - chartRange.min)) * (chartRange.bottom - chartRange.top);
-              return <circle key={`${bot.name}-${label}`} cx={x} cy={y} r="3" fill={chartColors[index]} />;
-            })}
-          </g>
-        ))}
-      </svg>
-      <p className="stats-chart__caption">Games completed · cumulative win rate</p>
-    </div>
-  );
 }
 
 function PanelHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -215,7 +61,144 @@ function PanelHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
   );
 }
 
+function WinRateChart({ result }: { result: SimulationResult }) {
+  const checkpoints = [...new Set(result.winrateHistory.map((point) => point.gameCount))].sort((a, b) => a - b);
+  const maxRate = Math.max(0.1, ...result.winrateHistory.map((point) => point.winrate));
+  const scaleMax = Math.min(1, Math.ceil(maxRate * 10) / 10);
+  const series = result.run.players.map((player, index) => {
+    const points = checkpoints.map((count, pointIndex) => {
+      const value = result.winrateHistory.find(
+        (point) => point.player === player.name && point.gameCount === count,
+      )?.winrate ?? 0;
+      const x = 36 + (pointIndex / Math.max(1, checkpoints.length - 1)) * 384;
+      const y = 150 - (value / scaleMax) * 136;
+      return { x, y };
+    });
+    return {
+      name: player.name,
+      color: chartColors[index % chartColors.length],
+      points: points.map((point) => `${point.x},${point.y}`).join(" "),
+      dots: points,
+    };
+  });
+
+  return (
+    <div className="stats-chart">
+      <div className="stats-chart__legend" aria-label="Player legend">
+        {series.map((player) => (
+          <span className="stats-chart__legend-item" key={player.name}>
+            <i style={{ backgroundColor: player.color }} />
+            {player.name}
+          </span>
+        ))}
+      </div>
+      <svg
+        className="stats-chart__svg"
+        viewBox="0 0 440 184"
+        role="img"
+        aria-label={`Cumulative game win rate over ${result.run.games.toLocaleString()} simulated games`}
+      >
+        {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          const y = 150 - fraction * 136;
+          return (
+            <g key={fraction}>
+              <line x1="36" x2="420" y1={y} y2={y} className="stats-chart__grid" />
+              <text x="0" y={y + 4} className="stats-chart__axis-label">
+                {Math.round(scaleMax * fraction * 100)}%
+              </text>
+            </g>
+          );
+        })}
+        {checkpoints.map((count, index) => {
+          const x = 36 + (index / Math.max(1, checkpoints.length - 1)) * 384;
+          return (
+            <text key={count} x={x} y="174" textAnchor="middle" className="stats-chart__axis-label">
+              {count.toLocaleString()}
+            </text>
+          );
+        })}
+        {series.map((player) => (
+          <g key={player.name}>
+            <polyline
+              points={player.points}
+              fill="none"
+              stroke={player.color}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            {player.dots.map((point, index) => (
+              <circle key={`${player.name}-${index}`} cx={point.x} cy={point.y} r="3" fill={player.color} />
+            ))}
+          </g>
+        ))}
+      </svg>
+      <p className="stats-chart__caption">Completed games · cumulative game win rate</p>
+    </div>
+  );
+}
+
+function UsageList({
+  rows,
+}: {
+  rows: { card: string; count: number; share: number }[];
+}) {
+  const maximumShare = Math.max(0.01, ...rows.map((card) => card.share));
+  return (
+    <div className="stats-usage__list">
+      {rows.map((card) => (
+        <div className="stats-usage__row" key={card.card}>
+          <span>{card.card}</span>
+          <span className="stats-usage__track">
+            <i style={{ width: `${(card.share / maximumShare) * 100}%` }} />
+          </span>
+          <strong>{card.count.toLocaleString()}</strong>
+          <em>{percentage(card.share)}</em>
+        </div>
+      ))}
+      {rows.length === 0 && <p className="stats-panel__footnote">No data recorded.</p>}
+    </div>
+  );
+}
+
 export default function Stats() {
+  const location = useLocation();
+  const result = (location.state as { result?: SimulationResult } | null)?.result;
+
+  if (!result) {
+    return (
+      <div className="stats-page">
+        <Header />
+        <main className="stats-main">
+          <section className="stats-intro">
+            <div>
+              <p className="stats-eyebrow">SIMULATION LAB <span> / </span> PERFORMANCE</p>
+              <h1>Statistics</h1>
+              <p className="stats-intro__copy">Run an experiment to see its results and detailed metrics here.</p>
+            </div>
+          </section>
+          <section className="stats-context">
+            <div className="stats-context__icon" aria-hidden="true">i</div>
+            <div>
+              <strong>No simulation results yet</strong>
+              <p>Configure the bots and match settings, then run a simulation to populate this dashboard.</p>
+            </div>
+            <Link to="/simulate">Set up a simulation →</Link>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const topPlayer = result.leaderboard[0];
+  const leaderMargin = topPlayer && result.leaderboard[1]
+    ? (topPlayer.winrate - result.leaderboard[1].winrate) * 100
+    : null;
+  const overallGuardAccuracy = result.summary.guardAttempts > 0
+    ? result.summary.guardCorrect / result.summary.guardAttempts
+    : null;
+
   return (
     <div className="stats-page">
       <Header />
@@ -225,46 +208,60 @@ export default function Stats() {
             <p className="stats-eyebrow">SIMULATION LAB <span> / </span> PERFORMANCE</p>
             <h1>Statistics</h1>
             <p className="stats-intro__copy">
-              See which strategies come out ahead, how they play, and whether the edge holds up over time.
+              Results and metrics calculated from the games in this simulation.
             </p>
           </div>
-          <button className="stats-export" type="button" onClick={downloadCsv}>
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M10 2.5v9m0 0 3.5-3.5M10 11.5 6.5 8M3.5 13v3.5h13V13" />
-            </svg>
-            Export results
-          </button>
+          <div className="stats-intro__actions">
+            <Link className="stats-new-run" to="/simulate">New simulation</Link>
+            <button className="stats-export" type="button" onClick={() => downloadCsv(result)}>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 2.5v9m0 0 3.5-3.5M10 11.5 6.5 8M3.5 13v3.5h13V13" />
+              </svg>
+              Export results
+            </button>
+          </div>
         </section>
 
         <section className="stats-run" aria-label="Simulation details">
-          <div className="stats-run__status"><span /> SAMPLE RUN</div>
+          <div className="stats-run__status"><span /> SIMULATION COMPLETE</div>
           <div className="stats-run__details">
-            <strong>Strategy league · 10,000 games</strong>
-            <span>4 bots <b>·</b> seats rotated <b>·</b> first to 3 round wins</span>
+            <strong>{result.run.games.toLocaleString()} games · first to {result.run.targetRoundWins} round wins</strong>
+            <span>
+              {result.run.players.length} players <b>·</b>
+              {result.run.rotateSeats ? " seats rotated" : " fixed seats"} <b>·</b>
+              {result.run.seed == null ? " random seed" : ` seed ${result.run.seed}`}
+            </span>
           </div>
-          <div className="stats-run__date">Example data <span>·</span> 14 Nov 2026</div>
+          <div className="stats-run__date">{(result.run.durationMs / 1000).toFixed(2)}s <span>·</span> elapsed</div>
         </section>
 
         <section className="stats-kpis" aria-label="Simulation highlights">
           <article className="stats-kpi stats-kpi--lead">
             <span className="stats-kpi__label">Top strategy</span>
-            <strong>Card Counter</strong>
-            <span className="stats-kpi__note">Leads the field by 6.7 percentage points</span>
+            <strong>{topPlayer?.player ?? "—"}</strong>
+            <span className="stats-kpi__note">
+              {topPlayer ? `${percentage(topPlayer.winrate)} game win rate` : "No games recorded"}
+              {leaderMargin != null ? ` · +${leaderMargin.toFixed(1)} pts` : ""}
+            </span>
           </article>
           <article className="stats-kpi">
             <span className="stats-kpi__label">Games simulated</span>
-            <strong>10,000</strong>
-            <span className="stats-kpi__note">40,000 bot-game results</span>
+            <strong>{result.summary.games.toLocaleString()}</strong>
+            <span className="stats-kpi__note">{(result.summary.games * result.run.players.length).toLocaleString()} player-game results</span>
           </article>
           <article className="stats-kpi">
             <span className="stats-kpi__label">Rounds played</span>
-            <strong>32,480</strong>
-            <span className="stats-kpi__note">3.25 rounds per game on average</span>
+            <strong>{result.summary.rounds.toLocaleString()}</strong>
+            <span className="stats-kpi__note">
+              {result.summary.games
+                ? `${(result.summary.rounds / result.summary.games).toFixed(2)} rounds per game`
+                : "No rounds recorded"}
+            </span>
           </article>
           <article className="stats-kpi">
             <span className="stats-kpi__label">Guard accuracy</span>
-            <strong>35.7%</strong>
-            <span className="stats-kpi__note">Across 27,605 guesses</span>
+            <strong>{percentage(overallGuardAccuracy)}</strong>
+            <span className="stats-kpi__note">{result.summary.guardAttempts.toLocaleString()} valid guesses</span>
           </article>
         </section>
 
@@ -275,204 +272,254 @@ export default function Stats() {
               <table className="stats-table">
                 <thead>
                   <tr>
-                    <th scope="col">Strategy</th>
-                    <th scope="col">Win rate</th>
+                    <th scope="col">Player / bot</th>
+                    <th scope="col">Game win rate</th>
                     <th scope="col">Wins</th>
                     <th scope="col">95% confidence interval</th>
+                    <th scope="col">Round win rate</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bots.map((bot, index) => (
-                    <tr key={bot.name} className={index === 0 ? "stats-table__leader" : undefined}>
+                  {result.leaderboard.map((bot, index) => (
+                    <tr key={bot.player} className={index === 0 ? "stats-table__leader" : undefined}>
                       <th scope="row">
-                        <span className="stats-bot-name">{bot.name}</span>
-                        <span className="stats-bot-style">{bot.style}</span>
+                        <span className="stats-bot-name">{bot.player}</span>
+                        <span className="stats-bot-style">
+                          {result.run.players.find((player) => player.name === bot.player)?.botName}
+                        </span>
                       </th>
                       <td>
-                        <span className="stats-rate">{bot.winRate.toFixed(1)}%</span>
+                        <span className="stats-rate">{percentage(bot.winrate)}</span>
                         <span className="stats-inline-track">
-                          <i style={{ width: `${bot.winRate * 2.5}%`, backgroundColor: chartColors[index] }} />
+                          <i style={{
+                            width: `${Math.min(100, bot.winrate * result.run.players.length * 100)}%`,
+                            backgroundColor: chartColors[index % chartColors.length],
+                          }} />
                         </span>
                       </td>
                       <td>{bot.wins.toLocaleString()}</td>
-                      <td className="stats-interval">{bot.interval[0].toFixed(1)}–{bot.interval[1].toFixed(1)}%</td>
+                      <td className="stats-interval">{percentage(bot.ciLow)}–{percentage(bot.ciHigh)}</td>
+                      <td>{percentage(bot.roundWinrate)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="stats-panel__footnote">Intervals use the 95% Wilson score method. All bots played 10,000 games.</p>
+            <p className="stats-panel__footnote">Game win rates include the 95% Wilson score interval. Round win rate is shown separately.</p>
           </article>
 
           <article className="stats-panel stats-trend">
             <PanelHeading eyebrow="CONSISTENCY" title="Win rate over time" />
-            <WinRateChart />
+            <WinRateChart result={result} />
           </article>
         </section>
 
         <section className="stats-secondary-grid">
           <article className="stats-panel">
-            <PanelHeading eyebrow="OUTCOME · REJECTIONS" title="How players are rejected" />
+            <PanelHeading eyebrow="OUTCOME · REJECTIONS" title="How players were rejected" />
             <div className="stats-rejection-bar" aria-label="Rejections by cause">
-              {rejectionCauses.map((cause) => (
+              {result.rejections.byCause.map((cause, index) => (
                 <span
-                  key={cause.name}
-                  className={`stats-rejection-bar__segment stats-rejection-bar__segment--${cause.color}`}
-                  style={{ width: `${cause.share}%` }}
-                  title={`${cause.name}: ${cause.share}%`}
+                  key={cause.category}
+                  className={`stats-rejection-bar__segment stats-rejection-bar__segment--${["olive", "sand", "clay", "ink"][index % 4]}`}
+                  style={{ width: `${cause.share * 100}%` }}
+                  title={`${cause.category}: ${percentage(cause.share)}`}
                 />
               ))}
             </div>
             <ul className="stats-breakdown">
-              {rejectionCauses.map((cause) => (
-                <li key={cause.name}>
-                  <span className={`stats-breakdown__dot stats-breakdown__dot--${cause.color}`} />
-                  <span>{cause.name}</span>
+              {result.rejections.byCause.map((cause, index) => (
+                <li key={cause.category}>
+                  <span className={`stats-breakdown__dot stats-breakdown__dot--${["olive", "sand", "clay", "ink"][index % 4]}`} />
+                  <span>{cause.category}</span>
                   <strong>{cause.count.toLocaleString()}</strong>
-                  <em>{cause.share}%</em>
+                  <em>{percentage(cause.share)}</em>
                 </li>
               ))}
+              {result.rejections.byCause.length === 0 && <li>No players were rejected.</li>}
             </ul>
-              <div className="stats-rejection-context">
-                <span><small>Most common timing</small><strong>Midgame · 48%</strong></span>
-                <span><small>Top rejector</small><strong>Card Counter · 27%</strong></span>
-              </div>
-            <p className="stats-panel__footnote">19,621 rejection events across all simulated games.</p>
+            <div className="stats-rejection-context">
+              <span>
+                <small>Most common timing</small>
+                <strong>
+                  {result.rejections.byCycle[0]
+                    ? `Cycle ${result.rejections.byCycle[0].cycle} · ${percentage(result.rejections.byCycle[0].share)}`
+                    : "No rejections"}
+                </strong>
+              </span>
+              <span>
+                <small>Top rejector</small>
+                <strong>{result.rejections.byAttacker[0]?.attacker ?? "—"}</strong>
+              </span>
+              <span>
+                <small>Most rejected</small>
+                <strong>{result.rejections.byVictim[0]?.victim ?? "—"}</strong>
+              </span>
+              <span>
+                <small>Self-inflicted</small>
+                <strong>
+                  {(result.rejections.selfInflicted.find((item) => item.self_inflicted)?.count ?? 0).toLocaleString()}
+                </strong>
+              </span>
+            </div>
+            <p className="stats-panel__footnote">{result.summary.rejections.toLocaleString()} rejection events across all simulated games.</p>
           </article>
 
           <article className="stats-panel">
             <PanelHeading eyebrow="PLAY · DECISION QUALITY" title="Guard guess accuracy" />
             <div className="stats-accuracy">
-              <div className="stats-accuracy__ring"><strong>35.7<span>%</span></strong></div>
+              <div
+                className="stats-accuracy__ring"
+                style={{
+                  background: `conic-gradient(#73794b 0 ${overallGuardAccuracy ? overallGuardAccuracy * 100 : 0}%, #e8e6dd ${overallGuardAccuracy ? overallGuardAccuracy * 100 : 0}% 100%)`,
+                }}
+              >
+                <strong>{percentage(overallGuardAccuracy)}</strong>
+              </div>
               <div>
-                <strong>1 in 3 guesses is right</strong>
-                <p>Correct guesses reject the target. Guard cannot guess another Guard.</p>
+                <strong>{result.summary.guardCorrect.toLocaleString()} correct</strong>
+                <p>Protected targets are excluded from valid guesses.</p>
               </div>
             </div>
-            <div className="stats-accuracy__details">
-              <span><i className="stats-breakdown__dot--olive" /> Correct <strong>9,855</strong></span>
-              <span><i className="stats-breakdown__dot--sand" /> Incorrect <strong>17,750</strong></span>
+            <div className="stats-table-wrap">
+              <table className="stats-table">
+                <thead><tr><th scope="col">Player</th><th scope="col">Attempts</th><th scope="col">Correct</th><th scope="col">Accuracy</th></tr></thead>
+                <tbody>
+                  {result.guards.map((guard) => (
+                    <tr key={guard.player}>
+                      <th scope="row">{guard.player}</th>
+                      <td>{guard.attempts.toLocaleString()}</td>
+                      <td>{guard.correct.toLocaleString()}</td>
+                      <td>{percentage(guard.accuracy)}</td>
+                    </tr>
+                  ))}
+                  {result.guards.length === 0 && <tr><td colSpan={4}>No valid Guard guesses recorded.</td></tr>}
+                </tbody>
+              </table>
             </div>
-            <p className="stats-panel__footnote">27,605 Guard guesses made by all strategies.</p>
           </article>
 
           <article className="stats-panel">
-            <PanelHeading eyebrow="PLAY · BARON COMPARISONS" title="Baron outcomes" />
-            <div className="stats-baron">
-              <div className="stats-baron__row">
-                <span><i className="stats-breakdown__dot--olive" /> Won</span>
-                <strong>44.2%</strong>
-                <span className="stats-baron__track"><i style={{ width: "44.2%" }} /></span>
-              </div>
-              <div className="stats-baron__row">
-                <span><i className="stats-breakdown__dot--sand" /> Tied</span>
-                <strong>11.7%</strong>
-                <span className="stats-baron__track stats-baron__track--sand"><i style={{ width: "11.7%" }} /></span>
-              </div>
-              <div className="stats-baron__row">
-                <span><i className="stats-breakdown__dot--clay" /> Lost</span>
-                <strong>44.1%</strong>
-                <span className="stats-baron__track stats-baron__track--clay"><i style={{ width: "44.1%" }} /></span>
-              </div>
+            <PanelHeading eyebrow="PLAY · BARON COMPARISONS" title="Baron outcomes by player" />
+            <div className="stats-table-wrap">
+              <table className="stats-table">
+                <thead>
+                  <tr><th scope="col">Player</th><th scope="col">Attempts</th><th scope="col">Won</th><th scope="col">Tied</th><th scope="col">Lost</th></tr>
+                </thead>
+                <tbody>
+                  {result.barons.map((baron) => (
+                    <tr key={baron.player}>
+                      <th scope="row">{baron.player}</th>
+                      <td>{baron.attempts.toLocaleString()}</td>
+                      <td>{percentage(baron.win_rate)}</td>
+                      <td>{percentage(baron.tie_rate)}</td>
+                      <td>{percentage(baron.loss_rate)}</td>
+                    </tr>
+                  ))}
+                  {result.barons.length === 0 && <tr><td colSpan={5}>No Baron comparisons recorded.</td></tr>}
+                </tbody>
+              </table>
             </div>
-            <p className="stats-panel__footnote">Based on 13,840 Baron comparisons. Ties reject neither player.</p>
           </article>
         </section>
 
         <section className="stats-detail-grid">
           <article className="stats-panel stats-usage">
             <PanelHeading eyebrow="PLAY · CARD CHOICES" title="Cards played" />
-            <div className="stats-usage__list">
-              {cardUsage.map((card) => (
-                <div className="stats-usage__row" key={card.name}>
-                  <span>{card.name}</span>
-                  <span className="stats-usage__track"><i style={{ width: `${(card.share / 30.2) * 100}%` }} /></span>
-                  <strong>{card.count.toLocaleString()}</strong>
-                  <em>{card.share}%</em>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="stats-panel">
-            <PanelHeading eyebrow="PLAY · INFORMATION USE" title="Card-counting accuracy" />
-            <div className="stats-memory">
-              <strong>68.4<span>%</span></strong>
-              <div>
-                <b>Hidden-card predictions correct</b>
-                <p>Card Counter leads at 74.2%; Random baseline is 25.1%.</p>
-              </div>
-            </div>
-            <div className="stats-memory__track" aria-label="68.4 percent prediction accuracy">
-              <i />
-            </div>
-            <p className="stats-panel__footnote">
-              Correct predictions across 1,940 turns where the target card was later revealed.
-            </p>
+            <UsageList rows={result.cardUsage} />
           </article>
 
           <article className="stats-panel stats-usage">
             <PanelHeading eyebrow="CONTEXT · DRAWN CARDS" title="Cards drawn" />
-            <div className="stats-usage__list">
-              {drawnCardMix.map((card) => (
-                <div className="stats-usage__row" key={card.name}>
-                  <span>{card.name}</span>
-                  <span className="stats-usage__track"><i style={{ width: `${(card.share / 31.2) * 100}%` }} /></span>
-                  <strong>{card.count.toLocaleString()}</strong>
-                  <em>{card.share}%</em>
-                </div>
-              ))}
-            </div>
-            <p className="stats-panel__footnote">100,000 observed draws. Draw mix is close to the deck’s card proportions.</p>
+            <UsageList rows={result.cardsDrawn} />
           </article>
 
           <article className="stats-panel stats-seats">
-            <PanelHeading eyebrow="CONTEXT · SEAT EFFECT" title="Win rate by seat" />
+            <PanelHeading eyebrow="CONTEXT · SEAT EFFECT" title="Round win rate by seat" />
             <div className="stats-table-wrap">
               <table className="stats-table stats-table--seats">
                 <thead>
                   <tr>
-                    <th scope="col">Strategy</th>
-                    <th scope="col">Seat 1</th>
-                    <th scope="col">Seat 2</th>
-                    <th scope="col">Seat 3</th>
-                    <th scope="col">Seat 4</th>
+                    <th scope="col">Player</th>
+                    {Array.from({ length: result.run.players.length }, (_, seat) => (
+                      <th scope="col" key={seat}>Seat {seat + 1}</th>
+                    ))}
                     <th scope="col">Dealer</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bots.map((bot) => (
-                    <tr key={bot.name}>
-                      <th scope="row"><span className="stats-bot-name">{bot.name}</span></th>
-                      {bot.seatWinRates.map((rate, seat) => (
-                        <td key={seat}>{rate.toFixed(1)}%</td>
-                      ))}
-                      <td>{bot.dealerWinRate.toFixed(1)}%</td>
+                  {result.run.players.map((player) => {
+                    const dealer = result.dealerWinrates.find((item) => item.player === player.name);
+                    return (
+                      <tr key={player.name}>
+                        <th scope="row"><span className="stats-bot-name">{player.name}</span></th>
+                        {Array.from({ length: result.run.players.length }, (_, seat) => {
+                          const entry = result.seatWinrates.find(
+                            (item) => item.player === player.name && item.seat === seat,
+                          );
+                          return <td key={seat}>{percentage(entry?.winrate)}</td>;
+                        })}
+                        <td>{percentage(dealer?.winrate)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="stats-panel__footnote">Seat and dealer figures are round win rates; rotating seats can reduce position bias.</p>
+          </article>
+
+          <article className="stats-panel">
+            <PanelHeading eyebrow="CONTEXT · SAMPLE SIZE" title="Experiment details" />
+            <ul className="stats-breakdown stats-run-metrics">
+              <li><span>Turns recorded</span><strong>{result.summary.turns.toLocaleString()}</strong></li>
+              <li><span>Rounds recorded</span><strong>{result.summary.rounds.toLocaleString()}</strong></li>
+              <li><span>Seat rotation</span><strong>{result.run.rotateSeats ? "On" : "Off"}</strong></li>
+              <li><span>Random seed</span><strong>{result.run.seed ?? "Not specified"}</strong></li>
+              <li><span>Target</span><strong>First to {result.run.targetRoundWins}</strong></li>
+            </ul>
+            <p className="stats-panel__footnote">All metrics above are calculated from this run’s game histories and constructed datasets.</p>
+          </article>
+
+          <article className="stats-panel">
+            <PanelHeading eyebrow="OUTCOME · SHOWDOWNS" title="Showdown results" />
+            <div className="stats-table-wrap">
+              <table className="stats-table">
+                <thead>
+                  <tr><th scope="col">Player</th><th scope="col">Showdowns</th><th scope="col">Won</th><th scope="col">Tied</th><th scope="col">Lost</th></tr>
+                </thead>
+                <tbody>
+                  {result.showdowns.map((showdown) => (
+                    <tr key={showdown.player}>
+                      <th scope="row">{showdown.player}</th>
+                      <td>{showdown.showdowns.toLocaleString()}</td>
+                      <td>{percentage(showdown.win_rate)}</td>
+                      <td>{percentage(showdown.tie_rate)}</td>
+                      <td>{percentage(showdown.loss_rate)}</td>
+                    </tr>
+                  ))}
+                  {result.showdowns.length === 0 && <tr><td colSpan={5}>No showdowns recorded.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <article className="stats-panel">
+            <PanelHeading eyebrow="PLAY · PRINCE DECISIONS" title="Prince discards Princess" />
+            <div className="stats-table-wrap">
+              <table className="stats-table">
+                <thead><tr><th scope="col">Player</th><th scope="col">Self-discarded Princess</th></tr></thead>
+                <tbody>
+                  {result.princeSuicides.map((entry) => (
+                    <tr key={entry.player}>
+                      <th scope="row">{entry.player}</th>
+                      <td>{entry.count.toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="stats-panel__footnote">Dealer rate is shown as a share of all wins while dealing. Seats were rotated between games.</p>
           </article>
-        </section>
-
-        <section className="stats-context">
-          <div className="stats-context__icon" aria-hidden="true">i</div>
-          <div>
-            <strong>About this comparison</strong>
-            <p>
-              These figures are illustrative sample data, not results from a live simulation. The benchmark compares
-              four strategies in the same four-player league; each game has one winning bot. Higher win rate is better,
-              while the confidence interval helps show how much results may vary. Seats are rotated to reduce position
-              bias; draw mix and the 95% Wilson interval provide context for luck and sample size.
-            </p>
-          </div>
-          <div className="stats-context__meta">
-            <span>FORMAT <strong>Head-to-head</strong></span>
-            <span>SEAT ROTATION <strong>Enabled</strong></span>
-            <span>ROUND TARGET <strong>3 wins</strong></span>
-          </div>
         </section>
       </main>
       <Footer />

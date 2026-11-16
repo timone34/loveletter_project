@@ -1,17 +1,233 @@
 import asyncio
 import copy
+import importlib
+import inspect
 import queue
+import random
 import threading
+import time
 import traceback
+from pkgutil import iter_modules
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import pandas as pd
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
 
+import bots
+from bots import Random_Strategy, No_Princess, No_Princess_Or_Suicide, Card_Counter
 from cards import Card, guessable
 from game import Game
 from observers import Observer
-from strategy import No_Princess, Random_Strategy, Strategy
+from stats import (
+    Dataset,
+    baron_results,
+    card_usage,
+    dealer_winrates,
+    game_summary,
+    guard_accuracy,
+    prince_suicides,
+    rejection_stats,
+    round_winrate,
+    seat_winrates,
+    simulate,
+    showdown_results,
+    winrate,
+    winrate_history,
+)
+from strategy import Strategy
 
 app = FastAPI()
+
+SIMULATION_LOCK = threading.Lock()
+
+
+def available_bots() -> dict[str, tuple[type[Strategy], str]]:
+    """Discover strategy classes declared in modules in the bots package."""
+    found = {}
+    for module_info in iter_modules(bots.__path__):
+        module = importlib.import_module(f"{bots.__name__}.{module_info.name}")
+        for _, bot_class in inspect.getmembers(module, inspect.isclass):
+            if (
+                bot_class.__module__ == module.__name__
+                and issubclass(bot_class, Strategy)
+                and bot_class is not Strategy
+            ):
+                bot_id = bot_class.__name__.lower().replace("_", "-")
+                label = bot_class().name
+                found[bot_id] = (bot_class, label)
+    return found
+
+
+class SimulationPlayer(BaseModel):
+    bot: str
+    name: str = Field(min_length=1, max_length=32)
+
+
+class SimulationRequest(BaseModel):
+    games: int = Field(ge=1, le=50_000)
+    players: list[SimulationPlayer]
+    targetRoundWins: int = Field(default=3, ge=1, le=7)
+    rotateSeats: bool = True
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
+
+
+def dataframe_records(frame: pd.DataFrame) -> list[dict]:
+    records = []
+    for row in frame.to_dict(orient="records"):
+        records.append({
+            key: (
+                None
+                if pd.isna(value)
+                else value.item()
+                if hasattr(value, "item")
+                else value
+            )
+            for key, value in row.items()
+        })
+    return records
+
+
+@app.get("/api/bots")
+def list_bots() -> list[dict[str, str]]:
+    return [
+        {
+            "id": bot_id,
+            "name": label,
+            "description": inspect.getdoc(bot_class) or f"{label} strategy",
+        }
+        for bot_id, (bot_class, label) in sorted(available_bots().items())
+    ]
+
+
+@app.post("/api/simulations")
+def create_simulation(request: SimulationRequest) -> dict:
+    bot_classes = available_bots()
+    if not 2 <= len(request.players) <= 4:
+        raise HTTPException(status_code=422, detail="Choose between 2 and 4 players.")
+    if len({player.name.strip() for player in request.players}) != len(request.players):
+        raise HTTPException(status_code=422, detail="Player names must be unique.")
+    if any(not player.name.strip() for player in request.players):
+        raise HTTPException(status_code=422, detail="Player names cannot be blank.")
+    if request.targetRoundWins not in (1, 3, 5, 7):
+        raise HTTPException(status_code=422, detail="Round-win target must be 1, 3, 5, or 7.")
+
+    unknown_bots = sorted({player.bot for player in request.players} - bot_classes.keys())
+    if unknown_bots:
+        raise HTTPException(status_code=422, detail=f"Unknown bot selection: {', '.join(unknown_bots)}.")
+
+    players = {
+        player.name.strip(): bot_classes[player.bot][0]()
+        for player in request.players
+    }
+    lineup = [
+        {
+            "seat": seat + 1,
+            "name": player.name.strip(),
+            "botId": player.bot,
+            "botName": bot_classes[player.bot][1],
+        }
+        for seat, player in enumerate(request.players)
+    ]
+
+    started = time.perf_counter()
+    with SIMULATION_LOCK:
+        prior_random_state = random.getstate() if request.seed is not None else None
+        try:
+            if request.seed is not None:
+                random.seed(request.seed)
+            histories = simulate(
+                request.games,
+                players,
+                rotate_seats=request.rotateSeats,
+                target_round_wins=request.targetRoundWins,
+            )
+        finally:
+            if prior_random_state is not None:
+                random.setstate(prior_random_state)
+    duration_ms = (time.perf_counter() - started) * 1000
+
+    dataset = Dataset.from_histories(histories)
+    game_wins = winrate(dataset)
+    round_wins = round_winrate(dataset)
+    summary = game_summary(dataset)
+
+    leaderboard = []
+    for row in dataframe_records(game_wins.reset_index()):
+        round_row = round_wins.loc[row["player"]]
+        rounds_played = int(round_row["rounds"])
+        leaderboard.append({
+            "player": row["player"],
+            "wins": row["wins"],
+            "games": row["games"],
+            "winrate": row["winrate"],
+            "ciLow": row["ci_low"],
+            "ciHigh": row["ci_high"],
+            "roundWins": int(round_row["round_wins"]),
+            "rounds": rounds_played,
+            "roundWinrate": (
+                float(round_row["winrate"]) if rounds_played else None
+            ),
+        })
+    leaderboard.sort(key=lambda row: row["winrate"], reverse=True)
+    suicide_counts = prince_suicides(histories)
+
+    return {
+        "run": {
+            "games": request.games,
+            "targetRoundWins": request.targetRoundWins,
+            "rotateSeats": request.rotateSeats,
+            "seed": request.seed,
+            "durationMs": duration_ms,
+            "players": lineup,
+        },
+        "summary": {
+            "games": summary["games"],
+            "rounds": summary["rounds"],
+            "turns": summary["turns"],
+            "rejections": summary["rejections"],
+            "guardAttempts": summary["guard_attempts"],
+            "guardCorrect": summary["guard_correct"],
+        },
+        "leaderboard": leaderboard,
+        "rejections": {
+            "byCause": [
+                {"category": row["cause"], "count": row["count"], "share": row["share"]}
+                for row in dataframe_records(rejection_stats(dataset))
+            ],
+            "byCycle": dataframe_records(rejection_stats(dataset, "cycle")),
+            "byAttacker": dataframe_records(rejection_stats(dataset, "attacker")),
+            "byVictim": dataframe_records(rejection_stats(dataset, "victim")),
+            "selfInflicted": dataframe_records(rejection_stats(dataset, "self_inflicted")),
+        },
+        "guards": dataframe_records(guard_accuracy(dataset)),
+        "barons": dataframe_records(baron_results(dataset)),
+        "showdowns": dataframe_records(showdown_results(dataset)),
+        "princeSuicides": [
+            {"player": player["name"], "count": suicide_counts.get(player["name"], 0)}
+            for player in lineup
+        ],
+        "cardUsage": [
+            {"card": row["card"], "count": row["count"], "share": row["share"]}
+            for row in dataframe_records(card_usage(dataset))
+        ],
+        "cardsDrawn": [
+            {"card": row["card"], "count": row["count"], "share": row["share"]}
+            for row in dataframe_records(card_usage(dataset, "drawn"))
+        ],
+        "seatWinrates": dataframe_records(seat_winrates(dataset)),
+        "dealerWinrates": dataframe_records(dealer_winrates(dataset)),
+        "winrateHistory": [
+            {
+                "gameCount": row["game_count"],
+                "player": row["player"],
+                "wins": row["wins"],
+                "winrate": row["winrate"],
+            }
+            for row in dataframe_records(
+                winrate_history(dataset, interval=max(1, (request.games + 9) // 10))
+            )
+        ],
+    }
 
 
 def turn_dict(turn) -> dict:
