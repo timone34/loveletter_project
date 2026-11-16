@@ -1,12 +1,12 @@
 import time
 
 from stats import *
-from strategy import No_Princess, Random_Strategy, Strategy
+from strategy import Card_Counter, No_Princess, Random_Strategy, Strategy
 
 
 def main() -> None:
     players: dict[str, Strategy] = {
-        "Alice": No_Princess(),
+        "Alice": Card_Counter(),
         "Bob": Random_Strategy(),
         "Charlie": Random_Strategy(),
         "Diane": Random_Strategy(),

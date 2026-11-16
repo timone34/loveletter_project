@@ -32,6 +32,7 @@ class TurnHistory:
     seen: Card | None = None  # Priest
     discarded: Card | None = None  # Prince
     redrawn: Card | None = None  # Prince
+    received: Card | None = None  # King
     rejected: list[int] = field(default_factory=list)  # seats
 
 
