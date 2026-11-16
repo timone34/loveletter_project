@@ -6,6 +6,7 @@ from history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
 from observers import Observer, Observers
 from player import Player
 from strategy import Strategy
+from view import view_for
 
 
 class Game:
@@ -226,6 +227,7 @@ class Turn:
         self.history.held = held
         self.history.drawn = drawn
         self.player.hand.append(drawn)
+        self.player.view = view_for(self.player, self.rnd)
 
         self.rnd.obs.on_turn_start(self.game.history, self.rnd.history, self.history)
 
