@@ -50,7 +50,7 @@ class Strategy:
     def choose_prince_target(self, player: Player, targets: list[Player]) -> Player: return random.choice(targets)
     def choose_king_target(self, player: Player, targets: list[Player]) -> Player:   return random.choice(targets)
 
-    def guard_guess(self, player: Player, targets: list[Player]) -> Card:
+    def guard_guess(self, player: Player, target: Player) -> Card:
         return random.choice(guessable())
 
 
