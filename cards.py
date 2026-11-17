@@ -118,6 +118,7 @@ class King(Card):
 
     def apply(self, player, target, rnd, turn):
         player.hand, target.hand = target.hand, player.hand
+        turn.history.received = player.hand[0]
 
 
 class Countess(Card):

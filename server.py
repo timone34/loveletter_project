@@ -6,10 +6,11 @@ import traceback
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from bots import RandomChoice, NoPrincess
 from cards import Card, guessable
 from game import Game
 from observers import Observer
-from strategy import No_Princess, Random_Strategy, Strategy
+from strategy import Strategy
 
 app = FastAPI()
 
@@ -85,7 +86,7 @@ async def spectate(ws: WebSocket):
     queue: asyncio.Queue = asyncio.Queue()
 
     players: dict[str, Strategy] = {
-        n: Random_Strategy() for n in ["Alice", "Bob", "Charlie", "Diane"]
+        n: RandomChoice() for n in ["Alice", "Bob", "Charlie", "Diane"]
     }
     game = Game(players, target_round_wins=3, observers=QueueObserver(loop, queue))
     asyncio.create_task(asyncio.to_thread(game.play))  # game runs instantly in a thread
@@ -122,9 +123,9 @@ def card_id(card: Card | None) -> str | None:
 
 def lineup(session: "Session") -> dict[str, Strategy]:
     return {
-        "Alice": No_Princess(),
-        "Bob": Random_Strategy(),
-        "Charlie": Random_Strategy(),
+        "Alice": NoPrincess(),
+        "Bob": RandomChoice(),
+        "Charlie": RandomChoice(),
         "You": Web_Strategy(session),
     }
 

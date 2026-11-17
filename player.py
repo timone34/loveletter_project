@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from cards import Card, Countess, King, Prince
 from strategy import Strategy
+
+if TYPE_CHECKING:
+    from view import PlayerView
 
 
 class Player:
@@ -15,6 +20,7 @@ class Player:
 
         self.protected: bool = False
         self.rejected: bool = False
+        self.view: PlayerView | None = None
 
         self.round_wins: int = 0
 
@@ -23,6 +29,7 @@ class Player:
         self.discard.clear()
         self.protected = False
         self.rejected = False
+        self.view = None
 
     @property
     def discard_total(self) -> int:

@@ -1,19 +1,21 @@
 import time
 
 from stats import *
-from strategy import No_Princess, Random_Strategy, Strategy
+from strategy import Strategy
+from bots import RandomChoice, NoPrincess, CardCounter
 
 
 def main() -> None:
     players: dict[str, Strategy] = {
-        "Alice": No_Princess(),
-        "Bob": Random_Strategy(),
-        "Charlie": Random_Strategy(),
-        "Diane": Random_Strategy(),
+        "Alice": CardCounter(),
+        "Bob": RandomChoice(),
+        "Charlie": RandomChoice(),
+        "Diane": RandomChoice(),
     }
 
-    n = 1000
+    n = 5000
     start = time.perf_counter()
+    print("starting")
     ghs = simulate(n, players, rotate_seats=True)
     sim_end = time.perf_counter()
     ds = Dataset.from_histories(ghs)
@@ -23,8 +25,11 @@ def main() -> None:
     print(f"Constructing dataset took: {((construct_ds - sim_end) * 1000):.1f} ms.")
     print(f"Total elapsed time: {((construct_ds - start) * 1000):.1f} ms.")
 
-    w = wins(ds)
-    print(w)
+    wr = winrate(ds)
+    print(wr)
+
+    ga = guard_accuracy(ds)
+    print(ga)
 
 
 if __name__ == "__main__":
