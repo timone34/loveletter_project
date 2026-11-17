@@ -1,18 +1,23 @@
 import random
 
 from cards import *
-from strategy import Strategy
+from bots import RandomChoice
 
-class No_Princess(Strategy):
+class NoPrincessDumb(RandomChoice):
     def __init__(self) -> None:
-        self.name = "No Princess"
+        self.name = "No Princess Bot (dumb)"
+        self.description = "This bot never plays the Princess, but everything else is random."
 
     def choose_card(self, player, playable):
         candidates = [c for c in playable if not isinstance(c, Princess)] or playable
         return random.choice(candidates)
 
 
-class No_Princess_Or_Suicide(No_Princess):
+class NoPrincess(NoPrincessDumb):
+    def __init__(self) -> None:
+            self.name = "No Princess Bot"
+            self.description = "This bot never plays or discards the Princess voluntarily. Everything else is random."
+
     def choose_prince_target(self, player, targets):
         if isinstance(player.hand[0], Princess):
             others = [t for t in targets if t is not player]

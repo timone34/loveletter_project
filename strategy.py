@@ -31,9 +31,10 @@ def _choose_from_menu(title: str, options: list[str]) -> int:
 class Strategy:
     def __init__(self):
         self.name = "Base Strategy"
+        self.description = "This Strategy forms the base of all strategies."
 
     def choose_card(self, player: Player, playable: list[Card]) -> Card:
-        return random.choice(playable)
+        raise NotImplementedError("Base Strategy should not be instanced")
 
     # router: Card.resolve calls this, bots usually override the hooks below instead
     def choose_target(self, player: Player, card: Card, targets: list[Player]) -> Player:
@@ -42,21 +43,22 @@ class Strategy:
         if isinstance(card, Baron):  return self.choose_baron_target(player, targets)
         if isinstance(card, Prince): return self.choose_prince_target(player, targets)
         if isinstance(card, King):   return self.choose_king_target(player, targets)
-        return random.choice(targets)
+        raise NotImplementedError("Base Strategy should not be instanced")
 
-    def choose_guard_target(self, player: Player, targets: list[Player]) -> Player:  return random.choice(targets)
-    def choose_priest_target(self, player: Player, targets: list[Player]) -> Player: return random.choice(targets)
-    def choose_baron_target(self, player: Player, targets: list[Player]) -> Player:  return random.choice(targets)
-    def choose_prince_target(self, player: Player, targets: list[Player]) -> Player: return random.choice(targets)
-    def choose_king_target(self, player: Player, targets: list[Player]) -> Player:   return random.choice(targets)
+    def choose_guard_target(self, player: Player, targets: list[Player]) -> Player:  raise NotImplementedError("Base Strategy should not be instanced")
+    def choose_priest_target(self, player: Player, targets: list[Player]) -> Player: raise NotImplementedError("Base Strategy should not be instanced")
+    def choose_baron_target(self, player: Player, targets: list[Player]) -> Player:  raise NotImplementedError("Base Strategy should not be instanced")
+    def choose_prince_target(self, player: Player, targets: list[Player]) -> Player: raise NotImplementedError("Base Strategy should not be instanced")
+    def choose_king_target(self, player: Player, targets: list[Player]) -> Player:   raise NotImplementedError("Base Strategy should not be instanced")
 
     def guard_guess(self, player: Player, target: Player) -> Card:
-        return random.choice(guessable())
+        raise NotImplementedError("Base Strategy should not be instanced")
 
 
-class Player_Strategy(Strategy):  # asks for user input regarding all actions.
+class TerminalPlayer(Strategy):  # asks for user input regarding all actions.
     def __init__(self) -> None:
         self.name = "Player Input"
+        self.description = "This Strategy asks the user for input through the python terminal."
 
     def choose_card(self, player, playable):
         if len(playable) < len(player.hand):

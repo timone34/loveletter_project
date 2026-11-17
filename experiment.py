@@ -1,19 +1,19 @@
 import time
 
-from stats import Dataset, simulate,wins,winrate,prince_suicides
+from stats import *
 from strategy import Strategy
-from bots import Random_Strategy, No_Princess, No_Princess_Or_Suicide, Card_Counter
+from bots import RandomChoice, NoPrincess, CardCounter
 
 
 def main() -> None:
     players: dict[str, Strategy] = {
-        "Alice": Card_Counter(),
-        "Bob": No_Princess_Or_Suicide(),
-        "Charlie": No_Princess_Or_Suicide(),
-        "Diane": No_Princess_Or_Suicide(),
+        "Alice": CardCounter(),
+        "Bob": RandomChoice(),
+        "Charlie": RandomChoice(),
+        "Diane": RandomChoice(),
     }
 
-    n = 1000
+    n = 5000
     start = time.perf_counter()
     print("starting")
     ghs = simulate(n, players, rotate_seats=True)
@@ -27,8 +27,9 @@ def main() -> None:
 
     wr = winrate(ds)
     print(wr)
-    ps = prince_suicides(ghs)
-    print(ps)
+
+    ga = guard_accuracy(ds)
+    print(ga)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import random
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from bots import NoPrincess
 from cards import *
 from deck import Deck
 from strategy import Strategy
@@ -12,8 +13,8 @@ if TYPE_CHECKING:
     from player import Player
     from view import PlayerView
 
-FULL = Counter(type(c) for c in Deck().cards)
 
+FULL = Counter(type(c) for c in Deck().cards)
 
 def unseen(view: PlayerView) -> Counter[type[Card]]:
     counts = FULL.copy()
@@ -25,58 +26,58 @@ def unseen(view: PlayerView) -> Counter[type[Card]]:
     return counts
 
 
-class Card_Counter(Strategy):
+class CardCounter(NoPrincess):
     def __init__(self) -> None:
-        self.name = "Card Counter"
+        self.name = "Card Counter Bot"
+        self.description = "This bot keeps track of how many cards are still unknown to it."
+        self.debug = False
+
+    # def choose_card(self, player, playable):
+    #     return random.choice(playable)
+            
+
+    # def choose_target(self, player, card, targets):
+    #     return random.choice(targets)
+        
 
     def guard_guess(self, player, target):
-        # Uses the public unseen counts in the turn-start view.
-        view = player.view
-        assert view is not None
-        counts = unseen(view)
+        assert player.view is not None
+        unseen_cards = unseen(player.view)
         pool = {
-            card_type: counts[card_type]
-            for card_type in (type(card) for card in guessable())
-            if counts[card_type] > 0
+            card_type: unseen_cards[card_type]
+            for card_type in (type(card) for card in guessable()) if unseen_cards[card_type] > 0
         }
         if not pool:
+            if self.debug:
+                print("----- DEBUG -----")
+                print("    ERROR: no pool counted, returning random guess")
             return random.choice(guessable())
-        highest = max(pool.values())
-        return random.choice(
-            [card_type for card_type, count in pool.items() if count == highest]
-        )()
 
-    def choose_card(self, player, playable):
-        # Uses the own hand and public unseen counts in the turn-start view.
-        candidates = [c for c in playable if not isinstance(c, Princess)] or playable
-        barons = [c for c in candidates if isinstance(c, Baron)]
-        if barons and len(candidates) > len(barons):
-            view = player.view
-            assert view is not None
-            kept = next(c for c in player.hand if c not in barons)
-            counts = unseen(view)
-            total = sum(counts.values())
-            if total:
-                p_win = sum(
-                    count
-                    for card_type, count in counts.items()
-                    if card_type().value < kept.value
-                ) / total
-                p_lose = sum(
-                    count
-                    for card_type, count in counts.items()
-                    if card_type().value > kept.value
-                ) / total
-                if p_win <= p_lose:
-                    candidates = [c for c in candidates if not isinstance(c, Baron)]
-        return random.choice(candidates)
+        number_unseen_cards = sum(pool.values())
+        odds: dict[type[Card], float] = {}
+        
+        for card_type in pool.keys():
+            odds[card_type] = pool[card_type] / number_unseen_cards
 
-    def choose_target(self, player, card, targets):
-        # Uses public protection status and seat, plus own hand for Princess safety.
-        view = player.view
-        assert view is not None
-        unprotected = {p.seat for p in view.players if not p.protected}
-        candidates = [t for t in targets if t.seat in unprotected] or targets
-        if isinstance(card, Prince) and isinstance(player.hand[0], Princess):
-            candidates = [t for t in candidates if t.seat != player.seat] or targets
-        return random.choice(candidates)
+        highest_odds = max(odds.values())
+        most_likely_types = [
+            card_type 
+            for card_type, type_odds in odds.items() 
+            if type_odds == highest_odds
+            ]
+
+        guess = random.choice(most_likely_types)
+
+        if self.debug:
+            print("----- DEBUG -----")
+            print(f"    There are {number_unseen_cards} unseen cards left.")
+            print(f"    distribution: {unseen_cards}")
+            print(f"\n    The odds per (guessable) card type are:")
+            print(f"    {odds}")
+            print(f"\n    {[type for type in most_likely_types]} are most likely, picking randomly")
+            print(f"    guess: {guess}")
+            print(f"----- /DEBUG -----")
+
+
+        return guess()
+

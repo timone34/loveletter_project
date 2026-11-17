@@ -1,6 +1,7 @@
 import pandas as pd
 
 from cards import Prince, Princess
+from history import GameHistory
 
 from .dataset import Dataset
 
@@ -30,7 +31,7 @@ def winrate(ds: Dataset) -> pd.DataFrame:
     return out
 
 
-def prince_suicides(histories):
+def prince_suicides(histories: list[GameHistory]):
     counts = {}
     for g in histories:
         for r in g.rounds:
@@ -43,3 +44,19 @@ def prince_suicides(histories):
                     name = g.players[t.seat]
                     counts[name] = counts.get(name, 0) + 1
     return counts
+
+def guard_accuracy(ds: Dataset):
+    guards_played = ds.turns[ds.turns["played"] == "Guard"]
+
+    result = (
+        guards_played.assign(correct=guards_played["outcome"] == "CORRECT")
+        .groupby("player")
+        .agg(
+            guards_played=("played", "count"),
+            correct_guesses=("correct", "sum"),
+        )
+    )
+
+    result["accuracy"] = result["correct_guesses"] / result["guards_played"]
+
+    return result.sort_values("accuracy", ascending=False)
