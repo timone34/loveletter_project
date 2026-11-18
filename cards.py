@@ -40,6 +40,14 @@ class Card:
         # verify target protection
         if target.protected:
             turn.history.outcome = Outcome.PROTECTED
+            
+            # added for LLNWriter so guard always gets target, even when protected
+            if isinstance(self, Guard):
+                guess = player.strategy.guard_guess(player, target)
+                if isinstance(guess, Guard):
+                    raise TypeError("Guard cannot guess Guard.")
+                turn.history.guess = guess
+
             return
 
         # if all is in order, apply effect to target

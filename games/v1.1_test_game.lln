@@ -1,11 +1,13 @@
-[Version: LLN 1.1]
-[Seat1: Alice, Random Strategy]
-[Seat2: Bob, Random Strategy]
-[Seat3: Charlie, Random Strategy]
-[Seat4: Diane, Random Strategy]
+[Version: 1.1]
+
+[Game: 1]
+[Seat 1: Alice, RandomChoice]
+[Seat 2: Bob, RandomChoice]
+[Seat 3: Charlie, RandomChoice]
+[Seat 4: Diane, RandomChoice]
 [Score: 0-0-1-0]
 
-[Round 1]
+[Round: 1]
 [Dealer: Alice]
 [Deck: CBpBQgpgggHPgPKH]
 [Result: W3]
@@ -28,4 +30,6 @@
 4.2. -
 4.3. P3
 4.4. B3<#
-W3
+
+[Round: 2]
+...
