@@ -1,0 +1,126 @@
+[Version: 1.2]
+
+[Seat 1: Alice, CardCounter]
+[Seat 2: Bob, RandomChoice]
+[Seat 3: Charlie, RandomChoice]
+[Seat 4: Diane, RandomChoice]
+[Score: 3-1-2-1]
+
+[Round: 1]
+[Dealer: 1]
+[Deck: gggPpgHgBPpCQBKH]
+[Result: W3]
+
+1.2. g1:p#
+1.3. H
+1.4. P2
+1.1. -
+2.2. P4
+2.3. g4:B
+2.4. Q#
+2.1. -
+3.2. B3<#
+
+[Round: 2]
+[Dealer: 2]
+[Deck: pCPQgBBPpggHKgHg]
+[Result: W1]
+
+1.3. C
+1.4. P2
+1.1. p2
+1.2. g3:P
+2.3. g2:B
+2.4. H
+2.1. K4*
+2.2. P4*
+3.3. B1<#
+3.4. g1:P
+
+[Round: 3]
+[Dealer: 4]
+[Deck: ggBpgCKpPgBHgQPH]
+[Result: W4]
+
+1.1. g2:B#
+1.2. -
+1.3. K1
+1.4. p1
+2.1. P1
+2.2. -
+2.3. B1>#
+2.4. H
+3.1. -
+3.2. -
+3.3. g4:K*
+3.4. g3:P
+4.1. -
+4.2. -
+4.3. C
+4.4. H
+
+[Round: 4]
+[Dealer: 3]
+[Deck: pHHgPKQggCpPgBgB]
+[Result: W1]
+
+1.4. K1
+1.1. H
+1.2. g1:K*
+1.3. g2:p
+2.4. C
+2.1. p3
+2.2. g3:H
+2.3. P4
+3.4. g3:H
+3.1. B3>#
+
+[Round: 5]
+[Dealer: 4]
+[Deck: HgpgpHPQKBBCggPg]
+[Result: W3]
+
+1.1. g4:P
+1.2. P4
+1.3. g4:Q#
+1.4. -
+2.1. B2>#
+2.2. -
+2.3. B1>#
+
+[Round: 6]
+[Dealer: 2]
+[Deck: BQKCgPgpPHBgpggH]
+[Result: W2]
+
+1.3. Q#
+1.4. g1:P
+1.1. p2
+1.2. g4:C
+2.3. -
+2.4. K2
+2.1. C
+2.2. g1:C
+3.3. -
+3.4. p2
+3.1. B2<#
+3.2. g4:P#
+
+[Round: 7]
+[Dealer: 1]
+[Deck: BpHPQCpggggKPgBH]
+[Result: W1]
+
+1.2. p1
+1.3. p2
+1.4. g2:P
+1.1. g3:H#
+2.2. g1:K
+2.3. -
+2.4. g2:P
+2.1. K4
+3.2. C
+3.3. -
+3.4. g1:p
+3.1. B2=
+4.2. P4#

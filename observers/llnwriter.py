@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,7 +13,7 @@ if TYPE_CHECKING:
     from cards import Card
     from history import GameHistory, RoundHistory, TurnHistory
 
-VERSION = "1.1"
+VERSION = "1.2"
 CARD_TO_LLN: dict[type[Card], str] = {
     Guard: "g",
     Priest: "p",
@@ -28,29 +31,33 @@ OUTCOME_TO_LLN: dict[Outcome, str] = {
     Outcome.PROTECTED: "*"
 }
 
+GAMES_DIR = Path(__file__).resolve().parent.parent / "games"
+
+
 class LLNWriter(Observer):
+    def __init__(self, echo: bool = False, save: bool = True, directory: Path = GAMES_DIR) -> None:
+        self.echo = echo
+        self.save = save
+        self.directory = directory
+
+    
     def on_game_end(self, game):
-        file = self.construct_lln_file(game)
+        lines = self.construct_lln_file(game)
+        if self.echo: self.print_file_to_terminal(lines)
+        if self.save: self.save_file(lines)
         
 
-    def construct_lln_file(self, gh: GameHistory):
+    def construct_lln_file(self, gh: GameHistory) -> list[str]:
         file_lines: list[str] = []
         game_lines = self.generate_game_lines(gh)
         file_lines.extend(game_lines)
         
         for rh in gh.rounds: 
-            round_lines = self.generate_round_lines(rh)
-            file_lines.extend(round_lines)
-
-            for th in rh.turns:
-                turn_line = self.generate_turn_line(th)
-                file_lines.append(turn_line)
-
+            file_lines.extend(self.generate_round_lines(rh))
+            file_lines.extend(self.generate_turn_line(th) for th in rh.turns)
             file_lines.append("")
 
-        self.print_file_to_terminal(file_lines)
-        self.save_file(file_lines)
-
+        return file_lines
     
     def generate_game_lines(self, gh: GameHistory) -> list[str]:
         lines: list[str] = []
@@ -79,7 +86,7 @@ class LLNWriter(Observer):
         if len(rh.winners) == 1:
             result_string = f"[Result: W{rh.winners[0] + 1}]"
         if len(rh.winners) > 1:
-            tie_string = "".join(str(seat) for seat in rh.winners)
+            tie_string = "".join(str(seat + 1) for seat in rh.winners)
             result_string = f"[Result: T{tie_string}]"
         lines.append(result_string)
         lines.append(f"")
@@ -97,20 +104,17 @@ class LLNWriter(Observer):
         
         played_letter = CARD_TO_LLN[type(th.played)]
         if isinstance(th.played, Guard):
-            if th.target is None or th.guess is None:
-                print(f"DEBUG: {th=}")
-                print(f"Target: {th.target}")
-                print(f"Guess: {th.guess}")
-            else:
-                guessed_letter = CARD_TO_LLN[type(th.guess)]
-                line += f"{played_letter}{th.target + 1}:{guessed_letter}"
+            assert th.target is not None and th.guess is not None
+            guessed_letter = CARD_TO_LLN[type(th.guess)]
+            line += f"{played_letter}{th.target + 1}:{guessed_letter}"
         elif isinstance(th.played, Priest):
             assert th.target is not None
             line += f"{played_letter}{th.target + 1}"
         elif isinstance(th.played, Baron):
-            assert th.target is not None and th.outcome is not None
-            assert th.outcome in (Outcome.WIN, Outcome.DRAW, Outcome.LOSE)
-            line += f"{played_letter}{th.target + 1}{OUTCOME_TO_LLN[th.outcome]}"
+            assert th.target is not None
+            line += f"{played_letter}{th.target + 1}"
+            if th.outcome in OUTCOME_TO_LLN and th.outcome is not Outcome.PROTECTED:
+                line += OUTCOME_TO_LLN[th.outcome]
         elif isinstance(th.played, Handmaid):
             line += f"{played_letter}"
         elif isinstance(th.played, Prince):
@@ -137,5 +141,17 @@ class LLNWriter(Observer):
             print(line)
         print("----- /LLN FILE DEBUG -----")
 
-    def save_file(self, file_lines: list[str]):
-        pass
+    def save_file(self, file_lines: list[str]) -> Path:
+        now = datetime.now()
+        folder = self.directory / now.strftime("%Y-%m-%d")
+        folder.mkdir(parents=True, exist_ok=True)
+
+        stem = now.strftime("%H-%M-%S")
+        path = folder / f"{stem}.lln"
+        n = 1
+        while path.exists():
+            path = folder / f"{stem}_{n}.lln"
+            n += 1
+
+        path.write_text("\n".join(file_lines).rstrip("\n") + "\n", encoding="utf-8")
+        return path
