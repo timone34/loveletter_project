@@ -14,7 +14,7 @@ def main():
         "Diane": RandomChoice()
     }
 
-    observers = LLNWriter(echo=True)
+    observers = LLNWriter()
 
     game = Game(players=players, target_round_wins=3, observers=observers)
     game.play()

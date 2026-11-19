@@ -1,10 +1,11 @@
 from .consolelogger import ConsoleLogger
 from .observer import Observer, Observers
-from .llnwriter import LLNWriter
+from .llnwriter import LLNWriter, save_lln
 
 __all__ = [
     "ConsoleLogger",
     "Observer",
     "Observers",
-    "LLNWriter"
+    "LLNWriter",
+    "save_lln"
 ]

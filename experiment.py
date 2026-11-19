@@ -3,6 +3,7 @@ import time
 from stats import *
 from strategy import Strategy
 from bots import RandomChoice, NoPrincess, CardCounter
+from observers import save_lln
 
 
 def main() -> None:
@@ -13,7 +14,7 @@ def main() -> None:
         "Diane": RandomChoice(),
     }
 
-    n = 5000
+    n = 1000
     start = time.perf_counter()
     print("starting")
     ghs = simulate(n, players, rotate_seats=True)
@@ -30,6 +31,8 @@ def main() -> None:
 
     ga = guard_accuracy(ds)
     print(ga)
+
+    save_lln(ghs)
 
 
 if __name__ == "__main__":
