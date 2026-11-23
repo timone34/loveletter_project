@@ -1,9 +1,9 @@
 import time
 
 from stats import *
-from strategy import Strategy
+from engine.strategy import Strategy
 from bots import RandomChoice, NoPrincess, CardCounter
-from observers import save_lln
+from lln import save_lln
 
 
 def main() -> None:

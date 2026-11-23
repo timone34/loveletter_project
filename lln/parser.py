@@ -15,16 +15,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from deck import Deck
-from game import Game
-from history import GameHistory
-from observers import Observers
-from observers.llnwriter import CARD_TO_LLN, generate_turn_line
-from strategy import Strategy
+from engine import Deck, Game, GameHistory, Observers, Strategy
+
+from .writer import CARD_TO_LLN, generate_turn_line
 
 if TYPE_CHECKING:
-    from cards import Card
-    from player import Player
+    from engine import Card, Player
 
 SUPPORTED_VERSIONS = {"1.3", "1.4"}  # 1.4 added the [Target: n] tag
 LLN_TO_CARD: dict[str, type[Card]] = {letter: card for card, letter in CARD_TO_LLN.items()}

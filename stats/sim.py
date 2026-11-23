@@ -3,12 +3,12 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
 
-from game import Game
-from observers import Observer
-from strategy import Strategy
+from engine.game import Game
+from engine.observer import Observer
+from engine.strategy import Strategy
 
 if TYPE_CHECKING:
-    from history import GameHistory
+    from engine.history import GameHistory
 
 
 def simulate(

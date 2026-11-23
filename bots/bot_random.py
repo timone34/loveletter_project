@@ -1,11 +1,11 @@
 import random
 from typing import TYPE_CHECKING
 
-from cards import *
-from strategy import Strategy
+from engine.cards import *
+from engine.strategy import Strategy
 
 if TYPE_CHECKING:
-    from player import Player
+    from engine.player import Player
 
 class RandomChoice(Strategy):  # picks a random target regarding all actions.
     def __init__(self) -> None:

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cards import Card, Countess, King, Prince
-from strategy import Strategy
+from .cards import Card, Countess, King, Prince
+from .strategy import Strategy
 
 if TYPE_CHECKING:
-    from view import PlayerView
+    from .view import PlayerView
 
 
 class Player:

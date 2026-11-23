@@ -65,16 +65,20 @@ The *Simulate* and *Stats* pages are placeholders for now.
 
 ## Project structure
 
+[engine/](engine/) holds the hard rules of the game and imports nothing from outside itself. Everything else builds on top of it.
+
 | Path | Contents |
 | :--- | :--- |
-| [game.py](game.py) | `Game`, `Round` and `Turn`: the core game loop |
-| [cards.py](cards.py) | The eight card types and their effects |
-| [deck.py](deck.py), [player.py](player.py) | Deck and player state |
-| [strategy.py](strategy.py) | `Strategy` base class (the interface every bot implements) and `TerminalPlayer` |
-| [view.py](view.py) | `PlayerView`: the information a player is allowed to see (hidden cards redacted) |
-| [history.py](history.py) | Records of every turn, showdown, round and game |
-| [bots/](bots/) | Bot strategies (see below) |
-| [observers/](observers/) | Hooks into game events; `ConsoleLogger` prints games to the terminal |
+| [engine/game.py](engine/game.py) | `Game`, `Round` and `Turn`: the core game loop |
+| [engine/cards.py](engine/cards.py) | The eight card types and their effects |
+| [engine/deck.py](engine/deck.py), [engine/player.py](engine/player.py) | Deck and player state |
+| [engine/strategy.py](engine/strategy.py) | `Strategy` base class: the interface every bot implements |
+| [engine/view.py](engine/view.py) | `PlayerView`: the information a player is allowed to see (hidden cards redacted) |
+| [engine/history.py](engine/history.py) | Records of every turn, showdown, round and game |
+| [engine/observer.py](engine/observer.py) | `Observer` base class: hooks into game events |
+| [bots/](bots/) | Bot strategies (see below), including `TerminalPlayer` for playing in the terminal |
+| [observers/](observers/) | Observer implementations; `ConsoleLogger` prints games to the terminal, `LLNWriter` saves them as `.lln` files |
+| [lln/](lln/) | Love Letter Notation: writing (`save_lln`) and parsing (`load_lln`) `.lln` files |
 | [stats/](stats/) | `simulate()`, `Dataset`, metrics (`winrate`, `guard_accuracy`, ...) and plots |
 | [server.py](server.py) | FastAPI WebSocket server (`/ws/play`, `/ws/spectate`) |
 | [web/](web/) | React + TypeScript + Vite front end |
@@ -94,8 +98,8 @@ The *Simulate* and *Stats* pages are placeholders for now.
 Subclass `Strategy` and implement the decision hooks. During a turn, `player.view` holds a `PlayerView` with your hand, every player's public state (discards, protection, rejection), the number of cards left in the deck and a redacted log of the round so far.
 
 ```python
-from cards import *
-from strategy import Strategy
+from engine.cards import *
+from engine.strategy import Strategy
 
 class MyBot(Strategy):
     def __init__(self):
@@ -205,10 +209,10 @@ W3
 More examples (including an annotated one) are in [games/](games/).
 
 ### Loading LLN files
-`llnparser.py` turns `.lln` files (version 1.3 and 1.4) back into `GameHistory` objects. Since 1.4, each game stores its round-win target in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
+[lln/parser.py](lln/parser.py) turns `.lln` files (version 1.3 and 1.4) back into `GameHistory` objects. Since 1.4, each game stores its round-win target in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
 
 ```python
-from llnparser import load_lln
+from lln import load_lln
 
 histories = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
 ```

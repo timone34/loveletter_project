@@ -5,13 +5,13 @@ from collections import Counter
 from typing import TYPE_CHECKING
 
 from bots import NoPrincess
-from cards import *
-from deck import Deck
-from strategy import Strategy
+from engine.cards import *
+from engine.deck import Deck
+from engine.strategy import Strategy
 
 if TYPE_CHECKING:
-    from player import Player
-    from view import PlayerView
+    from engine.player import Player
+    from engine.view import PlayerView
 
 
 FULL = Counter(type(c) for c in Deck().cards)

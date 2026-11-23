@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cards import Card
+    from .cards import Card
 
 
 class Outcome(Enum):

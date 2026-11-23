@@ -1,7 +1,7 @@
-from cards import Baron, Guard, Handmaid, King, Priest, Prince, Princess
-from history import Outcome
+from engine.cards import Baron, Guard, Handmaid, King, Priest, Prince, Princess
+from engine.history import Outcome
 
-from .observer import Observer
+from engine.observer import Observer
 
 
 class ConsoleLogger(Observer):

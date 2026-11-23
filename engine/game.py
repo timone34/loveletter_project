@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from cards import Card
-from deck import Deck
-from history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
-from observers import Observer, Observers
-from player import Player
-from strategy import Strategy
-from view import view_for
+from .cards import Card
+from .deck import Deck
+from .history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
+from .observer import Observer, Observers
+from .player import Player
+from .strategy import Strategy
+from .view import view_for
 
 
 class Game:
