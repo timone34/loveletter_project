@@ -1,6 +1,6 @@
 // Formatting and colours shared by the Simulate and Stats pages.
 
-import type { Line, Rate, RunRecord } from "./types";
+import type { Line, Rate, RunConfig, RunRecord } from "./types";
 
 // One colour per player (or bot), by position in the lineup: seat 1 of the
 // first game is always blue, and so on. Checked with the dataviz colour
@@ -32,10 +32,12 @@ export function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-// "Ann" for a player line, "Card Counter Bot ×2" for a bot line.
+// "Ann" for a player line, "Card Counter Bot ×2" for a bot line, "Seat 1" for a seat.
 export function lineLabel(line: Line, run: RunRecord): string {
   if (line.name != null) return line.name;
-  const name = run.botNames[line.bot] ?? line.bot;
+  if (line.seat != null) return `Seat ${line.seat + 1}${line.seat === 0 ? " · deals" : line.seat === 1 ? " · starts" : ""}`;
+  const bot = line.bot ?? "";
+  const name = run.botNames[bot] ?? bot;
   return line.seats && line.seats > 1 ? `${name} ×${line.seats}` : name;
 }
 
@@ -46,6 +48,21 @@ export function lineupText(run: RunRecord): string {
   return [...counts]
     .map(([bot, n]) => `${n > 1 ? `${n}× ` : ""}${run.botNames[bot] ?? bot}`)
     .join(" vs ");
+}
+
+// The name the server gives a run left unnamed (runs/config.py, default_name):
+// "CardCounter vs 3× RandomChoice"
+export function defaultName(bots: string[]): string {
+  const counts = new Map<string, number>();
+  for (const b of bots) counts.set(b, (counts.get(b) ?? 0) + 1);
+  return [...counts].map(([bot, n]) => (n > 1 ? `${n}× ${bot}` : bot)).join(" vs ");
+}
+
+// The settings to start a new run from an old one's: a name or seed the
+// server filled in goes back to empty, so it's made fresh again.
+export function editable(config: RunConfig): RunConfig {
+  const { nameAuto, seedAuto, ...rest } = config;
+  return { ...rest, name: nameAuto ? "" : rest.name, seed: seedAuto ? "" : rest.seed };
 }
 
 export const MS_PER_GAME = 1.7; // measured on the owner's machine; only for the time estimate

@@ -9,7 +9,7 @@ import { BotTile, LibraryTile, type SeatedBot } from "../../components/BotTiles"
 import { useBots, type BotInfo } from "../play/useBots";
 import { randomSeed } from "../play/config";
 import { startRun, useRuns } from "../../sims/api";
-import { MS_PER_GAME, count, duration, lineupText, when } from "../../sims/format";
+import { MS_PER_GAME, count, defaultName, duration, editable, lineupText, when } from "../../sims/format";
 import { isActive, type RunConfig } from "../../sims/types";
 import "../play/setup/Setup.css";
 import "./Simulate.css";
@@ -21,7 +21,8 @@ import "./Simulate.css";
 // top, the bot library below, settings on the right. Arriving with a config in
 // the router state ("Edit & run again" on a Stats page) starts from that config.
 
-const STORAGE_KEY = "loveletter.simConfig";
+// v2: v1 could hold a name and seed the server had filled in, which then stuck
+const STORAGE_KEY = "loveletter.simConfig.v2";
 const GAME_PRESETS = [100, 1000, 10_000, 100_000];
 const MAX_GAMES = 100_000; // matches runs/config.py
 
@@ -64,8 +65,11 @@ export default function Simulate() {
   const { bots, error: botsError, retry } = useBots();
   const { runs } = useRuns();
 
-  // "Edit & run again" passes the old run's settings; keep its seed only if asked to
-  const [draft, setDraft] = useState<RunConfig>(() => (location.state?.config as RunConfig | undefined) ?? loadRun());
+  // "Edit & run" passes the old run's settings; a name or seed the server made up goes back to empty
+  const [draft, setDraft] = useState<RunConfig>(() => {
+    const from = location.state?.config as RunConfig | undefined;
+    return from ? editable(from) : loadRun();
+  });
   const [active, setActive] = useState(0); // the seat the bot library fills
   const [problem, setProblem] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -211,13 +215,17 @@ export default function Simulate() {
           <div className="settings">
             <SectionTitle n={3} title="Run" />
 
-            <Field label="Run name" htmlFor={ids.name}>
+            <Field
+              label="Run name"
+              htmlFor={ids.name}
+              aside={config.name && <button type="button" className="link-btn" onClick={() => update({ name: "" })}>Use lineup</button>}
+            >
               <input
                 id={ids.name}
                 className="input"
                 value={config.name}
                 maxLength={60}
-                placeholder="empty = named after the lineup"
+                placeholder={defaultName(config.players.map((p) => p.bot))}
                 onChange={(e) => update({ name: e.target.value })}
               />
             </Field>
@@ -269,9 +277,11 @@ export default function Simulate() {
               htmlFor={ids.seed}
               hint="Same seed = same decks for any lineup, and the same games for the same lineup. Empty rolls one; it's kept with the run."
               aside={
-                <button type="button" className="link-btn" onClick={() => update({ seed: randomSeed() })}>
-                  Roll one
-                </button>
+                config.seed ? (
+                  <button type="button" className="link-btn" onClick={() => update({ seed: "" })}>Clear</button>
+                ) : (
+                  <button type="button" className="link-btn" onClick={() => update({ seed: randomSeed() })}>Roll one</button>
+                )
               }
             >
               <input

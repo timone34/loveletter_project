@@ -11,6 +11,9 @@ export type RunConfig = {
   rotateSeats: boolean;
   seed: string; // "" = the server rolls one, and keeps it with the run
   saveLln: boolean;
+  // set by the server: true when name/seed were left empty and filled in for you
+  nameAuto?: boolean;
+  seedAuto?: boolean;
 };
 
 // A rate with its 95% Wilson interval, all 0-1. null when there was nothing to count.
@@ -19,11 +22,13 @@ export type Rate = { p: number; lo: number; hi: number } | null;
 export const CAUSES = ["guard", "baron", "ownBaron", "prince", "ownPrince", "princess", "showdown"] as const;
 export type Cause = (typeof CAUSES)[number];
 
-// One player's numbers, or a bot's (the players using it, summed).
+// One player's numbers, a bot's (the players using it, summed), or a seat's
+// (whoever sat there).
 export type Line = {
-  bot: string;
+  bot?: string; // players and bots
   name?: string; // players only
   seats?: number; // bots only: how many seats it had
+  seat?: number; // seats only: 0-3
   games: number; // for a bot: seat-games (3 seats x 1000 games = 3000)
   gameWins: number;
   gameWinRate: Rate;
@@ -35,7 +40,10 @@ export type Line = {
   losses: Record<Cause, number>; // how each lost round was lost
 };
 
-export type ConvergencePoint = { games: number; players: Rate[]; bots: Rate[] };
+export type ConvergencePoint = { games: number; players: Rate[]; bots: Rate[]; seats: Rate[] };
+
+// Round win rate by position in a round's turn order (0 = moves first).
+export type TurnOrder = { position: number; rounds: number; roundWins: number; roundWinRate: Rate };
 
 export type Stats = {
   games: number;
@@ -44,10 +52,13 @@ export type Stats = {
   roundsPerGame: { mean: number | null; min: number | null; max: number | null; histogram: [number, number][] };
   players: Line[];
   bots: Line[];
+  seats: Line[];
+  turnOrder: TurnOrder[];
   convergence?: ConvergencePoint[]; // left out of the history list
 };
 
-export type RunStatus = "queued" | "running" | "done" | "failed";
+// outdated = saved by an older version of the stats (see runs/history.py, FORMAT)
+export type RunStatus = "queued" | "running" | "done" | "failed" | "outdated";
 
 export type RunRecord = {
   id: string; // also sorts by time
@@ -59,7 +70,8 @@ export type RunRecord = {
   hasLln: boolean;
   config: RunConfig;
   botNames: Record<string, string>; // strategy id -> display name
-  stats: Stats | null; // null until the first game is in
+  stats: Stats | null; // null until the first game is in, and for outdated runs
+  savedFormat?: number; // outdated runs only
 };
 
 export const isActive = (r: RunRecord) => r.status === "queued" || r.status === "running";

@@ -166,6 +166,11 @@
   color: var(--primary);
 }
 
+.status--outdated {
+  background: #f6ecd2;
+  color: #7a5a12;
+}
+
 .status--failed {
   background: #fbe3e2;
   color: #a12a29;

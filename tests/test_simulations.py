@@ -1,6 +1,7 @@
 """The /api/simulations endpoints: runs play in the background, are saved to the
 history, and can be repeated exactly from their saved settings."""
 import bz2
+import json
 import time
 
 import pytest
@@ -66,14 +67,20 @@ def test_saved_games_match_the_stats(client):
     record = finish(client, client.post("/api/simulations", json=CONFIG).json()["id"])
     lln = client.get(f"/api/simulations/{record['id']}/lln")
     assert lln.status_code == 200
-    games = parse_lln(bz2.decompress(lln.content).decode("utf-8"), target_round_wins=2)
+    assert lln.headers["content-type"].startswith("text/plain")
+    assert '.lln"' in lln.headers["content-disposition"]
+    games = parse_lln(lln.text, target_round_wins=2)
     assert len(games) == 60
     assert sum(len(gh.rounds) for gh in games) == record["stats"]["rounds"]
+
+    packed = client.get(f"/api/simulations/{record['id']}/lln?compressed=true")
+    assert bz2.decompress(packed.content).decode("utf-8") == lln.text
 
 
 def test_saved_settings_repeat_the_run(client):
     first = finish(client, client.post("/api/simulations", json={**CONFIG, "seed": ""}).json()["id"])
     assert first["config"]["seed"]  # an empty seed gets a random one, kept with the run
+    assert first["config"]["seedAuto"] and not first["config"]["nameAuto"]
     again = finish(client, client.post("/api/simulations", json=first["config"]).json()["id"])
     assert again["stats"] == first["stats"]
 
@@ -112,3 +119,28 @@ def test_unknown_ids(client):
     assert client.get("/api/simulations/nope").status_code == 404
     assert client.get("/api/simulations/..%2Fserver").status_code == 404
     assert client.delete("/api/simulations/nope").status_code == 404
+
+
+def test_empty_name_is_made_from_the_lineup(client):
+    record = client.post("/api/simulations", json={**CONFIG, "name": ""}).json()
+    assert record["config"]["name"] == "CardCounter vs 2× RandomChoice vs NoPrincess"
+    assert record["config"]["nameAuto"]
+    renamed = client.patch(f"/api/simulations/{record['id']}", json={"name": "Mine"}).json()
+    assert renamed["config"]["name"] == "Mine" and not renamed["config"]["nameAuto"]
+
+
+def test_records_from_another_format_are_outdated(client, tmp_path):
+    record = finish(client, client.post("/api/simulations", json=CONFIG).json()["id"])
+    path = tmp_path / f"{record['id']}.json"
+    old = json.loads(path.read_text(encoding="utf-8"))
+    del old["format"]  # as saved before records had a format
+    path.write_text(json.dumps(old), encoding="utf-8")
+
+    loaded = client.get(f"/api/simulations/{record['id']}").json()
+    assert loaded["status"] == "outdated" and loaded["stats"] is None
+    assert loaded["savedFormat"] == 1
+    assert loaded["config"]["seed"] == CONFIG["seed"]  # enough to run it again
+    assert client.get("/api/simulations").json()[0]["status"] == "outdated"
+    # renaming changes only the name on disk; the old stats stay there
+    client.patch(f"/api/simulations/{record['id']}", json={"name": "Old run"})
+    assert "stats" in json.loads(path.read_text(encoding="utf-8"))

@@ -1,4 +1,5 @@
 import asyncio
+import bz2
 import dataclasses
 import queue
 import random
@@ -8,7 +9,7 @@ from enum import Enum
 from typing import Any
 
 from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from bots import available_bots
 from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
@@ -526,9 +527,24 @@ def delete_simulation(run_id: str) -> None:
 
 
 @app.get("/api/simulations/{run_id}/lln")
-def download_lln(run_id: str) -> FileResponse:
-    """The run's games as compressed LLN (only for runs started with saveLln)."""
+def download_lln(run_id: str, compressed: bool = False) -> Response:
+    """The run's games as LLN (only for runs started with saveLln).
+
+    Stored compressed (.lln.bz2, ~10x smaller); sent as plain .lln text so it
+    opens in any editor, unless ?compressed=true asks for the file as stored."""
     path = history.lln_path(run_id)
     if path is None:
         raise HTTPException(404, "This simulation didn't keep its games.")
-    return FileResponse(path, filename=f"{run_id}.lln.bz2", media_type="application/x-bzip2")
+    if compressed:
+        return FileResponse(path, filename=f"{run_id}.lln.bz2", media_type="application/x-bzip2")
+
+    def text():
+        with bz2.open(path, "rb") as f:
+            while chunk := f.read(1 << 16):
+                yield chunk
+
+    return StreamingResponse(
+        text(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{run_id}.lln"'},
+    )

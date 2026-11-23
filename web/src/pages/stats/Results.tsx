@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Header, Footer } from "../../components/Header";
 import { Segmented } from "../../components/Field";
 import { deleteRun, llnUrl, renameRun, startRun, useRun } from "../../sims/api";
-import { count, duration, lineLabel, lineupText, pct, rateText, seriesColor, when } from "../../sims/format";
+import { count, duration, editable, lineLabel, lineupText, pct, rateText, seriesColor, when } from "../../sims/format";
 import { isActive, type Line, type RunRecord, type Stats } from "../../sims/types";
 import { RateBars } from "./charts/RateBars";
 import { ConvergenceChart } from "./charts/ConvergenceChart";
@@ -17,10 +17,17 @@ import "./Stats.css";
 // One simulation's stats (/stats/<id>). While the run is going, useRun polls
 // and every chart redraws with the games so far.
 //
-// "By player" shows each seat's player; "By bot" sums the players that use the
-// same bot (only offered when some bot has more than one seat).
+// "By player" shows each player; "By bot" sums the players that use the same
+// bot (only offered when some bot has more than one seat); "By seat" sums
+// whoever sat in each seat.
 
-type Group = "players" | "bots";
+type Group = "players" | "bots" | "seats";
+
+const GROUP_NOTES: Record<Group, string> = {
+  players: "",
+  bots: "A bot's games count once per seat; its win rate is per seat.",
+  seats: "Seat 1 deals the first round of each game, seat 2 moves first in it. Later rounds start with the last winner, see Turn order.",
+};
 
 export default function Results() {
   const { id } = useParams();
@@ -42,7 +49,7 @@ export default function Results() {
 
   const stats = run.stats;
   const hasDuplicates = new Set(run.config.players.map((p) => p.bot)).size < run.config.players.length;
-  const shown: Group = hasDuplicates ? group : "players";
+  const shown: Group = group === "bots" && !hasDuplicates ? "players" : group;
   const lines = stats ? stats[shown] : [];
   const rows = lines.map((line, i) => ({ line, label: lineLabel(line, run), color: seriesColor(i) }));
 
@@ -50,7 +57,8 @@ export default function Results() {
     setProblem(null);
     fn().catch((e: Error) => setProblem(e.message));
   };
-  const runAgain = act(async () => navigate(`/stats/${(await startRun(run.config)).id}`));
+  // same games: keep the seed, but a lineup name the server made stays automatic
+  const runAgain = act(async () => navigate(`/stats/${(await startRun({ ...editable(run.config), seed: run.config.seed })).id}`));
   const remove = act(async () => {
     const msg = isActive(run) ? "Stop this simulation? Its results are thrown away." : `Delete “${run.config.name}” from the history?`;
     if (!window.confirm(msg)) return;
@@ -94,7 +102,11 @@ export default function Results() {
               <button type="button" className="btn" onClick={() => navigate("/simulate", { state: { config: run.config } })}>
                 Edit & run
               </button>
-              {run.hasLln && <a className="btn" href={llnUrl(run.id)} download>Download LLN</a>}
+              {run.hasLln && (
+                <a className="btn" href={llnUrl(run.id)} download title="Plain-text .lln; kept compressed on disk">
+                  Download LLN
+                </a>
+              )}
               <button type="button" className="btn" onClick={remove}>{isActive(run) ? "Stop" : "Delete"}</button>
             </div>
           </div>
@@ -116,20 +128,19 @@ export default function Results() {
               <Kpi label="Tied rounds" value={count(stats.tiedRounds)} sub={`${pct(stats.tiedRounds / stats.rounds)} of rounds, a win for each`} />
             </section>
 
-            {hasDuplicates && (
-              <div className="stats__filters">
-                <Segmented<Group>
-                  label="Group"
-                  value={group}
-                  onChange={setGroup}
-                  options={[
-                    { value: "players", label: "By player" },
-                    { value: "bots", label: "By bot" },
-                  ]}
-                />
-                {shown === "bots" && <span className="stats__filter-note">A bot's games count once per seat; its win rate is per seat.</span>}
-              </div>
-            )}
+            <div className="stats__filters">
+              <Segmented<Group>
+                label="Group"
+                value={shown}
+                onChange={setGroup}
+                options={[
+                  { value: "players", label: "By player" },
+                  ...(hasDuplicates ? [{ value: "bots" as const, label: "By bot" }] : []),
+                  { value: "seats", label: "By seat" },
+                ]}
+              />
+              {GROUP_NOTES[shown] && <span className="stats__filter-note">{GROUP_NOTES[shown]}</span>}
+            </div>
 
             <div className="stats__grid">
               <Card
@@ -171,6 +182,22 @@ export default function Results() {
                 />
               </Card>
 
+              <Card
+                title="Turn order"
+                note="Round win rate by when you move in the round. Moving first is the same for every bot, so this is the table's own advantage."
+              >
+                <RateBars
+                  reference={0.25}
+                  referenceLabel="25%"
+                  rows={stats.turnOrder.map((t) => ({
+                    label: ORDINALS[t.position] ?? `${t.position + 1}th`,
+                    color: "var(--primary)",
+                    rate: t.roundWinRate,
+                    detail: `${count(t.roundWins)} of ${count(t.rounds)} rounds`,
+                  }))}
+                />
+              </Card>
+
               <Card title="Guard accuracy" note="Correct guesses out of guesses checked. Guards on a protected player don't count.">
                 <RateBars
                   rows={rows.map((r) => ({
@@ -204,6 +231,8 @@ export default function Results() {
   );
 }
 
+const ORDINALS = ["Moves 1st", "Moves 2nd", "Moves 3rd", "Moves 4th (dealer)"];
+
 function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="page">
@@ -215,6 +244,15 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 function Progress({ run }: { run: RunRecord }) {
+  if (run.status === "outdated") {
+    return (
+      <p className="notice">
+        This run was saved by an older version of the stats (format {run.savedFormat}), so its numbers aren't shown.
+        Its settings and seed are kept: Run again plays the same games and works them out the current way
+        (as long as the bots haven't changed since).
+      </p>
+    );
+  }
   if (run.status === "failed") {
     return <p className="stats__problem" role="alert">This run stopped with an error: {run.error}</p>;
   }

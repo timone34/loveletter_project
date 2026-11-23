@@ -5,6 +5,13 @@ simulations/<id>.lln.bz2 when it was asked to keep the games. Runs that are
 queued or still playing only live in memory; their stats so far can be read
 at any time, which is what lets the Stats page fill in live.
 
+Every record carries FORMAT, the version of its layout. A record saved with
+another format (older code, before a stat was added or changed) is still
+listed, with its settings, but as status "outdated" and without stats, so the
+page never shows half-understood numbers. Its settings include the seed, so
+running it again gives the same games with today's stats (if the bots haven't
+changed since).
+
 Runs play one at a time on a single worker thread, because a seeded run
 reseeds Python's global `random` (see stats.iter_games): two at once would
 make each other unrepeatable.
@@ -32,6 +39,17 @@ from .config import RunConfig
 
 HISTORY_DIR = Path(__file__).resolve().parent.parent / "simulations"
 
+# Bump when the saved stats change shape or meaning (a new or redefined stat in
+# stats/tally.py, a renamed field). 1 = the first version, which had no field.
+FORMAT = 2
+
+
+def checked(record: dict[str, Any]) -> dict[str, Any]:
+    """A record read from disk, marked outdated if it was saved with another format."""
+    if record.get("format", 1) == FORMAT:
+        return record
+    return {**record, "status": "outdated", "stats": None, "savedFormat": record.get("format", 1)}
+
 
 class Run:
     """One simulation: its settings, progress and running tally."""
@@ -55,6 +73,7 @@ class Run:
             stats = self.tally.to_json() if self.tally.games else None
         bots = available_bots()
         return {
+            "format": FORMAT,
             "id": self.id,
             "createdAt": self.created_at,
             "status": self.status,
@@ -85,7 +104,7 @@ class History:
         if self.dir.exists():
             for path in self.dir.glob("*.json"):
                 try:
-                    records.append(json.loads(path.read_text(encoding="utf-8")))
+                    records.append(checked(json.loads(path.read_text(encoding="utf-8"))))
                 except (OSError, json.JSONDecodeError):
                     continue  # half-written or hand-edited: skip it rather than break the page
         for r in records:
@@ -100,7 +119,7 @@ class History:
         path = self._path(run_id, ".json")
         if path is None or not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        return checked(json.loads(path.read_text(encoding="utf-8")))
 
     def lln_path(self, run_id: str) -> Path | None:
         path = self._path(run_id, ".lln.bz2")
@@ -125,13 +144,16 @@ class History:
         run = self.active.get(run_id)
         if run is not None:
             run.config.name = name  # saved with the new name when it finishes
+            run.config.name_auto = False
             return run.to_json()
-        record = self.get(run_id)
-        if record is None:
+        path = self._path(run_id, ".json")
+        if path is None or not path.exists():
             return None
+        record = json.loads(path.read_text(encoding="utf-8"))  # as saved, not the outdated view
         record["config"]["name"] = name
+        record["config"]["nameAuto"] = False
         self._save(run_id, record)
-        return record
+        return checked(record)
 
     def delete(self, run_id: str) -> bool:
         """Stop a queued or running run, or delete a saved one."""

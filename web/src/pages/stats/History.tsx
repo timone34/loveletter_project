@@ -111,11 +111,14 @@ export default function History() {
 // Each player's game win rate as a short labelled bar, in seat order.
 // The track runs 0-50%, so the fair 25% line sits in the middle.
 function WinRates({ run }: { run: RunRecord }) {
-  if (!run.stats) return <span className="runs__lineup">{run.status === "failed" ? run.error : "–"}</span>;
+  if (!run.stats) {
+    const why = run.status === "failed" ? run.error : run.status === "outdated" ? "Saved by an older version: open it to run it again." : "–";
+    return <span className="runs__lineup">{why}</span>;
+  }
   return (
     <div className="mini-rates">
       {run.stats.players.map((p, i) => (
-        <span key={p.name} className="mini-rates__row" title={`${p.name} (${run.botNames[p.bot] ?? p.bot})`}>
+        <span key={p.name} className="mini-rates__row" title={`${p.name} (${run.botNames[p.bot ?? ""] ?? p.bot})`}>
           <span className="mini-rates__name">{p.name}</span>
           <span className="mini-rates__track">
             <span className="mini-rates__bar" style={{ width: `${Math.min(1, (p.gameWinRate?.p ?? 0) * 2) * 100}%`, background: seriesColor(i) }} />

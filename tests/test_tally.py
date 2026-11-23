@@ -133,3 +133,33 @@ def test_loss_causes():
 def test_empty_tally():
     stats = Tally().to_json()
     assert stats["games"] == 0 and stats["players"] == [] and stats["roundsPerGame"]["mean"] is None
+
+
+def test_seats_sum_to_the_same_totals(run):
+    _, stats = run
+    seats, players = stats["seats"], stats["players"]
+    assert [s["seat"] for s in seats] == [0, 1, 2, 3]
+    for key in ("games", "gameWins", "rounds", "roundWins"):
+        assert sum(s[key] for s in seats) == sum(p[key] for p in players)
+    for cause in CAUSES:
+        assert sum(s["losses"][cause] for s in seats) == sum(p["losses"][cause] for p in players)
+    assert sum(s["guard"]["correct"] for s in seats) == sum(p["guard"]["correct"] for p in players)
+
+
+def test_fixed_seats_make_seats_and_players_equal():
+    stats = tally_of(simulate(100, lineup(), rotate_seats=False, seed=2)).to_json()
+    for seat, player in zip(stats["seats"], stats["players"]):
+        assert {k: v for k, v in seat.items() if k != "seat"} == \
+            {k: v for k, v in player.items() if k not in ("name", "bot")}
+
+
+def test_turn_order(run):
+    ghs, stats = run
+    order = stats["turnOrder"]
+    assert [t["position"] for t in order] == [0, 1, 2, 3]
+    assert all(t["rounds"] == stats["rounds"] for t in order)
+    extra_winners = sum(len(rh.winners) - 1 for gh in ghs for rh in gh.rounds)
+    assert sum(t["roundWins"] for t in order) == stats["rounds"] + extra_winners
+    # position 0 is the player left of the dealer, who moves first
+    firsts = sum(rh.turns[0].seat == (rh.dealer + 1) % 4 for gh in ghs for rh in gh.rounds)
+    assert firsts == stats["rounds"]

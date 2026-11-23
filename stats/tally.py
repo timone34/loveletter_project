@@ -29,7 +29,15 @@ Definitions (all from GameHistory, nothing a bot couldn't be credited for):
 Players are grouped by (name, strategy); `bots` sums the players that use the
 same strategy. A bot's "games" then counts seats, so 3 RandomChoice players in
 1000 games are 3000 games, and its win rate is per seat (fair share 1/4 at a
-4-player table, whatever the number of seats).
+4-player table, whatever the number of seats). `seats` groups the same counts
+by seat number instead (seat 1 deals the first round of every game, seat 2
+starts it), whoever sat there.
+
+  turn order      round win rate by position in the round's turn order: 1st
+                  is the player left of that round's dealer, who moves first.
+                  The dealer changes every round (the last winner starts), so
+                  this is the first-mover advantage itself, unlike seats,
+                  which only fix who starts round 1.
 """
 from __future__ import annotations
 
@@ -128,6 +136,49 @@ def loss_cause(turn: TurnHistory, victim: int) -> str:
     raise ValueError(f"No known way to be knocked out by {turn.played!r}")
 
 
+def count_seat(gh: GameHistory, seat: int) -> Counts:
+    """Everything one seat did in one game."""
+    c = Counts(games=1, game_wins=int(gh.winner == seat))
+
+    for rh in gh.rounds:
+        c.rounds += 1
+        knocked_out = False
+
+        for turn in rh.turns:
+            if seat in turn.rejected:
+                c.losses[loss_cause(turn, seat)] += 1
+                knocked_out = True
+            if turn.seat != seat or turn.played is None:  # None: skipped, already out
+                continue
+
+            if isinstance(turn.played, Guard):
+                c.guards += 1
+                if turn.outcome is Outcome.CORRECT:
+                    c.guard_correct += 1
+                elif turn.outcome is Outcome.INCORRECT:
+                    c.guard_incorrect += 1
+                elif turn.outcome is Outcome.PROTECTED:
+                    c.guard_protected += 1
+
+            elif isinstance(turn.played, Baron):
+                c.barons += 1
+                if turn.outcome is Outcome.WIN:
+                    c.baron_won += 1
+                elif turn.outcome is Outcome.LOSE:
+                    c.baron_lost += 1
+                elif turn.outcome is Outcome.DRAW:
+                    c.baron_tied += 1
+                elif turn.outcome is Outcome.PROTECTED:
+                    c.baron_protected += 1
+
+        if seat in rh.winners:
+            c.round_wins += 1
+        elif not knocked_out:
+            c.losses["showdown"] += 1
+
+    return c
+
+
 class Tally:
     def __init__(self, expected_games: int | None = None) -> None:
         self.games = 0
@@ -135,70 +186,37 @@ class Tally:
         self.tied_rounds = 0  # showdowns won by more than one player
         self.rounds_per_game: Counter[int] = Counter()
         self.players: dict[tuple[str, str], Counts] = {}  # (name, strategy), first-seen order
+        self.seats: list[Counts] = []  # by seat number, whoever sat there
+        self.turn_order: list[list[int]] = []  # [rounds, round wins] by position in the turn order
 
         # snapshot the win rates every `every` games (and after the last one)
         self.every = max(1, (expected_games or 1000) // CONVERGENCE_POINTS)
         self.convergence: list[dict[str, Any]] = []
 
-    def _counts(self, gh: GameHistory, seat: int) -> Counts:
-        key = (gh.players[seat], gh.strategies[seat])
-        if key not in self.players:
-            self.players[key] = Counts()
-        return self.players[key]
-
     def add(self, gh: GameHistory) -> None:
         """Count one finished game."""
-        seats = range(len(gh.players))
-        counts = [self._counts(gh, seat) for seat in seats]
+        n = len(gh.players)
+        game = [count_seat(gh, seat) for seat in range(n)]  # this game's counts, per seat
 
         self.games += 1
         self.rounds += len(gh.rounds)
         self.rounds_per_game[len(gh.rounds)] += 1
+        self.tied_rounds += sum(len(rh.winners) > 1 for rh in gh.rounds)
 
-        for seat in seats:
-            counts[seat].games += 1
-            counts[seat].game_wins += gh.winner == seat
+        for seat, counts in enumerate(game):
+            self.players.setdefault((gh.players[seat], gh.strategies[seat]), Counts())
+            self.players[gh.players[seat], gh.strategies[seat]] += counts
+            while len(self.seats) <= seat:
+                self.seats.append(Counts())
+            self.seats[seat] += counts
 
         for rh in gh.rounds:
-            if len(rh.winners) > 1:
-                self.tied_rounds += 1
-            knocked_out: set[int] = set()
-
-            for turn in rh.turns:
-                if turn.played is None:  # skipped: the player was already out
-                    continue
-                me = counts[turn.seat]
-
-                if isinstance(turn.played, Guard):
-                    me.guards += 1
-                    if turn.outcome is Outcome.CORRECT:
-                        me.guard_correct += 1
-                    elif turn.outcome is Outcome.INCORRECT:
-                        me.guard_incorrect += 1
-                    elif turn.outcome is Outcome.PROTECTED:
-                        me.guard_protected += 1
-
-                elif isinstance(turn.played, Baron):
-                    me.barons += 1
-                    if turn.outcome is Outcome.WIN:
-                        me.baron_won += 1
-                    elif turn.outcome is Outcome.LOSE:
-                        me.baron_lost += 1
-                    elif turn.outcome is Outcome.DRAW:
-                        me.baron_tied += 1
-                    elif turn.outcome is Outcome.PROTECTED:
-                        me.baron_protected += 1
-
-                for victim in turn.rejected:
-                    counts[victim].losses[loss_cause(turn, victim)] += 1
-                    knocked_out.add(victim)
-
-            for seat in seats:
-                counts[seat].rounds += 1
-                if seat in rh.winners:
-                    counts[seat].round_wins += 1
-                elif seat not in knocked_out:
-                    counts[seat].losses["showdown"] += 1
+            for seat in range(n):
+                position = (seat - rh.dealer - 1) % n  # 0 = moves first
+                while len(self.turn_order) <= position:
+                    self.turn_order.append([0, 0])
+                self.turn_order[position][0] += 1
+                self.turn_order[position][1] += seat in rh.winners
 
         if self.games % self.every == 0:
             self.convergence.append(self._point())
@@ -209,6 +227,7 @@ class Tally:
             "games": self.games,
             "players": [wilson(c.game_wins, c.games) for c in self.players.values()],
             "bots": [wilson(c.game_wins, c.games) for c in self.by_bot().values()],
+            "seats": [wilson(c.game_wins, c.games) for c in self.seats],
         }
 
     def by_bot(self) -> dict[str, Counts]:
@@ -242,6 +261,11 @@ class Tally:
             "bots": [
                 {"bot": strategy, "seats": seats_per_bot[strategy], **counts.to_json()}
                 for strategy, counts in self.by_bot().items()
+            ],
+            "seats": [{"seat": i, **counts.to_json()} for i, counts in enumerate(self.seats)],
+            "turnOrder": [
+                {"position": i, "rounds": rounds, "roundWins": wins, "roundWinRate": wilson(wins, rounds)}
+                for i, (rounds, wins) in enumerate(self.turn_order)
             ],
             "convergence": convergence,
         }

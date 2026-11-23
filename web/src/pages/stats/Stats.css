@@ -122,7 +122,13 @@
 }
 
 .stats__filters .segmented {
-  width: 280px;
+  flex: none;
+  width: max-content;
+}
+
+.stats__filters .segmented__option {
+  padding-inline: 1rem;
+  white-space: nowrap;
 }
 
 .stats__filter-note {
@@ -205,6 +211,7 @@
 .stats__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start; /* each card as tall as its own content */
   gap: 1rem;
 }
 

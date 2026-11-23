@@ -34,6 +34,10 @@ class RunConfig:
     rotate_seats: bool = True
     seed: str = ""
     save_lln: bool = False
+    # True when the browser left these empty and the server filled them in, so
+    # "Edit & run" can leave them empty again (and a new lineup gets a new name)
+    name_auto: bool = False
+    seed_auto: bool = False
 
     @classmethod
     def from_json(cls, data: Any) -> RunConfig:
@@ -62,17 +66,19 @@ class RunConfig:
         if not isinstance(target, int) or isinstance(target, bool) or not 1 <= target <= 9:
             raise ValueError("Round wins to win must be between 1 and 9.")
 
-        seed = str(data.get("seed") or "").strip()[:40] or secrets.token_hex(3)
-        name = str(data.get("name") or "").strip()[:60] or default_name(players)
+        seed = str(data.get("seed") or "").strip()[:40]
+        name = str(data.get("name") or "").strip()[:60]
 
         return cls(
-            name=name,
+            name=name or default_name(players),
             players=players,
             games=games,
             target_round_wins=target,
             rotate_seats=bool(data.get("rotateSeats", True)),
-            seed=seed,
+            seed=seed or secrets.token_hex(3),
             save_lln=bool(data.get("saveLln", False)),
+            name_auto=not name,
+            seed_auto=not seed,
         )
 
     def to_json(self) -> dict[str, Any]:
@@ -85,6 +91,8 @@ class RunConfig:
             "rotateSeats": self.rotate_seats,
             "seed": self.seed,
             "saveLln": self.save_lln,
+            "nameAuto": self.name_auto,
+            "seedAuto": self.seed_auto,
         }
 
 
