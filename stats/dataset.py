@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from history import GameHistory
+    from engine.history import GameHistory
 
 
 @dataclass

@@ -1,7 +1,7 @@
 import time
 
 from stats import *
-from strategy import Strategy
+from engine.strategy import Strategy
 from bots import RandomChoice, NoPrincess, CardCounter
 
 

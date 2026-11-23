@@ -1,4 +1,4 @@
-from history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
+from .history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
 
 
 class Observer:

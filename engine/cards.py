@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from history import Outcome
+from .history import Outcome
 
 if TYPE_CHECKING:
-    from game import Round, Turn
-    from player import Player
+    from .game import Round, Turn
+    from .player import Player
 
 
 class Card:

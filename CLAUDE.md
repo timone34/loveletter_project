@@ -22,16 +22,19 @@ A secondary goal is a **YouTube video** on Love Letter and the journey of buildi
 - The owner is fairly experienced with Python/numpy, new to pandas, and new to frontend/web development. For frontend work, explain what each file does and give enough information to extend the design by hand. The owner cares about results more than about learning every detail of webapp code, so using agents for web plumbing is fine; bot logic and metric definitions deserve more care and explanation.
 - The owner uses a type checker, so keep annotations correct (e.g. `Card | None`, pandas return types).
 
-## Architecture (root of the repo)
+## Architecture
 
-- `game.py`: `Game`, `Round`, `Turn`, each with its own `play()`.
-- `cards.py`: card effects. Shared targeting code belongs in the `Card` base class rather than repeated blocks (still being cleaned up).
-- `deck.py`, `player.py`: deck (draws from the front) and player state, including the forced Countess rule (playable cards) and a `seat`.
-- `strategy.py`: base `Strategy` class. It provides random defaults and per-card targeting hooks (`choose_guard_target`, `choose_prince_target`, ...) so a bot can override just one card's targeting.
-- `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`).
-- `view.py`: `PlayerView`, `view_for`, `redact_turn`. One view per player is built at the start of each turn, so a strategy sees only legitimate information. The view is also used for the server's live display.
-- `history.py`: dataclasses (`TurnHistory`, `RoundHistory`, `GameHistory`, `ShowdownHistory`). They are write-only while the game runs; the game never reads them back.
-- `observers/`: Observers consume history events (`on_game_start`, `on_round_start`, `on_turn_start`, `on_turn_end`, `on_showdown`, `on_round_end`, `on_game_end`). Includes `ConsoleLogger`; `LLNWriter` is being developed on the LLN branch.
+`engine/` is the game engine: the hard rules. **It must never import from outside `engine/`.** Bots, observers, stats, LLN and the server depend on the engine, never the other way around. If changing a file changes the game itself, it belongs in `engine/`; everything else goes in its own folder. `engine/__init__.py` re-exports the public names (`from engine import Game, Strategy, Guard, Observer`). Entry points (`main.py`, `experiment.py`, `server.py`) stay in the repo root.
+
+- `engine/game.py`: `Game`, `Round`, `Turn`, each with its own `play()`.
+- `engine/cards.py`: card effects. Shared targeting code belongs in the `Card` base class rather than repeated blocks (still being cleaned up).
+- `engine/deck.py`, `engine/player.py`: deck (draws from the front) and player state, including the forced Countess rule (playable cards) and a `seat`.
+- `engine/strategy.py`: base `Strategy` class only (the interface the engine calls). It has per-card targeting hooks (`choose_guard_target`, `choose_prince_target`, ...) so a bot can override just one card's targeting.
+- `engine/view.py`: `PlayerView`, `view_for`, `redact_turn`. One view per player is built at the start of each turn, so a strategy sees only legitimate information. The view is also used for the server's live display.
+- `engine/history.py`: dataclasses (`TurnHistory`, `RoundHistory`, `GameHistory`, `ShowdownHistory`). They are write-only while the game runs; the game never reads them back.
+- `engine/observer.py`: `Observer` / `Observers` base classes. The engine calls these hooks (`on_game_start`, `on_round_start`, `on_turn_start`, `on_turn_end`, `on_turn_skipped`, `on_showdown`, `on_round_end`, `on_game_end`).
+- `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`), plus `bot_terminal.py` (`TerminalPlayer`, a human playing in the terminal).
+- `observers/`: Observer implementations. Includes `ConsoleLogger`; `LLNWriter` is being developed on the LLN branch.
 - `stats/`: `sim.py` (`simulate(n, players, obs, rotate_seats=True)` returns `list[GameHistory]`, seats rotate between games), `dataset.py` (pandas tables), `metrics.py` (win rates with 95% CIs and other metrics), `plots.py` (matplotlib). `experiment.py` sits in the repo root.
 - `server.py`: FastAPI with a `/ws/play` WebSocket (`Web_Strategy`, `TableObserver`, `redact`).
 - `web/`: React + TypeScript frontend with its own CSS per component (`.tsx` + `.css` pairs, shared pieces in `web/src/content/Asset.tsx`).
