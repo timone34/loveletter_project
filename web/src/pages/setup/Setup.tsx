@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { Header, Footer } from "../../components/Header";
@@ -66,6 +66,8 @@ export default function Setup() {
     const mode = new URLSearchParams(location.search).get("mode");
     return MODES.some((m) => m.value === mode) ? { ...saved, mode: mode as Mode } : saved;
   });
+  // remember every change (in memory), so leaving the page and coming back keeps it
+  useEffect(() => saveSetup(draft), [draft]);
   const [activeSlot, setActive] = useState(0); // the bot seat the library fills
   const [problem, setProblem] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -103,7 +105,6 @@ export default function Setup() {
     e.preventDefault();
     const issue = bots ? validate(config) : "The bot list hasn't loaded yet.";
     if (issue) return setProblem(issue);
-    saveSetup(config);
     if (!simulate) {
       saveConfig(toTableConfig(config));
       navigate("/play/table", { state: { start: true } });

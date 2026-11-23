@@ -10,6 +10,15 @@
   padding: 0 clamp(20px, 5vw, 64px) 1rem;
 }
 
+/* Fullscreen (the button, or F): only the table and the log fill the screen.
+   The element itself becomes the screen, so it needs its own background. */
+.play:fullscreen {
+  height: 100vh;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  background: var(--background);
+}
+
 /* ----- Table ----- */
 
 .table {

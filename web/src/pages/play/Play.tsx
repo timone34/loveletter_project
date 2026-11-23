@@ -7,6 +7,7 @@ import { PlayerSeat } from "./components/PlayerSeat";
 import { DeckPile } from "./components/DeckPile";
 import { TablePanel } from "./components/TablePanel";
 import { useGame } from "./useGame";
+import { useFullscreen } from "./useFullscreen";
 import { botsAtTable, loadConfig } from "./config";
 import "./Play.css";
 
@@ -15,6 +16,8 @@ export default function Play() {
   const game = useGame();
   const { table, prompt, status } = game;
   const navigate = useNavigate();
+  // the table and log, without the site header
+  const { ref: fullscreenRef, isFullscreen, toggle: toggleFullscreen } = useFullscreen<HTMLElement>();
   const location = useLocation();
 
   // the settings from the setup page (/play); "New game" reuses them
@@ -47,7 +50,7 @@ export default function Play() {
     <div className="page">
       <Header />
 
-      <main className="play">
+      <main className="play" ref={fullscreenRef}>
 
         <section className="table">
           <header className="table__header">
@@ -99,6 +102,15 @@ export default function Play() {
                   aria-pressed={status.reveal}
                 >
                   Reveal hands
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={toggleFullscreen}
+                  aria-pressed={isFullscreen}
+                  title="Fullscreen (F)"
+                >
+                  {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
                 </button>
               </div>
             </div>

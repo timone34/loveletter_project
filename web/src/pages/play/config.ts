@@ -39,27 +39,17 @@ export const DEFAULT_CONFIG: TableConfig = {
 
 export const NAME_LIMIT = 24; // matches the server
 
-const STORAGE_KEY = "loveletter.tableConfig";
-
 // The settings of the last game started from the setup page, so the table's
-// "New game" can start another one. Storage can be unavailable (private
-// windows), so every access is guarded.
+// "New game" can start another one. In memory only, like the setup page's
+// choices: a reload starts from the defaults.
+let current: TableConfig = DEFAULT_CONFIG;
+
 export function loadConfig(): TableConfig {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (saved && Array.isArray(saved.opponents)) return { ...DEFAULT_CONFIG, ...saved };
-  } catch {
-    // fall through to the defaults
-  }
-  return DEFAULT_CONFIG;
+  return current;
 }
 
 export function saveConfig(config: TableConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // not saved; the game still starts with these settings
-  }
+  current = config;
 }
 
 // The bots at the table, for texts like "Alice, Bob and Charlie are waiting".

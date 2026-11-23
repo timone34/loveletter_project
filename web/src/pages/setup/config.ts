@@ -56,24 +56,16 @@ export const DEFAULT_SETUP: SetupConfig = {
   saveLln: false,
 };
 
-const STORAGE_KEY = "loveletter.setup";
+// The current choices, kept in memory only: they survive going to the table
+// or History and back, but a reload (Ctrl+R) starts from the defaults again.
+let current: SetupConfig = DEFAULT_SETUP;
 
 export function loadSetup(): SetupConfig {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
-    if (saved && Array.isArray(saved.players) && saved.players.length === 4) return { ...DEFAULT_SETUP, ...saved };
-  } catch {
-    // storage unavailable or garbled: defaults
-  }
-  return DEFAULT_SETUP;
+  return current;
 }
 
 export function saveSetup(config: SetupConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // not remembered; the game or run still starts
-  }
+  current = config;
 }
 
 // The players who actually sit down in this mode, in seat order.
