@@ -29,6 +29,7 @@ def turn_dict(turn) -> dict:
         "seen": name(turn.seen),
         "discarded": name(turn.discarded),
         "redrawn": name(turn.redrawn),
+        "received": name(turn.received),
         "rejected": turn.rejected,
     }
 
@@ -137,6 +138,7 @@ class Web_Strategy(Strategy):
     waits for the answer. The connection only forwards valid answers."""
 
     def __init__(self, session: "Session") -> None:
+        self.id = "WebPlayer"
         self.name = "Player Input"
         self.session = session
 
@@ -326,6 +328,8 @@ def redact(msg: dict) -> dict:
             msg["held"] = msg["drawn"] = msg["seen"] = None
         if msg["target"] != you:
             msg["redrawn"] = None  # a Prince's redraw is only seen by its target
+        if you not in (msg["seat"], msg["target"]):
+            msg["received"] = None  # a King swap is only seen by the two players
     return msg
 
 class Connection:

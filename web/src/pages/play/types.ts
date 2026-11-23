@@ -44,6 +44,7 @@ export type TurnEvent = {
     seen: CardName | null;
     discarded: CardName | null;
     redrawn: CardName | null;
+    received: CardName | null; // King: the card the player got in the swap
     rejected: number[];
 };
 
