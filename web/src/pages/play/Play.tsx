@@ -12,16 +12,15 @@ import { botsAtTable, loadConfig } from "./config";
 import "./Play.css";
 
 
-// The narrowest the table area can be in fullscreen without squeezing the table:
-// the table as it is now, the log at its minimum, the gap and the side padding.
-// (The empty spacer left of the table may shrink to nothing; see Play.css.)
+// The narrowest the table area may get in fullscreen: the table as wide as it
+// is now, the log at its minimum, the gap, and the fullscreen side padding.
+// (The empty spacer left of the table shrinks to nothing; see Play.css.)
 const LOG_MIN = 300;
-const FULLSCREEN_TOP_GAP = 20; // matches padding-top in .play-stage:fullscreen > .play
 const LOG_GAP = 32;
+const FULLSCREEN_SIDE_PADDING = 2 * 24; // .play-stage:fullscreen > .play
 function tableAreaMinWidth(main: HTMLElement): number {
   const table = main.querySelector(".table")?.getBoundingClientRect().width ?? 1200;
-  const style = getComputedStyle(main);
-  return table + LOG_GAP + LOG_MIN + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  return table + LOG_GAP + LOG_MIN + FULLSCREEN_SIDE_PADDING;
 }
 
 export default function Play() {
@@ -29,7 +28,7 @@ export default function Play() {
   const { table, prompt, status } = game;
   const navigate = useNavigate();
   // the table and log, without the site header
-  const { stageRef, contentRef, isFullscreen, contentStyle, toggle: toggleFullscreen } = useFullscreen<HTMLDivElement, HTMLElement>(tableAreaMinWidth, FULLSCREEN_TOP_GAP);
+  const { stageRef, contentRef, isFullscreen, contentStyle, toggle: toggleFullscreen } = useFullscreen<HTMLDivElement, HTMLElement>(tableAreaMinWidth);
   const location = useLocation();
 
   // the settings from the setup page (/play); "New game" reuses them

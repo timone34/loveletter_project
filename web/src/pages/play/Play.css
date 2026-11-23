@@ -30,10 +30,22 @@
   background: var(--background);
 }
 
-/* in fullscreen the left spacer may shrink to nothing, so the table keeps its width */
+/* In fullscreen every pixel of height counts (the zoom is limited by it), so
+   the padding and gaps are tighter, and the left spacer may shrink to nothing
+   so the table gets the width. Side padding = FULLSCREEN_SIDE_PADDING in Play.tsx. */
 .play-stage:fullscreen > .play {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1200px) minmax(300px, 1fr);
-  padding-top: 20px; /* = FULLSCREEN_TOP_GAP in Play.tsx, so the zoom leaves room for it */
+  padding: 12px 24px;
+}
+
+.play-stage:fullscreen .table__header {
+  padding-bottom: 0.6rem;
+}
+
+.play-stage:fullscreen .felt {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  gap: 0.5rem;
 }
 
 /* ----- Table ----- */
