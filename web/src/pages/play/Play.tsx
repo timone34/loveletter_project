@@ -12,12 +12,24 @@ import { botsAtTable, loadConfig } from "./config";
 import "./Play.css";
 
 
+// The narrowest the table area can be in fullscreen without squeezing the table:
+// the table as it is now, the log at its minimum, the gap and the side padding.
+// (The empty spacer left of the table may shrink to nothing; see Play.css.)
+const LOG_MIN = 300;
+const FULLSCREEN_TOP_GAP = 20; // matches padding-top in .play-stage:fullscreen > .play
+const LOG_GAP = 32;
+function tableAreaMinWidth(main: HTMLElement): number {
+  const table = main.querySelector(".table")?.getBoundingClientRect().width ?? 1200;
+  const style = getComputedStyle(main);
+  return table + LOG_GAP + LOG_MIN + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+}
+
 export default function Play() {
   const game = useGame();
   const { table, prompt, status } = game;
   const navigate = useNavigate();
   // the table and log, without the site header
-  const { ref: fullscreenRef, isFullscreen, toggle: toggleFullscreen } = useFullscreen<HTMLElement>();
+  const { stageRef, contentRef, isFullscreen, contentStyle, toggle: toggleFullscreen } = useFullscreen<HTMLDivElement, HTMLElement>(tableAreaMinWidth, FULLSCREEN_TOP_GAP);
   const location = useLocation();
 
   // the settings from the setup page (/play); "New game" reuses them
@@ -50,7 +62,9 @@ export default function Play() {
     <div className="page">
       <Header />
 
-      <main className="play" ref={fullscreenRef}>
+      {/* the stage is what goes fullscreen; the table area inside keeps its size and is zoomed */}
+      <div className="play-stage" ref={stageRef}>
+      <main className="play" ref={contentRef} style={contentStyle}>
 
         <section className="table">
           <header className="table__header">
@@ -162,6 +176,7 @@ export default function Play() {
         </aside>
 
       </main>
+      </div>
 
       <Footer />
     </div>

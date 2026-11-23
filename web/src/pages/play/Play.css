@@ -10,13 +10,30 @@
   padding: 0 clamp(20px, 5vw, 64px) 1rem;
 }
 
-/* Fullscreen (the button, or F): only the table and the log fill the screen.
-   The element itself becomes the screen, so it needs its own background. */
-.play:fullscreen {
-  height: 100vh;
-  padding-top: 1.25rem;
-  padding-bottom: 1.25rem;
+/* The stage around the table area: takes the page's free space. In fullscreen
+   (the button, or F) it becomes the whole screen, and useFullscreen.ts gives
+   .play its regular size plus a zoom that fills the screen, centred here. */
+.play-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.play-stage > .play {
+  flex: 1;
+  min-height: 0;
+}
+
+.play-stage:fullscreen {
+  display: grid;
+  place-items: center;
   background: var(--background);
+}
+
+/* in fullscreen the left spacer may shrink to nothing, so the table keeps its width */
+.play-stage:fullscreen > .play {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1200px) minmax(300px, 1fr);
+  padding-top: 20px; /* = FULLSCREEN_TOP_GAP in Play.tsx, so the zoom leaves room for it */
 }
 
 /* ----- Table ----- */
