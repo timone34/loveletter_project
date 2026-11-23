@@ -45,9 +45,10 @@
 }
 
 .card-pick .card {
+  /* playable: a soft glow behind the card, no ring around its edge */
   box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 28px -6px rgb(250 250 246 / 70%);
+    0 18px 30px -18px rgb(42 40 41 / 0.45),
+    0 0 26px -4px rgb(250 250 246 / 45%);
 }
 
 .card-pick:hover .card,

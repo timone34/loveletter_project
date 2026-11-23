@@ -440,8 +440,10 @@
 }
 
 .hearts {
+  display: flex;
+  gap: 0.2rem;
   color: var(--accent);
-  letter-spacing: 0.1em;
+  font-size: 0.95rem; /* = heart size */
 }
 
 /* ----- Start card ----- */

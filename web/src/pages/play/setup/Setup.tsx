@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 import { Header, Footer } from "../../../components/Header";
 import { Field, Segmented, Stepper, Toggle } from "../../../components/Field";
+import { Heart } from "../../../components/Heart";
+import { initial } from "../../../components/initial";
 import {
   DEFAULT_CONFIG, NAME_LIMIT, loadConfig, randomSeed, saveConfig, validate,
   type Opponent, type Speed, type TableConfig, type Visibility,
@@ -162,7 +164,9 @@ export default function Setup() {
                 max={9}
                 onChange={(targetRoundWins) => update({ targetRoundWins })}
               >
-                <span className="hearts" aria-hidden="true">{"♥".repeat(config.targetRoundWins)}</span>
+                <span className="hearts" aria-hidden="true">
+                  {Array.from({ length: config.targetRoundWins }, (_, i) => <Heart key={i} />)}
+                </span>
               </Stepper>
             </Field>
 
@@ -296,7 +300,7 @@ function YouTile({ seat, random, name, onName, onMove }: {
         <SeatLabel seat={seat} />
       )}
       <div className="tile__identity">
-        <span className="tile__avatar" aria-hidden="true">{(name.trim() || "Y")[0].toUpperCase()}</span>
+        <span className="tile__avatar" aria-hidden="true">{initial(name, "Y")}</span>
         <input
           className="tile__name"
           value={name}
@@ -331,7 +335,7 @@ function BotTile({ seat, opponent, bot, active, onActivate, onName }: {
     <div className={`tile ${active ? "tile--active" : ""}`} onClick={onActivate}>
       <SeatLabel seat={seat} />
       <div className="tile__identity">
-        <span className="tile__avatar" aria-hidden="true">{(opponent.name.trim() || "?")[0].toUpperCase()}</span>
+        <span className="tile__avatar" aria-hidden="true">{initial(opponent.name)}</span>
         <input
           className="tile__name"
           value={opponent.name}
