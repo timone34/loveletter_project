@@ -33,6 +33,27 @@ same strategy. A bot's "games" then counts seats, so 3 RandomChoice players in
 by seat number instead (seat 1 deals the first round of every game, seat 2
 starts it), whoever sat there.
 
+  start card      round win rate by the card a player was dealt: how much of
+                  a round the deal decides (the luck baseline).
+  guard odds      every checked Guard guess, held against the cards its player
+                  couldn't see at that moment: the deck minus their own two
+                  cards and every face-up discard (what CardCounter counts).
+                  Assuming the target's card is any of those unseen cards with
+                  equal chance: `expected` is the average chance its guesses
+                  had, `bestPossible` the chance of always naming the likeliest
+                  card, `pickedBest` how often it did. Expected is accuracy
+                  without the luck; beating bestPossible means it used private
+                  knowledge (a Priest look, a King swap).
+  priest          after a Priest look, the player's next turn: a chance to use
+                  it when they then hold a Guard (and the card seen isn't a
+                  Guard) or a Baron with a higher card beside it, and the seen
+                  player is still in, unprotected and still holds that card.
+                  `taken` = they played it on that player (the Guard naming the
+                  seen card), which then always knocks them out.
+  baron by card   Baron outcomes split by the card kept beside it.
+  choices         for every pair of cards held, how often each was played,
+                  and how often the round was won after that choice.
+
   turn order      round win rate by position in the round's turn order: 1st
                   is the player left of that round's dealer, who moves first.
                   The dealer changes every round (the last winner starts), so
@@ -46,14 +67,24 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from engine.cards import Baron, Guard, Prince, Princess
+from engine.cards import Baron, Guard, Priest, Prince, Princess, guessable
+from engine.deck import Deck
 from engine.history import Outcome
 
+from .replay import kept_card, walk
+
 if TYPE_CHECKING:
-    from engine.history import GameHistory, TurnHistory
+    from engine.cards import Card
+    from engine.history import GameHistory, RoundHistory, TurnHistory
 
 # how a round was lost, in the order the Stats page shows them
 CAUSES = ("guard", "baron", "ownBaron", "prince", "ownPrince", "princess", "showdown")
+
+# card names, lowest value first, and how many of each are in the deck
+CARDS = tuple(dict.fromkeys(c.name for c in sorted(Deck().cards, key=lambda c: c.value)))
+DECK_COUNTS = Counter(c.name for c in Deck().cards)
+GUESSABLE = tuple(c.name for c in guessable())
+BARON_OUTCOMES = {Outcome.WIN: "won", Outcome.DRAW: "tied", Outcome.LOSE: "lost", Outcome.PROTECTED: "protected"}
 
 CONVERGENCE_POINTS = 100  # win-rate snapshots kept over a run, for the convergence chart
 
@@ -91,12 +122,29 @@ class Counts:
 
     losses: Counter[str] = field(default_factory=Counter)  # cause -> rounds lost
 
+    start_rounds: Counter[str] = field(default_factory=Counter)  # start card -> rounds
+    start_wins: Counter[str] = field(default_factory=Counter)  # start card -> rounds won
+
+    guard_picked_best: int = 0  # checked guesses that named a likeliest card
+    guard_expected: float = 0.0  # sum over checked guesses of the chance the guess had
+    guard_best_possible: float = 0.0  # sum of the chance of the likeliest card
+
+    priest_looks: int = 0  # Priests that saw a card
+    priest_chances: int = 0
+    priest_taken: int = 0
+
+    baron_by_card: Counter[str] = field(default_factory=Counter)  # "Guard|won" -> Barons
+
+    choices: Counter[str] = field(default_factory=Counter)  # "Baron|Handmaid|Baron" -> times
+    choice_wins: Counter[str] = field(default_factory=Counter)  # same keys -> rounds won after
+
     def __iadd__(self, other: Counts) -> Counts:
         for f in dataclasses.fields(self):
             setattr(self, f.name, getattr(self, f.name) + getattr(other, f.name))
         return self
 
     def to_json(self) -> dict[str, Any]:
+        checked = self.guard_correct + self.guard_incorrect
         return {
             "games": self.games,
             "gameWins": self.game_wins,
@@ -119,6 +167,35 @@ class Counts:
                 "protected": self.baron_protected,
             },
             "losses": {cause: self.losses[cause] for cause in CAUSES},
+            "startCard": {
+                card: {
+                    "rounds": self.start_rounds[card],
+                    "wins": self.start_wins[card],
+                    "rate": wilson(self.start_wins[card], self.start_rounds[card]),
+                }
+                for card in CARDS
+            },
+            "guardOdds": {
+                "checked": checked,
+                "pickedBest": wilson(self.guard_picked_best, checked),
+                "expected": self.guard_expected / checked if checked else None,
+                "bestPossible": self.guard_best_possible / checked if checked else None,
+            },
+            "priest": {
+                "looks": self.priest_looks,
+                "chances": self.priest_chances,
+                "taken": self.priest_taken,
+                "takenRate": wilson(self.priest_taken, self.priest_chances),
+            },
+            "baronByCard": {
+                card: {o: self.baron_by_card[f"{card}|{o}"] for o in BARON_OUTCOMES.values()}
+                for card in CARDS
+            },
+            "choices": [
+                {"a": a, "b": b, "played": played, "n": n, "wins": self.choice_wins[key]}
+                for key, n in sorted(self.choices.items())
+                for a, b, played in [key.split("|")]
+            ],
         }
 
 
@@ -136,47 +213,113 @@ def loss_cause(turn: TurnHistory, victim: int) -> str:
     raise ValueError(f"No known way to be knocked out by {turn.played!r}")
 
 
-def count_seat(gh: GameHistory, seat: int) -> Counts:
-    """Everything one seat did in one game."""
-    c = Counts(games=1, game_wins=int(gh.winner == seat))
+def unseen(turn: TurnHistory, discards: dict[int, list[Card]]) -> Counter[str]:
+    """The cards the player of `turn` couldn't see as they played it: the deck
+    minus their own two cards and every face-up discard."""
+    counts = DECK_COUNTS.copy()
+    for card in (turn.held, turn.drawn, *(c for pile in discards.values() for c in pile)):
+        if card is not None:
+            counts[card.name] -= 1
+    return counts
 
+
+def count_game(gh: GameHistory) -> list[Counts]:
+    """Everything each seat did in one game, as one Counts per seat."""
+    counts = [Counts(games=1, game_wins=int(gh.winner == seat)) for seat in range(len(gh.players))]
     for rh in gh.rounds:
+        count_round(rh, counts)
+    return counts
+
+
+def count_round(rh: RoundHistory, counts: list[Counts]) -> None:
+    knocked_out: set[int] = set()
+    priest_seen: dict[int, tuple[int, Card]] = {}  # seat -> (who they looked at, what they saw)
+
+    for turn, table in walk(rh):
+        me = counts[turn.seat]
+        played = turn.played
+        assert played is not None
+        won = turn.seat in rh.winners
+
+        # the choice: which of the two cards held was played
+        a, b = sorted((turn.held, turn.drawn), key=lambda c: c.value)  # type: ignore[union-attr]
+        key = f"{a.name}|{b.name}|{played.name}"
+        me.choices[key] += 1
+        me.choice_wins[key] += won
+
+        # a Priest look from this player's last turn: could they use it now?
+        if turn.seat in priest_seen:
+            looked_at, seen = priest_seen.pop(turn.seat)
+            count_priest_follow_up(me, turn, table.hands, table.protected, looked_at, seen)
+
+        if isinstance(played, Guard):
+            me.guards += 1
+            if turn.outcome in (Outcome.CORRECT, Outcome.INCORRECT):
+                me.guard_correct += turn.outcome is Outcome.CORRECT
+                me.guard_incorrect += turn.outcome is Outcome.INCORRECT
+                pool = unseen(turn, table.discards)
+                total = sum(pool.values())
+                best = max(pool[name] for name in GUESSABLE)
+                assert turn.guess is not None
+                me.guard_expected += pool[turn.guess.name] / total
+                me.guard_best_possible += best / total
+                me.guard_picked_best += pool[turn.guess.name] == best
+            elif turn.outcome is Outcome.PROTECTED:
+                me.guard_protected += 1
+
+        elif isinstance(played, Baron):
+            me.barons += 1
+            outcome = BARON_OUTCOMES.get(turn.outcome)
+            if outcome is not None:
+                setattr(me, f"baron_{outcome}", getattr(me, f"baron_{outcome}") + 1)
+                me.baron_by_card[f"{kept_card(turn).name}|{outcome}"] += 1
+
+        elif isinstance(played, Priest) and turn.seen is not None:
+            assert turn.target is not None
+            me.priest_looks += 1
+            priest_seen[turn.seat] = (turn.target, turn.seen)
+
+        for victim in turn.rejected:
+            counts[victim].losses[loss_cause(turn, victim)] += 1
+            knocked_out.add(victim)
+
+    for seat, c in enumerate(counts):
+        start = rh.starting_hands[seat].name
+        won = seat in rh.winners
         c.rounds += 1
-        knocked_out = False
-
-        for turn in rh.turns:
-            if seat in turn.rejected:
-                c.losses[loss_cause(turn, seat)] += 1
-                knocked_out = True
-            if turn.seat != seat or turn.played is None:  # None: skipped, already out
-                continue
-
-            if isinstance(turn.played, Guard):
-                c.guards += 1
-                if turn.outcome is Outcome.CORRECT:
-                    c.guard_correct += 1
-                elif turn.outcome is Outcome.INCORRECT:
-                    c.guard_incorrect += 1
-                elif turn.outcome is Outcome.PROTECTED:
-                    c.guard_protected += 1
-
-            elif isinstance(turn.played, Baron):
-                c.barons += 1
-                if turn.outcome is Outcome.WIN:
-                    c.baron_won += 1
-                elif turn.outcome is Outcome.LOSE:
-                    c.baron_lost += 1
-                elif turn.outcome is Outcome.DRAW:
-                    c.baron_tied += 1
-                elif turn.outcome is Outcome.PROTECTED:
-                    c.baron_protected += 1
-
-        if seat in rh.winners:
+        c.start_rounds[start] += 1
+        if won:
             c.round_wins += 1
-        elif not knocked_out:
+            c.start_wins[start] += 1
+        elif seat not in knocked_out:
             c.losses["showdown"] += 1
 
-    return c
+
+def count_priest_follow_up(
+    me: Counts, turn: TurnHistory, hands: dict[int, Card | None], protected: set[int],
+    looked_at: int, seen: Card,
+) -> None:
+    """The turn after a Priest look: was there a chance to use it, and was it taken?"""
+    if type(hands[looked_at]) is not type(seen) or looked_at in protected:
+        return  # they're out, protected, or no longer hold the card that was seen
+    hand = (turn.held, turn.drawn)
+    guard_chance = not isinstance(seen, Guard) and any(isinstance(c, Guard) for c in hand)
+    baron_chance = any(
+        isinstance(c, Baron) and other is not None and other.value > seen.value
+        for c, other in (hand, hand[::-1])
+    )
+    if not (guard_chance or baron_chance):
+        return
+
+    me.priest_chances += 1
+    on_them = turn.target == looked_at
+    taken = on_them and (
+        (guard_chance and isinstance(turn.played, Guard) and type(turn.guess) is type(seen))
+        or (baron_chance and isinstance(turn.played, Baron))
+    )
+    if taken:
+        me.priest_taken += 1
+        assert looked_at in turn.rejected  # they still held the seen card, so it can't miss
 
 
 class Tally:
@@ -196,7 +339,7 @@ class Tally:
     def add(self, gh: GameHistory) -> None:
         """Count one finished game."""
         n = len(gh.players)
-        game = [count_seat(gh, seat) for seat in range(n)]  # this game's counts, per seat
+        game = count_game(gh)  # this game's counts, per seat
 
         self.games += 1
         self.rounds += len(gh.rounds)

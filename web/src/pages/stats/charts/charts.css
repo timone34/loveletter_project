@@ -298,39 +298,40 @@
   color: var(--text-muted);
 }
 
-/* ----- Loss table: a heat table ----- */
+/* ----- Heat tables (causes of rejection, start cards, Baron by card) ----- */
 
-.loss__controls .segmented {
+.heat__controls .segmented {
   width: max-content;
 }
 
-.loss__controls .segmented__option {
+.heat__controls .segmented__option {
   white-space: nowrap;
 }
 
-.loss {
+.heat {
   width: 100%;
+  table-layout: fixed; /* every card column the same width */
   border-collapse: separate;
   border-spacing: 2px; /* the surface gap between cells */
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
 
-.loss th {
+.heat th {
   padding: 0.35rem 0.6rem;
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-muted);
 }
 
-.loss tbody th {
+.heat tbody th {
   text-align: left;
   white-space: nowrap;
   color: var(--text);
   font-size: 0.8rem;
 }
 
-.loss td {
+.heat td {
   padding: 0.6rem;
   border-radius: 4px;
   text-align: center;
@@ -338,23 +339,117 @@
   cursor: default;
 }
 
-.loss td:focus,
-.loss td:hover {
+.heat td:focus,
+.heat td:hover {
   outline: 2px solid var(--text);
   outline-offset: -2px;
 }
 
-.loss .loss__total {
+.heat .heat__total {
   background: none;
   text-align: right;
   white-space: nowrap;
 }
 
-.loss td.loss__total:hover {
+.heat td.heat__total:hover {
   outline: none;
 }
 
-.loss__total span {
+.heat__total span {
   color: var(--text-muted);
   font-weight: 400;
+}
+
+.heat__empty {
+  color: var(--text-muted);
+  font-weight: 400 !important;
+}
+
+.heat td.heat__empty:hover {
+  outline: none;
+}
+
+/* ----- Guard odds: bar = expected, tick = best possible, dot = actual ----- */
+
+.odds__tick {
+  position: absolute;
+  z-index: 3;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+}
+
+.odds__dot {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.odds__tick-key {
+  display: inline-block;
+  width: 2px;
+  height: 0.8rem;
+  margin-right: 0.45rem;
+  background: var(--text);
+}
+
+.odds__dot-key {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-right: 0.45rem;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.rate-bars__tick-note {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* ----- Card choices: an 8x8 grid ----- */
+
+.choices__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.choices__controls .segmented {
+  width: max-content;
+}
+
+.choices__controls .segmented__option {
+  padding-inline: 0.9rem;
+  white-space: nowrap;
+}
+
+
+.choices__corner {
+  font-weight: 400 !important;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.choices__same {
+  font-weight: 400 !important;
+}
+
+/* first column: names; last: the unshaded total */
+.heat thead th:first-child {
+  width: 9.5rem;
+}
+
+.heat thead th.heat__total {
+  width: 9rem;
 }

@@ -38,7 +38,18 @@ export type Line = {
   guard: { played: number; correct: number; incorrect: number; protected: number; accuracy: Rate };
   baron: { played: number; won: number; lost: number; tied: number; protected: number };
   losses: Record<Cause, number>; // how each lost round was lost
+  // the definitions of these are in stats/tally.py's docstring
+  startCard: Record<string, { rounds: number; wins: number; rate: Rate }>; // card name -> rounds started with it
+  guardOdds: { checked: number; pickedBest: Rate; expected: number | null; bestPossible: number | null };
+  priest: { looks: number; chances: number; taken: number; takenRate: Rate };
+  baronByCard: Record<string, BaronOutcomes>; // card kept beside the Baron -> outcomes
+  choices: Choice[];
 };
+
+export type BaronOutcomes = { won: number; tied: number; lost: number; protected: number };
+
+// Held cards a and b (a the lower value), played `played`, n times; won the round `wins` of those.
+export type Choice = { a: string; b: string; played: string; n: number; wins: number };
 
 export type ConvergencePoint = { games: number; players: Rate[]; bots: Rate[]; seats: Rate[] };
 

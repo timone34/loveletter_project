@@ -12,6 +12,9 @@ import { ConvergenceChart } from "./charts/ConvergenceChart";
 import { Histogram } from "./charts/Histogram";
 import { BaronBars } from "./charts/BaronBars";
 import { LossTable } from "./charts/LossTable";
+import { GuardOdds } from "./charts/GuardOdds";
+import { CardChoices } from "./charts/CardChoices";
+import { BaronByCardTable, StartCardTable } from "./charts/CardTables";
 import "./charts/charts.css";
 import "./Stats.css";
 
@@ -209,13 +212,47 @@ export default function Results() {
                       }))}
                     />
                   </Card>
+
+                  <Card
+                    title="Guard guesses vs the odds"
+                    note="Odds from what the guesser could see: the deck minus their own cards and all discards. Right: how often it named the likeliest card."
+                  >
+                    <GuardOdds rows={rows} />
+                  </Card>
+
+                  <Card
+                    title="Priest follow-up"
+                    note="Chances to use a Priest look on the next turn (a Guard, or a Baron that wins, against a player still holding the seen card), and how often it was taken."
+                  >
+                    <RateBars
+                      rows={rows.map((r) => ({
+                        ...r,
+                        rate: r.line.priest.takenRate,
+                        detail: `${count(r.line.priest.taken)} of ${count(r.line.priest.chances)} chances taken · ${count(r.line.priest.looks)} Priest looks`,
+                      }))}
+                    />
+                  </Card>
                 </div>
                 <div className="stats__column">
                   <Card title="Baron comparisons" note="Outcomes of the Barons each player played. Right: Barons played.">
                     <BaronBars rows={rows} />
                   </Card>
+
+                  <Card
+                    title="Baron by card kept"
+                    note="Comparisons won, by the card kept beside the Baron. Hover for won / tied / lost / protected."
+                  >
+                    <BaronByCardTable rows={rows} />
+                  </Card>
                 </div>
               </div>
+
+              <Card
+                title="Card choices"
+                note="Which card gets played from each pair held. Switch to 'Won the round' and read down a column to find the best play with that card in hand."
+              >
+                <CardChoices rows={rows} />
+              </Card>
             </section>
 
             <section className="stats-section" aria-label="Context">
@@ -244,6 +281,13 @@ export default function Results() {
                   </Card>
                 </div>
               </div>
+
+              <Card
+                title="Start card"
+                note="Round win rate by the card dealt: how much the deal decides. Shaded against the player's own overall rate (blue = helps, red = hurts)."
+              >
+                <StartCardTable rows={rows} />
+              </Card>
 
               <Card title="All numbers">
                 <NumbersTable rows={rows} stats={stats} />

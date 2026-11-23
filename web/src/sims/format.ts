@@ -65,4 +65,4 @@ export function editable(config: RunConfig): RunConfig {
   return { ...rest, name: nameAuto ? "" : rest.name, seed: seedAuto ? "" : rest.seed };
 }
 
-export const MS_PER_GAME = 1.7; // measured on the owner's machine; only for the time estimate
+export const MS_PER_GAME = 2.2; // playing + counting the stats, on the owner's machine; only for the time estimate

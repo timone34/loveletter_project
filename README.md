@@ -265,13 +265,16 @@ These stats are important for observing which bot performs best.
 What did the bot actually do?
 These stats are important for telling us what to improve.
 - Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted)
-- Baron results: won, tied, protected, lost
-- *Planned:* information usage (card counting accuracy)
+- Baron results: won, tied, protected, lost, and the share won by the card kept beside the Baron
+- Guard guesses vs the odds: how often it named the likeliest card given what it could see (the deck minus its own cards and all discards), the accuracy its guesses should have had without luck, and the best possible
+- Priest follow-up: after a Priest look, how often the bot used it on its next turn when it could (a Guard naming the seen card, or a winning Baron)
+- Card choices: for every pair of cards held, how often each was played, and how often the round was won after that choice
 
 ### 3. Context
 How far can we trust these numbers?
 Maybe the least important, but still useful for our purposes.
 - Games and rounds simulated, rounds per game, tied rounds
+- Start card: round win rate by the card dealt, the luck of the deal
 - Turn order: round win rate by when you move in the round, the game's own first-mover advantage (the reason seats rotate)
 - Confidence intervals on every rate
-- *Planned:* luck analysis, drawn cards, head-to-head comparisons and ratings
+- *Planned:* head-to-head comparisons and ratings

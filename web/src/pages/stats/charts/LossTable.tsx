@@ -5,17 +5,13 @@ import { CAUSE_LABELS } from "../../../sims/causes";
 import { CAUSES, type Cause, type Line } from "../../../sims/types";
 import { useTooltip } from "./hooks";
 import { TipRow } from "./TipRow";
+import { blue } from "./ramps";
 
 // How each player lost their rounds: a table with one row per player and one
 // column per cause, every cell shaded on one blue scale (darker = more). The
 // shading is shared by the whole table, so cells compare across players too.
 
 
-// light -> dark steps of one blue, with the text colour that reads on each
-const RAMP = [
-  ["#eef4fc", "#2a2829"], ["#cde2fb", "#2a2829"], ["#9ec5f4", "#2a2829"], ["#6da7ec", "#2a2829"],
-  ["#3987e5", "#fff"], ["#256abf", "#fff"], ["#184f95", "#fff"],
-] as const;
 
 type Mode = "lost" | "all" | "count";
 
@@ -32,11 +28,11 @@ export function LossTable({ rows }: { rows: { label: string; color: string; line
   };
   const show = (v: number) => (mode === "count" ? count(v) : pct(v));
   const max = Math.max(1e-9, ...rows.flatMap((r) => CAUSES.map((c) => value(r.line, c))));
-  const shade = (v: number) => RAMP[Math.min(RAMP.length - 1, Math.floor((v / max) * (RAMP.length - 1) + 0.5))];
+  const shade = (v: number) => blue(v, max);
 
   return (
     <div className="chart">
-      <div className="loss__controls">
+      <div className="heat__controls">
         <Segmented<Mode>
           label="Show"
           value={mode}
@@ -48,12 +44,12 @@ export function LossTable({ rows }: { rows: { label: string; color: string; line
           ]}
         />
       </div>
-      <table className="loss">
+      <table className="heat">
         <thead>
           <tr>
             <th />
             {CAUSES.map((c) => <th key={c} title={CAUSE_LABELS[c].note}>{CAUSE_LABELS[c].label}</th>)}
-            <th className="loss__total">Rounds lost</th>
+            <th className="heat__total">Rounds lost</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +85,7 @@ export function LossTable({ rows }: { rows: { label: string; color: string; line
                   </td>
                 );
               })}
-              <td className="loss__total">
+              <td className="heat__total">
                 {count(lostOf(line))} <span>/ {count(line.rounds)}</span>
               </td>
             </tr>

@@ -41,7 +41,7 @@ HISTORY_DIR = Path(__file__).resolve().parent.parent / "simulations"
 
 # Bump when the saved stats change shape or meaning (a new or redefined stat in
 # stats/tally.py, a renamed field). 1 = the first version, which had no field.
-FORMAT = 2
+FORMAT = 3  # 3: start card, guard odds, priest follow-up, baron by card, choices
 
 
 def checked(record: dict[str, Any]) -> dict[str, Any]:
