@@ -14,11 +14,18 @@ Design vision: the game rules ("the bones") are solid but as simple as possible,
 
 A secondary goal is a **YouTube video** on Love Letter and the journey of building bots for it (see "Video" below). Keep in mind that results should be easy to present.
 
+## Git and branches (read before any commit or push)
+
+- **NEVER commit to or push to a branch whose name doesn't start with `claude/`.** Check `git branch --show-current` before every commit and push.
+- `claude/main` is Claude's main branch. Larger pieces of work may go on `claude/<topic>` branches made from it.
+- Keep Claude's changes separate from the owner's own branches (`main`, `lln`, ...). Do not merge into, push to, rebase or reset those branches unless the owner explicitly says to merge into main.
+- Bringing the owner's changes *into* a `claude/` branch (e.g. `git merge origin/main` while on `claude/main`) is fine. It only changes the `claude/` branch.
+
 ## Working agreement
 
 - **Do not repeat yourself, and do not suggest things that are already implemented.** Check the code before proposing a feature.
 - Game logic and stats correctness matter more than speed. Wrong numbers fail silently, and results will be presented publicly. Sanity-check changes: equal bots should win about 25% each, win rates should sum to 100%, and the same seed/deck should give the same result.
-- Game-logic changes go to the main branch without LLN code mixed in. LLN work was developed on a separate branch; do not mix the two unless asked.
+- The owner's `main` branch stays free of LLN code until the owner decides to merge it. LLN work lives on `lln` (owner) and `claude/main` (Claude). Claude's game-logic changes also go to `claude/` branches (see "Git and branches"), and the owner decides what reaches `main`.
 - The owner is fairly experienced with Python/numpy, new to pandas, and new to frontend/web development. For frontend work, explain what each file does and give enough information to extend the design by hand. The owner cares about results more than about learning every detail of webapp code, so using agents for web plumbing is fine; bot logic and metric definitions deserve more care and explanation.
 - The owner uses a type checker, so keep annotations correct (e.g. `Card | None`, pandas return types).
 
