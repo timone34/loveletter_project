@@ -206,13 +206,20 @@
   color: var(--text-muted);
 }
 
-/* ----- Chart cards: two columns, wide cards span both ----- */
+/* ----- Chart cards: two columns that fill independently, then full-width cards ----- */
 
-.stats__grid {
+.stats__columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start; /* each card as tall as its own content */
+  align-items: start;
   gap: 1rem;
+}
+
+.stats__column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
 }
 
 .stat-card {
@@ -225,10 +232,6 @@
   border-radius: 18px;
   background: var(--surface);
   box-shadow: 0 12px 30px -28px rgb(42 40 41 / 45%);
-}
-
-.stat-card--wide {
-  grid-column: 1 / -1;
 }
 
 .stat-card--flush {

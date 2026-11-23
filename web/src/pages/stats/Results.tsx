@@ -142,88 +142,93 @@ export default function Results() {
               {GROUP_NOTES[shown] && <span className="stats__filter-note">{GROUP_NOTES[shown]}</span>}
             </div>
 
-            <div className="stats__grid">
-              <Card
-                title="Game win rate"
-                note="Games won. Lines show the 95% interval; the vertical line is a fair 1 in 4."
-              >
-                <RateBars
-                  reference={0.25}
-                  referenceLabel="25%"
-                  rows={rows.map((r) => ({
-                    ...r,
-                    rate: r.line.gameWinRate,
-                    detail: `${count(r.line.gameWins)} of ${count(r.line.games)} games`,
-                  }))}
-                />
-              </Card>
-
-              <Card title="Win rate over the run" note="Has it settled? Bands are the 95% interval so far.">
-                {stats.convergence && stats.convergence.length > 1 ? (
-                  <ConvergenceChart
+            {/* two independent columns: a card sits right under the one above it,
+                whatever the height of its neighbour on the other side */}
+            <div className="stats__columns">
+              <div className="stats__column">
+                <Card
+                  title="Game win rate"
+                  note="Games won. Lines show the 95% interval; the vertical line is a fair 1 in 4."
+                >
+                  <RateBars
                     reference={0.25}
-                    games={stats.convergence.map((pt) => pt.games)}
-                    series={rows.map((r, i) => ({ label: r.label, color: r.color, points: stats.convergence!.map((pt) => pt[shown][i]) }))}
+                    referenceLabel="25%"
+                    rows={rows.map((r) => ({
+                      ...r,
+                      rate: r.line.gameWinRate,
+                      detail: `${count(r.line.gameWins)} of ${count(r.line.games)} games`,
+                    }))}
                   />
-                ) : (
-                  <p className="notice">Needs a few more games.</p>
-                )}
-              </Card>
+                </Card>
 
-              <Card title="Round win rate" note="Rounds won. A tied showdown counts as a win for everyone in the tie.">
-                <RateBars
-                  reference={0.25}
-                  referenceLabel="25%"
-                  rows={rows.map((r) => ({
-                    ...r,
-                    rate: r.line.roundWinRate,
-                    detail: `${count(r.line.roundWins)} of ${count(r.line.rounds)} rounds`,
-                  }))}
-                />
-              </Card>
+                <Card title="Round win rate" note="Rounds won. A tied showdown counts as a win for everyone in the tie.">
+                  <RateBars
+                    reference={0.25}
+                    referenceLabel="25%"
+                    rows={rows.map((r) => ({
+                      ...r,
+                      rate: r.line.roundWinRate,
+                      detail: `${count(r.line.roundWins)} of ${count(r.line.rounds)} rounds`,
+                    }))}
+                  />
+                </Card>
 
-              <Card
-                title="Turn order"
-                note="Round win rate by when you move in the round. Moving first is the same for every bot, so this is the table's own advantage."
-              >
-                <RateBars
-                  reference={0.25}
-                  referenceLabel="25%"
-                  rows={stats.turnOrder.map((t) => ({
-                    label: ORDINALS[t.position] ?? `${t.position + 1}th`,
-                    color: "var(--primary)",
-                    rate: t.roundWinRate,
-                    detail: `${count(t.roundWins)} of ${count(t.rounds)} rounds`,
-                  }))}
-                />
-              </Card>
+                <Card title="Guard accuracy" note="Correct guesses out of guesses checked. Guards on a protected player don't count.">
+                  <RateBars
+                    rows={rows.map((r) => ({
+                      ...r,
+                      rate: r.line.guard.accuracy,
+                      detail: `${count(r.line.guard.correct)} of ${count(r.line.guard.correct + r.line.guard.incorrect)} guesses right · ${count(r.line.guard.protected)} on a protected player`,
+                    }))}
+                  />
+                </Card>
 
-              <Card title="Guard accuracy" note="Correct guesses out of guesses checked. Guards on a protected player don't count.">
-                <RateBars
-                  rows={rows.map((r) => ({
-                    ...r,
-                    rate: r.line.guard.accuracy,
-                    detail: `${count(r.line.guard.correct)} of ${count(r.line.guard.correct + r.line.guard.incorrect)} guesses right · ${count(r.line.guard.protected)} on a protected player`,
-                  }))}
-                />
-              </Card>
+                <Card title="Rounds per game" note={`How long games lasted, first to ${run.config.targetRoundWins}.`}>
+                  <Histogram data={stats.roundsPerGame.histogram} unit="rounds" />
+                </Card>
+              </div>
+              <div className="stats__column">
+                <Card title="Win rate over the run" note="Has it settled? Bands are the 95% interval so far.">
+                  {stats.convergence && stats.convergence.length > 1 ? (
+                    <ConvergenceChart
+                      reference={0.25}
+                      games={stats.convergence.map((pt) => pt.games)}
+                      series={rows.map((r, i) => ({ label: r.label, color: r.color, points: stats.convergence!.map((pt) => pt[shown][i]) }))}
+                    />
+                  ) : (
+                    <p className="notice">Needs a few more games.</p>
+                  )}
+                </Card>
 
-              <Card title="Baron comparisons" note="Outcomes of the Barons each player played. Right: Barons played.">
-                <BaronBars rows={rows} />
-              </Card>
+                <Card
+                  title="Turn order"
+                  note="Round win rate by when you move in the round. Moving first is the same for every bot, so this is the table's own advantage."
+                >
+                  <RateBars
+                    reference={0.25}
+                    referenceLabel="25%"
+                    rows={stats.turnOrder.map((t) => ({
+                      label: ORDINALS[t.position] ?? `${t.position + 1}th`,
+                      color: "var(--primary)",
+                      rate: t.roundWinRate,
+                      detail: `${count(t.roundWins)} of ${count(t.rounds)} rounds`,
+                    }))}
+                  />
+                </Card>
 
-              <Card title="Rounds per game" note={`How long games lasted, first to ${run.config.targetRoundWins}.`}>
-                <Histogram data={stats.roundsPerGame.histogram} unit="rounds" />
-              </Card>
+                <Card title="Baron comparisons" note="Outcomes of the Barons each player played. Right: Barons played.">
+                  <BaronBars rows={rows} />
+                </Card>
+              </div>
+            </div>
 
-              <Card title="Cause of rejection" note="How each lost round was lost. Hover a cell for counts." wide>
+              <Card title="Cause of rejection" note="How each lost round was lost. Hover a cell for counts.">
                 <LossTable rows={rows} />
               </Card>
 
-              <Card title="All numbers" wide>
+              <Card title="All numbers">
                 <NumbersTable rows={rows} stats={stats} />
               </Card>
-            </div>
           </>
         )}
       </div>
@@ -281,9 +286,9 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   );
 }
 
-function Card({ title, note, wide, children }: { title: string; note?: string; wide?: boolean; children: ReactNode }) {
+function Card({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
-    <section className={`stat-card ${wide ? "stat-card--wide" : ""}`}>
+    <section className="stat-card">
       <header className="stat-card__head">
         <h2>{title}</h2>
         {note && <p>{note}</p>}
