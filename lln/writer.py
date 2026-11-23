@@ -39,18 +39,29 @@ def to_lln(ghs: list[GameHistory]) -> list[str]:
         raise ValueError("Nothing to write: no game histories given.")
 
     base = ghs[0]
+    lines = generate_header_lines(base)
+    for number, gh in enumerate(ghs, start=1):
+        lines.extend(generate_game_block(gh, number, base))
+    return lines
+
+
+def generate_header_lines(base: GameHistory) -> list[str]:
+    """The file header: version, then the shared lineup and target (taken from `base`)."""
     lines = [f"[Version: {LLN_VERSION}]", ""]
     lines.extend(generate_seat_lines(base))
     lines.append(f"[Target: {base.target_round_wins}]")
     lines.append("")
+    return lines
 
-    for number, gh in enumerate(ghs, start=1):
-        lines.extend(generate_game_lines(gh, number, base))
-        for rh in gh.rounds:
-            lines.extend(generate_round_lines(rh))
-            lines.extend(generate_cycle_lines(rh))
-            lines.append("")
+
+def generate_game_block(gh: GameHistory, number: int, base: GameHistory) -> list[str]:
+    """One whole game. Header + blocks in order = to_lln(), so a file can be written as games come in."""
+    lines = generate_game_lines(gh, number, base)
+    for rh in gh.rounds:
+        lines.extend(generate_round_lines(rh))
+        lines.extend(generate_cycle_lines(rh))
         lines.append("")
+    lines.append("")
     return lines
 
 

@@ -7,13 +7,16 @@ import traceback
 from enum import Enum
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 
 from bots import available_bots
 from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
 from engine.view import redact_turn
+from runs import History, RunConfig
 
 app = FastAPI()
+history = History()  # simulation runs, for the Simulate and Stats pages
 
 # seconds to wait after each kind of message, before sending the next one
 # (at normal speed; TableConfig.speed scales these)
@@ -477,3 +480,55 @@ def list_bots() -> list[dict]:
 async def play(ws: WebSocket):
     await ws.accept()
     await Connection(ws).serve()
+
+
+# --- Simulations (Simulate and Stats pages); the work happens in runs/ --- #
+
+@app.get("/api/simulations")
+def list_simulations() -> list[dict]:
+    """Every run, newest first (queued and running ones included)."""
+    return history.list()
+
+
+@app.post("/api/simulations", status_code=201)
+def start_simulation(config: dict = Body(...)) -> dict:
+    """Queue a run. Returns it straight away; poll GET /api/simulations/{id} for progress."""
+    try:
+        return history.submit(RunConfig.from_json(config))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get("/api/simulations/{run_id}")
+def get_simulation(run_id: str) -> dict:
+    record = history.get(run_id)
+    if record is None:
+        raise HTTPException(404, "No such simulation.")
+    return record
+
+
+@app.patch("/api/simulations/{run_id}")
+def rename_simulation(run_id: str, changes: dict = Body(...)) -> dict:
+    try:
+        record = history.rename(run_id, str(changes.get("name") or ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    if record is None:
+        raise HTTPException(404, "No such simulation.")
+    return record
+
+
+@app.delete("/api/simulations/{run_id}", status_code=204)
+def delete_simulation(run_id: str) -> None:
+    """Cancel a queued or running run, or delete a finished one."""
+    if not history.delete(run_id):
+        raise HTTPException(404, "No such simulation.")
+
+
+@app.get("/api/simulations/{run_id}/lln")
+def download_lln(run_id: str) -> FileResponse:
+    """The run's games as compressed LLN (only for runs started with saveLln)."""
+    path = history.lln_path(run_id)
+    if path is None:
+        raise HTTPException(404, "This simulation didn't keep its games.")
+    return FileResponse(path, filename=f"{run_id}.lln.bz2", media_type="application/x-bzip2")
