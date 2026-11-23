@@ -47,11 +47,54 @@
   /* padding: 1.0rem; */
 }
 
-/* ----- Light/dark toggle (pushed to the right end of the bar) ----- */
+/* ----- Theme menu (pushed to the right end of the bar) ----- */
+.theme-menu {
+  position: relative; /* the list is positioned against this */
+  margin-left: auto;
+}
+
+.theme-menu__list {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: 0.3rem;
+  border: 1px solid var(--secondary);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 14px 30px -14px rgb(var(--shadow) / 45%);
+}
+
+.theme-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-menu__option:hover {
+  background: var(--background);
+}
+
+/* the current choice */
+.theme-menu__option[aria-checked="true"] {
+  color: var(--primary);
+  font-weight: 700;
+}
+
 .theme-toggle {
   display: grid;
   place-items: center;
-  margin-left: auto;
   width: 2.25rem;
   aspect-ratio: 1;
   padding: 0;
