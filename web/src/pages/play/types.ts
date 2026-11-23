@@ -18,7 +18,9 @@ export type TableView = {
     dealer: number; // seat
     deckCount: number;
     winsNeeded: number;
-    youSeat: number;
+    name: string; // table name, from the setup page
+    visibility: "private" | "public";
+    youSeat: number | null; // null when watching: nobody at the table is you
     players: PlayerView[]; // in seat order
     burn?: CardId | null;
     showdown?: boolean;

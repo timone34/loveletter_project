@@ -22,6 +22,8 @@ def _choose_from_menu(title: str, options: list[str]) -> int:
 
 
 class TerminalPlayer(Strategy):  # asks for user input regarding all actions.
+    human = True  # not a bot: left out of bots.available_bots()
+
     def __init__(self) -> None:
         self.id = "TerminalPlayer"
         self.name = "Player Input"

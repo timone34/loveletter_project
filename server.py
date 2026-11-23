@@ -1,22 +1,26 @@
 import asyncio
+import bz2
 import dataclasses
 import queue
+import random
 import threading
 import traceback
 from enum import Enum
 from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, Response, StreamingResponse
 
-from bots import NoPrincess, RandomChoice
+from bots import available_bots
 from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
 from engine.view import redact_turn
+from runs import History, RunConfig
 
 app = FastAPI()
-
-TARGET_ROUND_WINS = 3
+history = History()  # simulation runs, for the Simulate and Stats pages
 
 # seconds to wait after each kind of message, before sending the next one
+# (at normal speed; TableConfig.speed scales these)
 PACE = {
     "game_start": 0.5,
     "round_start": 1.5,
@@ -27,15 +31,100 @@ PACE = {
     "round_end": 2.5,
 }
 PACE_YOUR_TURN_START = 0.3
+SPEEDS = {"slow": 1.6, "normal": 1.0, "fast": 0.4}  # multiplier on PACE
 
 
-def lineup(session: "Session") -> dict[str, Strategy]:
-    return {
-        "Alice": NoPrincess(),
-        "Bob": RandomChoice(),
-        "Charlie": RandomChoice(),
-        "You": Web_Strategy(session),
-    }
+# --- Table settings, sent by the setup page with "new_game" --- #
+
+@dataclasses.dataclass
+class TableConfig:
+    """One game on the table. mode "play": you and three bots (opponents).
+    mode "watch": four bots (opponents holds all four) and nobody to ask."""
+
+    mode: str = "play"
+    name: str = "The Royal Court"
+    you: str = "You"
+    seat: int | None = 3  # your seat, 0-3; None = random (play only)
+    opponents: list[tuple[str, str]] = dataclasses.field(  # (name, bot id), in seat order
+        default_factory=lambda: [("Alice", "NoPrincess"), ("Bob", "RandomChoice"), ("Charlie", "RandomChoice")]
+    )
+    target_round_wins: int = 3
+    speed: str = "normal"
+    deck_seed: str | None = None  # same seed = same deals, round for round
+    visibility: str = "private"  # for multiplayer later; no effect yet
+    reveal: bool = True  # watch only: start with every hand face up
+
+    @classmethod
+    def from_json(cls, data: dict | None) -> "TableConfig":
+        """Validate settings from the browser. Raises ValueError with a readable message."""
+        if not data:
+            return cls()
+
+        def text(key: str, default: str, limit: int = 24) -> str:
+            value = str(data.get(key) or "").strip()[:limit]
+            return value or default
+
+        mode = data.get("mode", "play")
+        if mode not in ("play", "watch"):
+            raise ValueError(f"Unknown mode: {mode!r}")
+        watch = mode == "watch"
+
+        bots = available_bots()
+        raw = data.get("players" if watch else "opponents")
+        wanted = 4 if watch else 3
+        if not isinstance(raw, list) or len(raw) != wanted:
+            raise ValueError("Pick exactly four bots." if watch else "Pick exactly three opponents.")
+        opponents = []
+        for i, opp in enumerate(raw):
+            if not isinstance(opp, dict) or opp.get("bot") not in bots:
+                raise ValueError(f"Unknown bot for {'seat' if watch else 'opponent'} {i + 1}: {opp!r}")
+            name = str(opp.get("name") or "").strip()[:24] or f"Bot {i + 1}"
+            opponents.append((name, opp["bot"]))
+
+        you = text("you", "You")
+        names = ([] if watch else [you]) + [n for n, _ in opponents]
+        if len({n.casefold() for n in names}) < len(names):
+            raise ValueError("Every player needs a different name.")
+
+        seat = None if watch else data.get("seat")
+        if seat is not None and seat not in range(4):
+            raise ValueError("Your seat must be 1 to 4, or random.")
+
+        target = data.get("targetRoundWins", 3)
+        if not isinstance(target, int) or not 1 <= target <= 9:
+            raise ValueError("Round wins to win must be between 1 and 9.")
+
+        speed = data.get("speed", "normal")
+        if speed not in SPEEDS:
+            raise ValueError(f"Unknown speed: {speed!r}")
+
+        visibility = data.get("visibility", "private")
+        if visibility not in ("private", "public"):
+            raise ValueError(f"Unknown visibility: {visibility!r}")
+
+        return cls(
+            mode=mode,
+            name=text("name", "The Royal Court", 40),
+            you=you,
+            seat=seat,
+            opponents=opponents,
+            target_round_wins=target,
+            speed=speed,
+            deck_seed=str(data.get("deckSeed") or "").strip()[:40] or None,
+            visibility=visibility,
+            reveal=bool(data.get("reveal", True)),
+        )
+
+
+def lineup(config: TableConfig, session: "Session") -> dict[str, Strategy]:
+    """Players in seat order, with the browser's seat where the config puts it (none when watching)."""
+    bots = available_bots()
+    players: list[tuple[str, Strategy]] = [(name, bots[bot]()) for name, bot in config.opponents]
+    if config.mode == "watch":
+        return dict(players)
+    seat = config.seat if config.seat is not None else random.randrange(4)
+    players.insert(seat, (config.you, Web_Strategy(session)))
+    return dict(players)
 
 
 # --- Engine objects -> JSON --- #
@@ -123,6 +212,8 @@ class TableObserver(Observer):
             "deckCount": rnd.deck.cards_left if rnd else 0,
             "burn": card_id(getattr(rnd, "burn_card", None)),
             "winsNeeded": game.target_round_wins,
+            "name": self.session.config.name,
+            "visibility": self.session.config.visibility,
             "youSeat": self.session.you,
             "showdown": self.showdown,
             "players": [
@@ -176,18 +267,24 @@ class TableObserver(Observer):
 class Session:
     """One game, and the bridge between its thread and the event loop."""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, config: TableConfig) -> None:
         self.loop = loop
+        self.config = config
         self.outbox: asyncio.Queue[dict] = asyncio.Queue()  # game thread -> browser
         self.answers: queue.Queue[int | None] = queue.Queue()  # browser -> game thread
         self.aborted = threading.Event()
 
         self.observer = TableObserver(self)
-        players = lineup(self)
-        self.you = next(
-            seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)
+        players = lineup(config, self)
+        self.you: int | None = next(  # None when watching: nobody at the table is the browser
+            (seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)), None
         )
-        self.game = Game(players, target_round_wins=TARGET_ROUND_WINS, observers=self.observer)
+        self.game = Game(
+            players,
+            target_round_wins=config.target_round_wins,
+            observers=self.observer,
+            deck_seed=config.deck_seed,
+        )
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self) -> None:
@@ -239,7 +336,8 @@ def redact(msg: dict) -> dict:
     """Return a copy of msg with everything the human seat can't know removed.
 
     Turns go through the engine's redact_turn, the same rules bots get.
-    Only the table snapshot, which the engine doesn't have, is handled here."""
+    Only the table snapshot, which the engine doesn't have, is handled here.
+    When watching (youSeat None) the viewer is a spectator: public info only."""
     if "table" not in msg:
         return msg
     table = msg["table"]
@@ -252,7 +350,7 @@ def redact(msg: dict) -> dict:
     ]
     msg = {**msg, "table": {**table, "burn": None, "players": players}}
     if "turn" in msg:
-        msg["turn"] = redact_turn(msg["turn"], you)
+        msg["turn"] = redact_turn(msg["turn"], -1 if you is None else you)
     return msg
 
 
@@ -296,7 +394,12 @@ class Connection:
     async def handle(self, msg: dict) -> None:
         kind = msg.get("type")
         if kind == "new_game":
-            self.start_game()
+            try:
+                config = TableConfig.from_json(msg.get("config"))
+            except ValueError as exc:
+                await self.send({"type": "error", "message": f"Invalid table settings: {exc}"})
+                return
+            self.start_game(config)
             await self.send_status()
         elif kind == "pause":
             self.unpaused.clear()
@@ -324,9 +427,11 @@ class Connection:
         self.prompt = None  # one answer per prompt, so double clicks do nothing
         session.answers.put(index)
 
-    def start_game(self) -> None:
+    def start_game(self, config: TableConfig) -> None:
         self.stop_game()
-        self.session = Session(self.loop)
+        if config.mode == "watch":
+            self.reveal = config.reveal  # spectators choose this on the setup page
+        self.session = Session(self.loop, config)
         self.running = True
         self.unpaused.set()
         self.pump_task = asyncio.create_task(self.pump(self.session))
@@ -360,9 +465,10 @@ class Connection:
                     return
 
                 if msg["type"] == "turn_start" and msg["turn"].seat == session.you:
-                    await asyncio.sleep(PACE_YOUR_TURN_START)
+                    pace = PACE_YOUR_TURN_START
                 else:
-                    await asyncio.sleep(PACE.get(msg["type"], 0.0))
+                    pace = PACE.get(msg["type"], 0.0)
+                await asyncio.sleep(pace * SPEEDS[session.config.speed])
         except (WebSocketDisconnect, RuntimeError):
             pass  # the socket closed mid-send; serve() cleans up
 
@@ -382,7 +488,81 @@ class Connection:
             }
         )
 
+@app.get("/api/bots")
+def list_bots() -> list[dict]:
+    """The bots the setup page can seat at the table."""
+    bots = [cls() for cls in available_bots().values()]
+    return [{"id": b.id, "name": b.name, "description": b.description} for b in bots]
+
+
 @app.websocket("/ws/play")
 async def play(ws: WebSocket):
     await ws.accept()
     await Connection(ws).serve()
+
+
+# --- Simulations (Simulate and Stats pages); the work happens in runs/ --- #
+
+@app.get("/api/simulations")
+def list_simulations() -> list[dict]:
+    """Every run, newest first (queued and running ones included)."""
+    return history.list()
+
+
+@app.post("/api/simulations", status_code=201)
+def start_simulation(config: dict = Body(...)) -> dict:
+    """Queue a run. Returns it straight away; poll GET /api/simulations/{id} for progress."""
+    try:
+        return history.submit(RunConfig.from_json(config))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
+@app.get("/api/simulations/{run_id}")
+def get_simulation(run_id: str) -> dict:
+    record = history.get(run_id)
+    if record is None:
+        raise HTTPException(404, "No such simulation.")
+    return record
+
+
+@app.patch("/api/simulations/{run_id}")
+def rename_simulation(run_id: str, changes: dict = Body(...)) -> dict:
+    try:
+        record = history.rename(run_id, str(changes.get("name") or ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    if record is None:
+        raise HTTPException(404, "No such simulation.")
+    return record
+
+
+@app.delete("/api/simulations/{run_id}", status_code=204)
+def delete_simulation(run_id: str) -> None:
+    """Cancel a queued or running run, or delete a finished one."""
+    if not history.delete(run_id):
+        raise HTTPException(404, "No such simulation.")
+
+
+@app.get("/api/simulations/{run_id}/lln")
+def download_lln(run_id: str, compressed: bool = False) -> Response:
+    """The run's games as LLN (only for runs started with saveLln).
+
+    Stored compressed (.lln.bz2, ~10x smaller); sent as plain .lln text so it
+    opens in any editor, unless ?compressed=true asks for the file as stored."""
+    path = history.lln_path(run_id)
+    if path is None:
+        raise HTTPException(404, "This simulation didn't keep its games.")
+    if compressed:
+        return FileResponse(path, filename=f"{run_id}.lln.bz2", media_type="application/x-bzip2")
+
+    def text():
+        with bz2.open(path, "rb") as f:
+            while chunk := f.read(1 << 16):
+                yield chunk
+
+    return StreamingResponse(
+        text(),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{run_id}.lln"'},
+    )

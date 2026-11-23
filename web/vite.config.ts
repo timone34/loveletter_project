@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       // the game server: uvicorn server:app --port 8000
       '/ws': { target: 'http://localhost:8000', ws: true },
+      '/api': 'http://localhost:8000',
     },
   },
 })

@@ -16,8 +16,7 @@
 
 .seat--you {
   justify-self: center;
-  width: fit-content;
-  min-width: 460px;
+  width: 640px; /* fixed, so a long discard pile doesn't widen the seat */
 }
 
 .seat--active {
@@ -59,10 +58,14 @@
   font-weight: 700;
 }
 
+.seat__who {
+  flex: 1;
+  min-width: 0; /* lets a long name shrink (with …) instead of pushing the hearts out */
+}
+
 .seat__name,
 .seat__detail {
   display: block;
-  max-width: 125px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -80,44 +83,38 @@
 
 .seat__meta {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 0.4rem;
   margin-left: auto;
 }
 
-/* ----- Status ----- */
+/* ----- Status icons (playing, protected) ----- */
 
-.seat__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0.55rem;
-  border: 1px solid rgb(250 250 246 / 25%);
-  border-radius: 999px;
-  font-size:0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.seat__status {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  aspect-ratio: 1;
+  border: 1px solid rgb(250 250 246 / 30%);
+  border-radius: 50%;
+  font-size: 0.8rem; /* = icon size */
+  cursor: help;
 }
 
-.seat__pill--active {
+/* playing: a pulsing dot on a light badge */
+.seat__status--active {
   border-color: transparent;
   background: var(--surface);
-  color: var(--primary);
 }
 
-.seat__pill--active::before {
+.seat__status--active::before {
   content: "";
   width: 0.4rem;
-  height: 0.4rem;
+  aspect-ratio: 1;
   border-radius: 50%;
   background: var(--primary);
   animation: seat-pulse 1.4s ease-in-out infinite;
-}
-
-.seat__pill--rejected {
-  border-color: transparent;
-  background: rgb(42 40 41 / 45%);
 }
 
 @keyframes seat-pulse {
@@ -126,21 +123,45 @@
   }
 }
 
+/* rejected: a label where the hand would be (the hand is empty anyway) */
+.seat__rejected {
+  display: grid;
+  place-items: center;
+  height: calc(var(--card-w) * 12 / 7);
+  border: 1.5px dashed rgb(250 250 246 / 22%);
+  border-radius: 10px;
+  background: rgb(42 40 41 / 22%);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(250 250 246 / 70%);
+}
+
 /* ----- Round wins ----- */
 
 .seat__wins {
-  display:flex;
-  gap: 0.15rem;
-  font-size: 0.8rem;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.85rem; /* = heart size */
   line-height: 1;
 }
 
+/* outline = still to win, filled = won (see components/Heart.tsx) */
 .seat__heart {
-  color: rgb(250 250 246 / 22%);
+  color: rgb(250 250 246 / 40%);
 }
 
 .seat__heart--won {
   color: var(--surface);
+}
+
+.seat__wins-count {
+  margin-left: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 
@@ -154,6 +175,13 @@
 
 .seat--you .seat__cards {
   gap: 2rem;
+}
+
+/* the hand always has room for two cards (you hold two on your turn),
+   so the discard area next to it keeps the same size all round */
+.seat__hand {
+  flex: none;
+  width: calc(var(--card-w) * (2 - var(--overlap)));
 }
 
 .seat--you .seat__hand .card:hover {
@@ -177,7 +205,7 @@
 }
 
 .seat__pile {
-  min-width: 3.5rem;
+  min-width: 0;
   padding: 4px;
   border: 1.5px dashed rgb(250 250 246 / 22%);
   border-radius: 10px;
@@ -185,7 +213,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .seat,
-  .seat__pill--active::before {
+  .seat__status--active::before {
     transition: none;
     animation: none;
   }

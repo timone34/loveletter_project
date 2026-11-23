@@ -12,6 +12,9 @@ type Props = {
   error: string | null;
   onChoose: (index: number) => void;
   onNewGame: () => void;
+  onSettings: () => void;
+  opponents: string[]; // names of the bots at the table, for the "waiting" text before a game
+  watching: boolean; // four bots, no seat of yours
   onResume: () => void;
   onReconnect: () => void;
 };
@@ -36,10 +39,11 @@ export function TablePanel(props: Props) {
 
   if (error) {
     return (
-      <Panel title="The game crashed">
+      <Panel title="Something went wrong">
         <p className="panel__text">{error}</p>
         <div className="panel__options">
           <button type="button" className="panel__option" onClick={props.onNewGame}>New game</button>
+          <button type="button" className="panel__option" onClick={props.onSettings}>Table settings</button>
         </div>
       </Panel>
     );
@@ -52,7 +56,7 @@ export function TablePanel(props: Props) {
     return (
       <Panel title={`${name} the game!`}>
         <div className="panel__options">
-          <button type="button" className="panel__option" onClick={props.onNewGame}>Play again</button>
+          <button type="button" className="panel__option" onClick={props.onNewGame}>{props.watching ? "Watch another" : "Play again"}</button>
         </div>
       </Panel>
     );
@@ -61,9 +65,12 @@ export function TablePanel(props: Props) {
   if (!status.running) {
     return (
       <Panel title="Ready when you are">
-        <p className="panel__text">Alice, Bob and Charlie are waiting for a fourth.</p>
+        <p className="panel__text">
+          {props.watching ? `${listNames(props.opponents)} are ready to play.` : `${listNames(props.opponents)} are waiting for a fourth.`}
+        </p>
         <div className="panel__options">
           <button type="button" className="panel__option" onClick={props.onNewGame}>New game</button>
+          <button type="button" className="panel__option" onClick={props.onSettings}>Table settings</button>
         </div>
       </Panel>
     );
@@ -128,6 +135,11 @@ function PromptPanel({ prompt, table, onChoose }: { prompt: Prompt; table: Table
       );
     }
   }
+}
+
+// ["Alice", "Bob", "Charlie"] -> "Alice, Bob and Charlie"
+function listNames(names: string[]): string {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function Panel({ title, children }: { title: string; children?: ReactNode }) {

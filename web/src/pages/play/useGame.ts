@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describe } from "./describe";
+import type { TableConfig } from "./config";
 import type { Prompt, ServerMessage, TableView } from "./types";
 
 const SOCKET_PATH = "/ws/play"; // proxied to FastAPI by vite.config.ts
@@ -75,12 +76,12 @@ export function useGame() {
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
   }, []);
 
-  const newGame = useCallback(() => {
+  const newGame = useCallback((config: TableConfig) => {
     setPrompt(null);
     setWinner(null);
     setError(null);
     setCaption("");
-    send({ type: "new_game" });
+    send({ type: "new_game", config });
   }, [send]);
 
   const togglePause = useCallback(

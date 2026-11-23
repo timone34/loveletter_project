@@ -7,18 +7,20 @@ type Props = {
   cards: (CardId | null)[]; // null = face down
   width: string;
   overlap?: number; // 0 = side by side, 0.6 = each card covers 60% of the previous
+  fit?: boolean; // squeeze the overlap when the row runs out of room, instead of overflowing
   className?: string;
   onPick?: (index: number) => void; // makes the cards clickable
   pickable?: boolean[]; // per card; missing = pickable
 };
 
-export function CardRow({ cards, width, overlap = 0, className = "", onPick, pickable }: Props) {
+export function CardRow({ cards, width, overlap = 0, fit = false, className = "", onPick, pickable }: Props) {
   const style = { "--card-w": width, "--overlap": overlap } as CSSProperties;
 
   return (
-    <div className={`card-row ${className}`} style={style}>
+    <div className={`card-row ${fit ? "card-row--fit" : ""} ${className}`} style={style}>
       {cards.map((id, i) => {
         const card = <Card key={i} id={id ?? undefined} faceDown={id === null} width={width} />;
+        if (fit) return <div key={i} className="card-row__slot">{card}</div>;
         if (!onPick) return card;
 
         const enabled = pickable?.[i] ?? true;

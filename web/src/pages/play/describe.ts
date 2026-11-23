@@ -51,7 +51,7 @@ export function describe(event: GameEvent, table: TableView): string {
 
 function describeTurn(
   t: TurnEvent,
-  you: number,
+  you: number | null, // null when watching
   name: (seat: number) => string,
   verb: (seat: number, base: string, third?: string) => string,
   isAre: (seat: number) => string,
