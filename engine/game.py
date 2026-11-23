@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 from .cards import Card
 from .deck import Deck
 from .history import GameHistory, RoundHistory, ShowdownHistory, TurnHistory
@@ -15,6 +17,7 @@ class Game:
         players: dict[str, Strategy],
         target_round_wins: int = 3,
         observers: Observer | None = None,
+        deck_seed: int | str | None = None,
     ):
         self.players = [
             Player(seat, name, strategy)
@@ -27,6 +30,11 @@ class Game:
         self.target_round_wins: int = (
             target_round_wins  # Number of round wins to win the game
         )
+
+        # Seeded decks: round r's deck depends only on (deck_seed, r), never on
+        # what the players do, so different bots can face the exact same decks.
+        # None = shuffle with the global random module, as before.
+        self.deck_seed = deck_seed
 
         self.dealer = 0
         self.round = 0
@@ -45,7 +53,10 @@ class Game:
         while self.winner is None:
             self.round += 1
 
-            rnd = Round(self, self.players, self.dealer, self.round, self.obs)
+            rnd = Round(
+                self, self.players, self.dealer, self.round, self.obs,
+                deck=self._new_deck(),
+            )
             self.current_round = rnd
             rnd.play()
 
@@ -61,6 +72,17 @@ class Game:
         self.history.winner = self.winner.seat
         self.history.scores = {p.seat: p.round_wins for p in self.players}
         self.obs.on_game_end(self.history)
+
+    def _new_deck(self) -> Deck | None:
+        """The deck for round self.round. None = Round shuffles a fresh deck itself.
+
+        Subclasses can override this to supply fixed deck orders (e.g. LLN replays).
+        """
+        if self.deck_seed is None:
+            return None
+        deck = Deck()
+        deck.shuffle(random.Random(f"{self.deck_seed}:{self.round}"))
+        return deck
 
     def _score(self, rnd: Round) -> None:
         for player in rnd.winners:

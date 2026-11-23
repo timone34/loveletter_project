@@ -35,7 +35,7 @@ A secondary goal is a **YouTube video** on Love Letter and the journey of buildi
 - `engine/observer.py`: `Observer` / `Observers` base classes. The engine calls these hooks (`on_game_start`, `on_round_start`, `on_turn_start`, `on_turn_end`, `on_turn_skipped`, `on_showdown`, `on_round_end`, `on_game_end`).
 - `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`), plus `bot_terminal.py` (`TerminalPlayer`, a human playing in the terminal).
 - `observers/`: Observer implementations. Includes `ConsoleLogger`; `LLNWriter` is being developed on the LLN branch.
-- `stats/`: `sim.py` (`simulate(n, players, obs, rotate_seats=True)` returns `list[GameHistory]`, seats rotate between games), `dataset.py` (pandas tables), `metrics.py` (win rates with 95% CIs and other metrics), `plots.py` (matplotlib). `experiment.py` sits in the repo root.
+- `stats/`: `sim.py` (`simulate(n, players, rotate_seats=True, obs=None, seed=None)` returns `list[GameHistory]`, seats rotate between games; with a `seed`, round r of game i gets a deck that depends only on (seed, i, r), via `Game(deck_seed=...)` and a dedicated `random.Random`, so different lineups face identical decks, and the bots' global `random` is seeded for reproducibility), `dataset.py` (pandas tables), `metrics.py` (win rates with 95% CIs and other metrics), `plots.py` (matplotlib). `experiment.py` sits in the repo root.
 - `server.py`: FastAPI with a `/ws/play` WebSocket (`Web_Strategy`, `TableObserver`, `redact`).
 - `web/`: React + TypeScript frontend with its own CSS per component (`.tsx` + `.css` pairs, shared pieces in `web/src/content/Asset.tsx`).
 - `main.py`: runs 4 bots with `target_round_wins=3`.
