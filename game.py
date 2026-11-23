@@ -45,7 +45,10 @@ class Game:
         while self.winner is None:
             self.round += 1
 
-            rnd = Round(self, self.players, self.dealer, self.round, self.obs)
+            rnd = Round(
+                self, self.players, self.dealer, self.round, self.obs,
+                deck=self._new_deck(),
+            )
             self.current_round = rnd
             rnd.play()
 
@@ -61,6 +64,10 @@ class Game:
         self.history.winner = self.winner.seat
         self.history.scores = {p.seat: p.round_wins for p in self.players}
         self.obs.on_game_end(self.history)
+
+    def _new_deck(self) -> Deck | None:
+        # None = Round builds and shuffles a fresh deck; override to supply a fixed order (replays)
+        return None
 
     def _score(self, rnd: Round) -> None:
         for player in rnd.winners:
