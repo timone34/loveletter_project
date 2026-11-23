@@ -20,7 +20,7 @@ export type TableView = {
     winsNeeded: number;
     name: string; // table name, from the setup page
     visibility: "private" | "public";
-    youSeat: number;
+    youSeat: number | null; // null when watching: nobody at the table is you
     players: PlayerView[]; // in seat order
     burn?: CardId | null;
     showdown?: boolean;

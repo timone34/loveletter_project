@@ -72,11 +72,13 @@ npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually http://localhost:5173). The Vite dev server proxies `/ws` and `/api` to the FastAPI server on port 8000. The site has three pages:
+Then open the URL Vite prints (usually http://localhost:5173). The Vite dev server proxies `/ws` and `/api` to the FastAPI server on port 8000. Everything starts on the **New** page: pick a lineup of bots, then choose a mode:
 
-- **Play**: pick three bots and the table settings, then play against them.
-- **Simulate**: seat four bots, choose the number of games, round wins to win, seat rotation, a seed and whether to keep the games as LLN, and press Run. Runs play in the background, one at a time.
-- **Statistics**: the history of every simulation, and each run's stats (see [Statistics](#statistics)), which fill in live while it plays. *Run again* repeats a run game for game (same seed); *Edit & run* starts a new one from its settings; runs that kept their games can be downloaded as `.lln`.
+- **Play**: you and three bots, on the table.
+- **Watch**: four bots play one game on the table at the speed you choose, with every hand face up (or only what a spectator could see).
+- **Simulate**: four bots, many games. Choose the number of games, round wins to win, seat rotation, a seed and whether to keep the games as LLN, and press Run. Runs play in the background, one at a time.
+
+**History** lists every simulation; each run has its own stats page (see [Statistics](#statistics)), which fill in live while it plays. *Run again* repeats a run game for game (same seed); *Edit & run* starts a new one from its settings; runs that kept their games can be downloaded as `.lln`.
 
 Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln.bz2` if it kept its games). Every saved run records the format of its stats; a run saved by an older format is still listed, marked *outdated*, and can be run again from its seed.
 
@@ -98,7 +100,7 @@ Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln
 | [lln/](lln/) | Love Letter Notation: writing (`save_lln`) and parsing (`load_lln`) `.lln` files |
 | [stats/](stats/) | `simulate()` / `iter_games()`, `Tally` (the stats the webapp shows), `Dataset`, metrics (`winrate`, `guard_accuracy`, ...) and plots |
 | [runs/](runs/) | Simulation runs for the webapp: settings, a background queue and the saved history |
-| [server.py](server.py) | FastAPI server: the Play WebSocket (`/ws/play`), the bot list and the simulations API (`/api/...`) |
+| [server.py](server.py) | FastAPI server: the table WebSocket for Play and Watch (`/ws/play`), the bot list and the simulations API (`/api/...`) |
 | [web/](web/) | React + TypeScript + Vite front end |
 | [games/](games/) | Example games recorded in LLN |
 

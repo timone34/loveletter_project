@@ -56,15 +56,16 @@ A chess-PGN-inspired notation for recording games, currently **LLN 1.5** (the wr
 
 ## Webapp
 
-The main workspace, with three modes:
+The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch:
 
-- **Play** (built): setup page, then the table, live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
-- **Simulate** (built): pick four bots and the run settings; runs play in the background (`runs/`, one at a time) and land on their Stats page.
-- **Stats** (built): the simulation history (`/stats`, saved in `simulations/`) and one run's stats (`/stats/<id>`), filling in live while it plays. The stat definitions live in `stats/tally.py` (docstring); the charts are hand-written SVG/CSS in `web/src/pages/stats/charts/`. Changing what a saved stat means or how it's stored: bump `FORMAT` in `runs/history.py`, so older runs show as outdated (re-runnable from their seed) instead of with wrong numbers.
+- **Play**: you take a seat (the fourth bot sits out), then the table (`/play/table`), live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
+- **Watch**: four bots play one game on the same table (`TableConfig.mode == "watch"`, no human seat, `youSeat` null).
+- **Simulate**: runs play in the background (`runs/`, one at a time) and land on their Stats page.
+- **History / Stats**: the simulation history (`/stats`, saved in `simulations/`) and one run's stats (`/stats/<id>`), filling in live while it plays. The stat definitions live in `stats/tally.py` (docstring); the charts are hand-written SVG/CSS in `web/src/pages/stats/charts/`. Changing what a saved stat means or how it's stored: bump `FORMAT` in `runs/history.py`, so older runs show as outdated (re-runnable from their seed) instead of with wrong numbers.
 
 Style: modern, slightly "vibe-coded" but in the owner's own coding style, JetBrains Mono, palette in `web/src/index.css` (light green is the favourite colour). A dark mode toggle is wanted.
 
-Ideas on the table: live spectate mode showing bots' decisions in real time, accounts with online play and career stats, click-to-target on the Play page. Not a focus yet: a Stockfish-like engine (best moves, LLN lines, hit-chance percentages).
+Ideas on the table: a Bots page (the ladder: each bot's results across runs, compare two runs), showing bots' reasoning while watching, accounts with online play and career stats, click-to-target on the Play page. Not a focus yet: a Stockfish-like engine (best moves, LLN lines, hit-chance percentages).
 
 ## Next steps under consideration
 

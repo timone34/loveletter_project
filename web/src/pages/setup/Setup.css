@@ -162,3 +162,78 @@
     transition: none;
   }
 }
+.sim-presets {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* the games field holds the preset buttons and the exact number */
+.setup__settings .field .segmented + .input {
+  margin-top: 0.1rem;
+}
+
+/* ----- Recent runs, below the bot library ----- */
+
+.sim-recent {
+  margin-top: 2rem;
+}
+
+.sim-recent__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sim-recent__item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  height: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--secondary);
+  border-radius: 14px;
+  background: rgb(250 250 246 / 60%);
+  color: inherit;
+  font-size: 0.72rem;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sim-recent__item:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.sim-recent__item strong {
+  overflow: hidden;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sim-recent__item span {
+  color: var(--text-muted);
+}
+
+.sim-recent__item .status {
+  align-self: flex-start;
+  margin-top: 0.3rem;
+}
+
+/* ----- Mode switch: Play / Watch / Simulate, above the title ----- */
+
+.setup__modes {
+  margin-bottom: 0.9rem;
+}
+
+.setup__modes .segmented {
+  width: max-content;
+}
+
+.setup__modes .segmented__option {
+  padding: 0.5rem 1.4rem;
+  font-size: 0.85rem;
+}

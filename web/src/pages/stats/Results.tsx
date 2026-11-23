@@ -80,7 +80,7 @@ export default function Results() {
         <header className="stats__head">
           <div className="stats__titles">
             <p className="stats__eyebrow">
-              <Link to="/stats">Statistics</Link> / {when(run.createdAt)}
+              <Link to="/stats">History</Link> / {when(run.createdAt)}
             </p>
             <input
               key={run.config.name}
@@ -103,7 +103,7 @@ export default function Results() {
             </div>
             <div className="controls">
               <button type="button" className="btn btn--primary" onClick={runAgain}>Run again</button>
-              <button type="button" className="btn" onClick={() => navigate("/simulate", { state: { config: run.config } })}>
+              <button type="button" className="btn" onClick={() => navigate("/new", { state: { run: run.config } })}>
                 Edit & run
               </button>
               {run.hasLln && (

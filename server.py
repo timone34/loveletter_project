@@ -38,9 +38,13 @@ SPEEDS = {"slow": 1.6, "normal": 1.0, "fast": 0.4}  # multiplier on PACE
 
 @dataclasses.dataclass
 class TableConfig:
+    """One game on the table. mode "play": you and three bots (opponents).
+    mode "watch": four bots (opponents holds all four) and nobody to ask."""
+
+    mode: str = "play"
     name: str = "The Royal Court"
     you: str = "You"
-    seat: int | None = 3  # your seat, 0-3; None = random
+    seat: int | None = 3  # your seat, 0-3; None = random (play only)
     opponents: list[tuple[str, str]] = dataclasses.field(  # (name, bot id), in seat order
         default_factory=lambda: [("Alice", "NoPrincess"), ("Bob", "RandomChoice"), ("Charlie", "RandomChoice")]
     )
@@ -48,6 +52,7 @@ class TableConfig:
     speed: str = "normal"
     deck_seed: str | None = None  # same seed = same deals, round for round
     visibility: str = "private"  # for multiplayer later; no effect yet
+    reveal: bool = True  # watch only: start with every hand face up
 
     @classmethod
     def from_json(cls, data: dict | None) -> "TableConfig":
@@ -59,23 +64,29 @@ class TableConfig:
             value = str(data.get(key) or "").strip()[:limit]
             return value or default
 
+        mode = data.get("mode", "play")
+        if mode not in ("play", "watch"):
+            raise ValueError(f"Unknown mode: {mode!r}")
+        watch = mode == "watch"
+
         bots = available_bots()
-        raw = data.get("opponents")
-        if not isinstance(raw, list) or len(raw) != 3:
-            raise ValueError("Pick exactly three opponents.")
+        raw = data.get("players" if watch else "opponents")
+        wanted = 4 if watch else 3
+        if not isinstance(raw, list) or len(raw) != wanted:
+            raise ValueError("Pick exactly four bots." if watch else "Pick exactly three opponents.")
         opponents = []
         for i, opp in enumerate(raw):
             if not isinstance(opp, dict) or opp.get("bot") not in bots:
-                raise ValueError(f"Unknown bot for opponent {i + 1}: {opp!r}")
+                raise ValueError(f"Unknown bot for {'seat' if watch else 'opponent'} {i + 1}: {opp!r}")
             name = str(opp.get("name") or "").strip()[:24] or f"Bot {i + 1}"
             opponents.append((name, opp["bot"]))
 
         you = text("you", "You")
-        names = [you] + [n for n, _ in opponents]
+        names = ([] if watch else [you]) + [n for n, _ in opponents]
         if len({n.casefold() for n in names}) < len(names):
             raise ValueError("Every player needs a different name.")
 
-        seat = data.get("seat")
+        seat = None if watch else data.get("seat")
         if seat is not None and seat not in range(4):
             raise ValueError("Your seat must be 1 to 4, or random.")
 
@@ -92,6 +103,7 @@ class TableConfig:
             raise ValueError(f"Unknown visibility: {visibility!r}")
 
         return cls(
+            mode=mode,
             name=text("name", "The Royal Court", 40),
             you=you,
             seat=seat,
@@ -100,13 +112,16 @@ class TableConfig:
             speed=speed,
             deck_seed=str(data.get("deckSeed") or "").strip()[:40] or None,
             visibility=visibility,
+            reveal=bool(data.get("reveal", True)),
         )
 
 
 def lineup(config: TableConfig, session: "Session") -> dict[str, Strategy]:
-    """Players in seat order, with the browser's seat where the config puts it."""
+    """Players in seat order, with the browser's seat where the config puts it (none when watching)."""
     bots = available_bots()
     players: list[tuple[str, Strategy]] = [(name, bots[bot]()) for name, bot in config.opponents]
+    if config.mode == "watch":
+        return dict(players)
     seat = config.seat if config.seat is not None else random.randrange(4)
     players.insert(seat, (config.you, Web_Strategy(session)))
     return dict(players)
@@ -261,8 +276,8 @@ class Session:
 
         self.observer = TableObserver(self)
         players = lineup(config, self)
-        self.you = next(
-            seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)
+        self.you: int | None = next(  # None when watching: nobody at the table is the browser
+            (seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)), None
         )
         self.game = Game(
             players,
@@ -321,7 +336,8 @@ def redact(msg: dict) -> dict:
     """Return a copy of msg with everything the human seat can't know removed.
 
     Turns go through the engine's redact_turn, the same rules bots get.
-    Only the table snapshot, which the engine doesn't have, is handled here."""
+    Only the table snapshot, which the engine doesn't have, is handled here.
+    When watching (youSeat None) the viewer is a spectator: public info only."""
     if "table" not in msg:
         return msg
     table = msg["table"]
@@ -334,7 +350,7 @@ def redact(msg: dict) -> dict:
     ]
     msg = {**msg, "table": {**table, "burn": None, "players": players}}
     if "turn" in msg:
-        msg["turn"] = redact_turn(msg["turn"], you)
+        msg["turn"] = redact_turn(msg["turn"], -1 if you is None else you)
     return msg
 
 
@@ -413,6 +429,8 @@ class Connection:
 
     def start_game(self, config: TableConfig) -> None:
         self.stop_game()
+        if config.mode == "watch":
+            self.reveal = config.reveal  # spectators choose this on the setup page
         self.session = Session(self.loop, config)
         self.running = True
         self.unpaused.set()

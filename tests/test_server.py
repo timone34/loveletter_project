@@ -126,3 +126,57 @@ def test_bad_config_is_rejected():
         assert msg["type"] == "error" and "different name" in msg["message"]
         ws.send_json({"type": "new_game", "config": {**CONFIG, "opponents": [{"name": "X", "bot": "Nope"}]}})
         assert ws.receive_json()["type"] == "error"
+
+
+WATCH = {
+    "mode": "watch",
+    "name": "Bot Court",
+    "players": [
+        {"name": "Ann", "bot": "CardCounter"},
+        {"name": "Ben", "bot": "NoPrincess"},
+        {"name": "Cat", "bot": "RandomChoice"},
+        {"name": "Dan", "bot": "RandomChoice"},
+    ],
+    "targetRoundWins": 1,
+    "speed": "fast",
+    "reveal": False,
+}
+
+
+def watch_game(config: dict) -> list[dict]:
+    msgs = []
+    with TestClient(server.app).websocket_connect("/ws/play") as ws:
+        ws.receive_json()  # status
+        ws.send_json({"type": "new_game", "config": config})
+        while True:
+            msg = ws.receive_json()
+            msgs.append(msg)
+            assert msg["type"] not in ("prompt", "error"), msg
+            if msg["type"] == "game_end":
+                return msgs
+
+
+def test_watch_plays_four_bots_without_prompts():
+    msgs = watch_game(WATCH)
+    table = msgs[-1]["table"]
+    assert table["youSeat"] is None
+    assert [p["name"] for p in table["players"]] == ["Ann", "Ben", "Cat", "Dan"]
+
+
+def test_watching_shows_only_public_info_unless_revealed():
+    for msg in watch_game(WATCH):
+        table = msg.get("table")
+        if table and not table["showdown"]:
+            assert all(c is None for p in table["players"] for c in p["hand"])
+        if msg["type"] in ("turn_start", "turn_end"):
+            assert msg["held"] is None and msg["drawn"] is None and msg["seen"] is None
+    revealed = watch_game({**WATCH, "reveal": True})
+    assert any(m["type"] == "turn_start" and m["drawn"] is not None for m in revealed)
+
+
+def test_watch_needs_four_bots():
+    with TestClient(server.app).websocket_connect("/ws/play") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "new_game", "config": {**WATCH, "players": WATCH["players"][:3]}})
+        msg = ws.receive_json()
+        assert msg["type"] == "error" and "four bots" in msg["message"]

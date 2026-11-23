@@ -20,6 +20,44 @@ export function SeatLabel({ seat }: { seat: number }) {
   );
 }
 
+// Your own seat (Play mode): inverted colours, ← → to change seats.
+export function YouTile({ seat, random, name, onName, onMove }: {
+  seat: number;
+  random: boolean;
+  name: string;
+  onName: (name: string) => void;
+  onMove: (delta: number) => void;
+}) {
+  return (
+    <div className={`tile tile--you ${random ? "tile--random" : ""}`}>
+      {random ? (
+        <div className="tile__top"><span className="tile__seat">Seat ?</span><span className="tile__tag">Random</span></div>
+      ) : (
+        <SeatLabel seat={seat} />
+      )}
+      <div className="tile__identity">
+        <span className="tile__avatar" aria-hidden="true">{initial(name, "Y")}</span>
+        <input
+          className="tile__name"
+          value={name}
+          maxLength={NAME_LIMIT}
+          aria-label="Your name"
+          onChange={(e) => onName(e.target.value)}
+        />
+      </div>
+      <div className="tile__foot">
+        <span className="tile__bot">You</span>
+        {!random && (
+          <span className="tile__move">
+            <button type="button" onClick={() => onMove(-1)} disabled={seat === 0} aria-label="Move one seat left">←</button>
+            <button type="button" onClick={() => onMove(1)} disabled={seat === 3} aria-label="Move one seat right">→</button>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function BotTile({ seat, opponent, bot, active, onActivate, onName }: {
   seat: number;
   opponent: SeatedBot;

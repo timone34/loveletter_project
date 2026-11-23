@@ -10,16 +10,13 @@ export function Header() {
     <span className="version">v1.0</span>
 
     <nav className="navigation">
-      <NavLink to="/play" className="navigation__link">
-        Play
-      </NavLink>
-
-      <NavLink to="/simulate" className="navigation__link">
-        Simulate
+      {/* New: play, watch or simulate (pages/setup). History: every simulation run. */}
+      <NavLink to="/new" className="navigation__link">
+        New
       </NavLink>
 
       <NavLink to="/stats" className="navigation__link">
-        Statistics
+        History
       </NavLink>
     </nav>
 

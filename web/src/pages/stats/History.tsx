@@ -27,13 +27,13 @@ export default function History() {
         <div className="stats">
           <header className="stats__head">
             <div className="stats__titles">
-              <p className="stats__eyebrow">Statistics</p>
+              <p className="stats__eyebrow">History</p>
               <h1 className="stats__title stats__title--static">Simulation history</h1>
               <p className="stats__lineup">Every simulation you've run. Pick one to see its stats.</p>
             </div>
             <div className="stats__aside">
               <div className="controls">
-                <button type="button" className="btn btn--primary" onClick={() => navigate("/simulate")}>New simulation</button>
+                <button type="button" className="btn btn--primary" onClick={() => navigate("/new?mode=simulate")}>New simulation</button>
               </div>
             </div>
           </header>
@@ -48,7 +48,7 @@ export default function History() {
           ) : !runs.length ? (
             <div className="notice">
               <p>No simulations yet.</p>
-              <Link to="/simulate" className="link-btn">Run the first one →</Link>
+              <Link to="/new?mode=simulate" className="link-btn">Run the first one →</Link>
             </div>
           ) : (
             <div className="stat-card stat-card--flush">

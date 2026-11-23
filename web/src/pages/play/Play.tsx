@@ -7,7 +7,7 @@ import { PlayerSeat } from "./components/PlayerSeat";
 import { DeckPile } from "./components/DeckPile";
 import { TablePanel } from "./components/TablePanel";
 import { useGame } from "./useGame";
-import { loadConfig } from "./config";
+import { botsAtTable, loadConfig } from "./config";
 import "./Play.css";
 
 
@@ -30,11 +30,13 @@ export default function Play() {
     }
   }, [status.connected, game, config]);
 
-  const you = table?.players[table.youSeat];
+  // The bottom seat is yours; when watching (no seat of yours) it's seat 1.
+  const bottom = table?.youSeat ?? 0;
+  const you = table?.players[bottom];
   const opponents = table
     ? [
-        ...table.players.slice(table.youSeat + 1),
-        ...table.players.slice(0, table.youSeat),
+        ...table.players.slice(bottom + 1),
+        ...table.players.slice(0, bottom),
       ]
     : [];
   const cardPrompt = prompt?.kind === "card" ? prompt : null;
@@ -63,7 +65,7 @@ export default function Play() {
                 <div className="table__chips">
                   <span className="chip">Dealer · {table.players[table.dealer].name}</span>
                   <span className="chip">First to {table.winsNeeded}</span>
-                  <span className="chip">{table.visibility === "public" ? "Public" : "Private"}</span>
+                  {table.youSeat !== null && <span className="chip">{table.visibility === "public" ? "Public" : "Private"}</span>}
                   {config.deckSeed && <span className="chip">Seed · {config.deckSeed}</span>}
                   {table.burn && <span className="chip">Burned · {CARD_BY_ID[table.burn].name}</span>}
                 </div>
@@ -78,7 +80,7 @@ export default function Play() {
                 >
                   New game
                 </button>
-                <button type="button" className="btn" onClick={() => navigate("/play")}>
+                <button type="button" className="btn" onClick={() => navigate("/new")}>
                   Table settings
                 </button>
                 <button
@@ -121,8 +123,9 @@ export default function Play() {
                 error={game.error}
                 onChoose={game.choose}
                 onNewGame={newGame}
-                onSettings={() => navigate("/play")}
-                opponents={config.opponents.map((o) => o.name)}
+                onSettings={() => navigate("/new")}
+                opponents={botsAtTable(config).map((o) => o.name)}
+                watching={config.mode === "watch"}
                 onResume={game.togglePause}
                 onReconnect={game.reconnect}
               />
