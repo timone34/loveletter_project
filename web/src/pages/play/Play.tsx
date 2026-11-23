@@ -7,28 +7,14 @@ import { PlayerSeat } from "./components/PlayerSeat";
 import { DeckPile } from "./components/DeckPile";
 import { TablePanel } from "./components/TablePanel";
 import { useGame } from "./useGame";
-import { useFullscreen } from "./useFullscreen";
 import { botsAtTable, loadConfig } from "./config";
 import "./Play.css";
 
-
-// The narrowest the table area may get in fullscreen: the table as wide as it
-// is now, the log at its minimum, the gap, and the fullscreen side padding.
-// (The empty spacer left of the table shrinks to nothing; see Play.css.)
-const LOG_MIN = 300;
-const LOG_GAP = 32;
-const FULLSCREEN_SIDE_PADDING = 2 * 24; // .play-stage:fullscreen > .play
-function tableAreaMinWidth(main: HTMLElement): number {
-  const table = main.querySelector(".table")?.getBoundingClientRect().width ?? 1200;
-  return table + LOG_GAP + LOG_MIN + FULLSCREEN_SIDE_PADDING;
-}
 
 export default function Play() {
   const game = useGame();
   const { table, prompt, status } = game;
   const navigate = useNavigate();
-  // the table and log, without the site header
-  const { stageRef, contentRef, isFullscreen, contentStyle, toggle: toggleFullscreen } = useFullscreen<HTMLDivElement, HTMLElement>(tableAreaMinWidth);
   const location = useLocation();
 
   // the settings from the setup page (/play); "New game" reuses them
@@ -61,9 +47,7 @@ export default function Play() {
     <div className="page">
       <Header />
 
-      {/* the stage is what goes fullscreen; the table area inside keeps its size and is zoomed */}
-      <div className="play-stage" ref={stageRef}>
-      <main className="play" ref={contentRef} style={contentStyle}>
+      <main className="play">
 
         <section className="table">
           <header className="table__header">
@@ -116,15 +100,6 @@ export default function Play() {
                 >
                   Reveal hands
                 </button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={toggleFullscreen}
-                  aria-pressed={isFullscreen}
-                  title="Fullscreen (F)"
-                >
-                  {isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                </button>
               </div>
             </div>
           </header>
@@ -175,7 +150,6 @@ export default function Play() {
         </aside>
 
       </main>
-      </div>
 
       <Footer />
     </div>
