@@ -187,7 +187,7 @@ export default function Simulate() {
 
           <div className="sim-recent">
             <SectionTitle
-              n={4}
+              n={3}
               title="Recent runs"
               action={<Link to="/stats" className="link-btn">All runs →</Link>}
             />
@@ -213,7 +213,7 @@ export default function Simulate() {
         {/* ----- Run settings ----- */}
         <aside className="setup__settings" aria-label="Run settings">
           <div className="settings">
-            <SectionTitle n={3} title="Run" />
+            <SectionTitle n={4} title="Run" />
 
             <Field
               label="Run name"
