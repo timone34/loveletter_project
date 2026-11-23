@@ -24,8 +24,9 @@ class Deck:
             Princess(),
         ]
 
-    def shuffle(self) -> None:
-        random.shuffle(self.cards)
+    def shuffle(self, rng: random.Random | None = None) -> None:
+        # rng: a dedicated generator (seeded decks); default is the global one
+        (rng or random).shuffle(self.cards)
 
     def draw_card(self) -> Card:
         if self.cards:

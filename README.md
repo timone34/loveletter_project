@@ -45,6 +45,19 @@ python experiment.py
 
 Simulates 5000 games (rotating seats between games so no bot gets a seat advantage), builds a dataset from the game histories and prints win rates (with Wilson confidence intervals) and Guard accuracy. Edit the lineup and `n` in [experiment.py](experiment.py).
 
+#### Comparing bots on the same decks
+
+Pass a `seed` to `simulate()` to give every lineup exactly the same decks:
+
+```python
+from stats import simulate
+
+old = simulate(1000, {"Alice": RandomChoice(), "Bob": RandomChoice(), "Charlie": RandomChoice(), "Diane": RandomChoice()}, seed=42)
+new = simulate(1000, {"Alice": CardCounter(), "Bob": RandomChoice(), "Charlie": RandomChoice(), "Diane": RandomChoice()}, seed=42)
+```
+
+With the same seed, round *r* of game *i* always gets the same deck, no matter what the bots do, so differences between the two runs come from the bots and not from luck of the shuffle. The seed also fixes the bots' own random choices, so running the same lineup with the same seed twice gives identical games. Without a seed, every run is shuffled differently, as before.
+
 ### Play in the browser
 
 Start the game server and the web front end in two terminals:
