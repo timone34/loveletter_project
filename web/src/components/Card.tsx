@@ -24,13 +24,16 @@ export function Card({ id, faceDown, width, className = "", style }: Props) {
     }
 
     const info = CARD_BY_ID[id];
+    const isLowercase = info.letter === info.letter.toLowerCase();
 
     return (
         <div className={`card ${className}`} style={css}>
             <div className="card__face">
                 <div className="card__portrait">
                     <span className="card__value">{info.value}</span>
-                    <span className="card__letter">{info.letter}</span>
+                    <span className={isLowercase ? "card__letter-raised" : "card__letter"}>
+                        {info.letter}
+                    </span>
                 </div>
 
                 <div className="card__body">

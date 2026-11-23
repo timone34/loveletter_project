@@ -69,6 +69,14 @@ class Dataset:
                         )
 
                 for seat, name in enumerate(names):
+                    showdown_outcome = None
+                    if rnd.showdown is not None and seat in rnd.showdown.contender_hands:
+                        if seat in rnd.showdown.winners:
+                            showdown_outcome = (
+                                "TIE" if len(rnd.showdown.winners) > 1 else "WIN"
+                            )
+                        else:
+                            showdown_outcome = "LOSS"
                     rounds.append(
                         {
                             "game": g,
@@ -78,6 +86,7 @@ class Dataset:
                             "dealer": (rnd.dealer == seat),
                             "start_card": rnd.starting_hands[seat].name,
                             "won": (seat in rnd.winners),
+                            "showdown_outcome": showdown_outcome,
                             "rejected_cycle": rejected_at.get(seat),
                         }
                     )

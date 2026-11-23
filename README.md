@@ -111,3 +111,7 @@ Maybe the least important, but still useful for our purposes.
 - Luck analysis
 - Drawn cards
 - Comparison setup (head-to-head, rating, confidence interval)
+
+## Running web simulations
+
+Start the API from the repository root with `uvicorn server:app --port 8000`, then start the web app in a second terminal with `cd web` and `npm run dev`. The Simulate page loads strategy options from the `bots` package, runs the configured matches through the experiment and dataset pipeline, and opens the generated metrics on the Stats page. The API can also be started with `uvicorn server:app --reload --port 8000` during development.
