@@ -1,12 +1,15 @@
 import dataclasses
 import random
+from pathlib import Path
 
 import pytest
 
 from bots import CardCounter, NoPrincess, RandomChoice
 from engine import Baron, Card, Countess, Guard, Handmaid, Outcome, Priest, Prince, Princess
-from lln import LLNParseError, load_lln, parse_lln, to_lln
+from lln import LLNParseError, load_lln, parse_lln, rerun_decks, to_lln
 from stats.sim import simulate
+
+GAMES_DIR = Path(__file__).resolve().parent.parent / "games"
 
 # One 4-player round, played to 1 round win. Seat 1 deals, burn = Countess.
 SAMPLE = """\
@@ -107,6 +110,8 @@ def test_dealer_by_name_is_accepted():
     ("[Version: 1.4]\n", "", "must start with a [Version"),
     ("[Target: 1]\n", "", "has no [Target] tag"),
     ("[Target: 1]", "[Target: 0]", "[Target] must be at least 1"),
+    ("[Seat 1: Alice, CardCounter]", "[Seat1: Alice, CardCounter]", "did you mean [Seat 1: ...]?"),
+    ("[Round: 1]", "[Round 1]", "malformed tag"),
     ("CgpgBHKQgPggpBHP", "CgpgBHKQgPggpBHX", "unknown card letter"),
     ("CgpgBHKQgPggpBHP", "CgpgBHKQgPggpBHg", "not a full Love Letter deck"),
     ("1.3. p2*", "1.3. p3*", "not a legal target"),
@@ -165,3 +170,47 @@ def test_extra_round_after_game_decided():
     extra = SAMPLE + "\n[Round: 2]\n[Dealer: 1]\n[Deck: CgpgBHKQgPggpBHP]\n[Result: W2]\n1.2. H\n"
     with pytest.raises(LLNParseError, match="already decided"):
         parse_lln(extra)
+
+
+@pytest.mark.parametrize("name", ["example_game.lln", "example_game_annotated.lln"])
+def test_example_files_parse(name):
+    (gh,) = load_lln(GAMES_DIR / name)
+    assert gh.rounds[0].winners == [2] and gh.scores == {0: 0, 1: 0, 2: 1, 3: 0}
+
+
+def test_annotated_example_is_the_same_game():
+    plain = load_lln(GAMES_DIR / "example_game.lln")
+    annotated = load_lln(GAMES_DIR / "example_game_annotated.lln")
+    assert same(plain, annotated)
+
+
+def deck_strings(gh):
+    return ["".join(type(c).__name__[:2] for c in rh.deck_order) for rh in gh.rounds]
+
+
+def test_rerun_decks_deals_the_recorded_decks():
+    random.seed(11)
+    recorded = parse_lln("\n".join(to_lln(simulate(
+        30, {"A": CardCounter(), "B": RandomChoice(), "C": RandomChoice(), "D": RandomChoice()}))))
+    rerun = rerun_decks(recorded, {"A": NoPrincess(), "B": NoPrincess(), "C": NoPrincess(), "D": CardCounter()}, seed=1)
+
+    assert len(rerun) == len(recorded)
+    for old, new in zip(recorded, rerun):
+        old_decks, new_decks = deck_strings(old), deck_strings(new)
+        shared = min(len(old_decks), len(new_decks))
+        assert new_decks[:shared] == old_decks[:shared]
+        assert new.target_round_wins == old.target_round_wins
+        assert new.strategies != old.strategies or new.players != old.players
+
+
+def test_rerun_decks_is_reproducible_with_seed():
+    recorded = load_lln(GAMES_DIR / "example_game.lln")
+    lineup = lambda: {"A": RandomChoice(), "B": RandomChoice(), "C": RandomChoice(), "D": RandomChoice()}
+    first, second = rerun_decks(recorded, lineup(), seed=4), rerun_decks(recorded, lineup(), seed=4)
+    assert same(first, second)
+
+
+def test_rerun_decks_rejects_wrong_player_count():
+    recorded = load_lln(GAMES_DIR / "example_game.lln")
+    with pytest.raises(ValueError, match="4 players, but 2"):
+        rerun_decks(recorded, {"A": RandomChoice(), "B": RandomChoice()})

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from engine import Card, Player
 
 SUPPORTED_VERSIONS = {"1.3", "1.4"}  # 1.4 added the [Target: n] tag
+KNOWN_TAGS = {"Version", "Game", "Seat", "Target", "Score", "Round", "Dealer", "Deck", "Result"}
 LLN_TO_CARD: dict[str, type[Card]] = {letter: card for card, letter in CARD_TO_LLN.items()}
 DECK_COUNTS = Counter(CARD_TO_LLN[type(card)] for card in Deck().cards)
 
@@ -105,8 +106,12 @@ def parse_text(text: str) -> list[ParsedGame]:
         if line.startswith("["):
             m = _TAG_RE.match(line)
             if not m:
-                raise LLNParseError(f"malformed tag {line!r}", line_no)
+                raise LLNParseError(f"malformed tag {line!r} (expected e.g. [Round: 1])", line_no)
             tag, index, value = m.group(1), m.group(2), m.group(3)
+            if tag not in KNOWN_TAGS:
+                base, number = tag.rstrip("0123456789"), tag[len(tag.rstrip("0123456789")):]
+                hint = f"; did you mean [{base} {number}: ...]?" if base in KNOWN_TAGS and number else ""
+                raise LLNParseError(f"unknown tag [{tag}]{hint}", line_no)
 
             if tag == "Game":
                 if game: _finish_game(game, version)
@@ -140,8 +145,8 @@ def parse_text(text: str) -> list[ParsedGame]:
                 rnd.deck = _parse_deck(value, line_no)
             elif tag == "Result":
                 rnd.winners = _parse_result(value, len(game.players), line_no)
-            else:
-                raise LLNParseError(f"unknown tag [{tag}]", line_no)
+            elif tag == "Version":
+                raise LLNParseError("[Version] may only appear once, at the top of the file", line_no)
             continue
 
         if rnd is None:

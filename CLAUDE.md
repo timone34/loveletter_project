@@ -42,7 +42,7 @@ A secondary goal is a **YouTube video** on Love Letter and the journey of buildi
 - `engine/observer.py`: `Observer` / `Observers` base classes. The engine calls these hooks (`on_game_start`, `on_round_start`, `on_turn_start`, `on_turn_end`, `on_turn_skipped`, `on_showdown`, `on_round_end`, `on_game_end`).
 - `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`), plus `bot_terminal.py` (`TerminalPlayer`, a human playing in the terminal).
 - `observers/`: Observer implementations: `ConsoleLogger`, and `LLNWriter` (a thin observer that calls into `lln/`).
-- `lln/`: Love Letter Notation. `writer.py` (`to_lln`, `save_lln`, `generate_turn_line`) and `parser.py` (`load_lln`, `parse_lln`: replays a file through the engine to rebuild full `GameHistory` objects). Tests in `tests/test_lln.py`.
+- `lln/`: Love Letter Notation. `writer.py` (`to_lln`, `save_lln`, `generate_turn_line`) and `parser.py` (`load_lln`, `parse_lln`: replays a file through the engine to rebuild full `GameHistory` objects), and `rerun.py` (`rerun_decks`: plays recorded decks again with other bots). Tests in `tests/test_lln.py`; seeded decks in `tests/test_seed.py`.
 - `stats/`: `sim.py` (`simulate(n, players, rotate_seats=True, obs=None, seed=None)` returns `list[GameHistory]`, seats rotate between games; with a `seed`, round r of game i gets a deck that depends only on (seed, i, r), via `Game(deck_seed=...)` and a dedicated `random.Random`, so different lineups face identical decks, and the bots' global `random` is seeded for reproducibility), `dataset.py` (pandas tables), `metrics.py` (win rates with 95% CIs and other metrics), `plots.py` (matplotlib). `experiment.py` sits in the repo root.
 - `server.py`: FastAPI with a `/ws/play` WebSocket (`Web_Strategy`, `TableObserver`, `redact`).
 - `web/`: React + TypeScript frontend with its own CSS per component (`.tsx` + `.css` pairs, shared pieces in `web/src/content/Asset.tsx`).
@@ -64,8 +64,8 @@ A chess-PGN-inspired notation for recording games. Current version is **LLN 1.4*
 - Header tags: version, players (with strategy names), round, dealer, shuffled deck order, result (including the whole-game result).
 - Movetext lines are `cycle.seat.` followed by `-` (skipped/rejected player) or an action: card letter (`g` Guard, `p` Priest, `B` Baron, `H` Handmaid, `P` Prince, `K` King, `C` Countess, `Q` Princess), a target seat, and a suffix (`*` protected target, `#` target rejected, `=` Baron draw, `>` / `<` Baron win/lose). Guard guesses use a colon (`g4:H`) and a guess is never a Guard. Cards seen via a Priest are not recorded. Seats are absolute. Skipped-turn lines for rejected players stay in the file. Rounds end with a result such as `W3`.
 - Four-player only for now; other variants are postponed.
-- Status (on `claude/main`): `lln/writer.py` writes LLN 1.4, with descriptive filenames and multi-game files (`save_lln`, files go to `games/{date}/`). `lln/parser.py` turns a `.lln` file back into `GameHistory` objects, with their `RoundHistory`s and `TurnHistory`s, and accepts 1.3 and 1.4. Still planned: efficient storage of ~1000-game simulations, and replaying a recorded deck order with different bots.
-- Replaying a recorded deck order with different bots is an intended use.
+- Status (on `claude/main`): `lln/writer.py` writes LLN 1.4, with descriptive filenames and multi-game files (`save_lln`, files go to `games/{date}/`). `lln/parser.py` turns a `.lln` file back into `GameHistory` objects, with their `RoundHistory`s and `TurnHistory`s, and accepts 1.3 and 1.4. `lln/rerun.py` replays recorded deck orders with different bots. Still planned: efficient storage of ~1000-game simulations. Examples are in `games/example_game*.lln`; files in older LLN versions are in `games/legacy/`.
+- Replaying a recorded deck order with different bots is an intended use: `rerun_decks` for decks from a file, `simulate(seed=...)` for new runs on identical decks.
 
 ## Webapp
 

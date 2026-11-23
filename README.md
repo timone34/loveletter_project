@@ -183,18 +183,23 @@ If we know who is dealing this round, the starting hands are determined as well.
 
 Each turn is written as `cycle.seat. move`, where a move is the card played, optionally followed by a target seat, a `:` and a Guard guess, and finally a result symbol.
 
-What does a round of Love Letter look like in LLN?
+A file starts with `[Version: ...]`. Each game then has a header: the seats (name and strategy), `[Target]` (round wins needed to win the game) and `[Score]` (the final score per seat). Each round has its number, the dealer's seat, the deck string and the result (`W3`: seat 3 wins; `T13`: seats 1 and 3 tie). The turns follow. Text after `//` is a comment.
+
+What does a game of Love Letter look like in LLN? This one is played to a single round win:
 
 ```
-[Seat1: Alice, Random Strategy]
-[Seat2: Bob, Random Strategy]
-[Seat3: Charlie, Random Strategy]
-[Seat4: Diane, Random Strategy]
-[Target: 3]
+[Version: 1.4]
+
+[Game: 1]
+[Seat 1: Alice, RandomChoice]
+[Seat 2: Bob, RandomChoice]
+[Seat 3: Charlie, RandomChoice]
+[Seat 4: Diane, RandomChoice]
+[Target: 1]
 [Score: 0-0-1-0]
 
-[Round 1]
-[Dealer: Alice]
+[Round: 1]
+[Dealer: 1]
 [Deck: CBpBQgpgggHPgPKH]
 [Result: W3]
 
@@ -216,10 +221,9 @@ What does a round of Love Letter look like in LLN?
 4.2. -
 4.3. P3
 4.4. B3<#
-W3
 ```
 
-More examples (including an annotated one) are in [games/](games/).
+The same game is in [games/example_game.lln](games/example_game.lln), and with commentary in [games/example_game_annotated.lln](games/example_game_annotated.lln). Files in older LLN versions are kept in [games/legacy/](games/legacy/).
 
 ### Loading LLN files
 [lln/parser.py](lln/parser.py) turns `.lln` files (version 1.3 and 1.4) back into `GameHistory` objects. Since 1.4, each game stores its round-win target in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
@@ -231,6 +235,19 @@ histories = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
 ```
 
 A file only stores the deck, the dealer and the players' choices. The parser replays each game through the real engine to fill in everything else (held/drawn cards, Priest sightings, Prince redraws, King swaps, rejections, showdowns). It then checks every turn, result and score against the file. If something doesn't match, it raises an `LLNParseError` that gives the line number.
+
+### Replaying recorded decks with other bots
+
+`rerun_decks` plays the decks from recorded games again with a different lineup. Round *r* of game *i* gets the deck that round *r* of recorded game *i* had:
+
+```python
+from lln import load_lln, rerun_decks
+
+recorded = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
+rerun = rerun_decks(recorded, {"Alice": NoPrincess(), "Bob": RandomChoice(), "Charlie": RandomChoice(), "Diane": RandomChoice()}, seed=1)
+```
+
+The new bots may need more rounds than the recording has. Those extra rounds get a seeded deck when you pass `seed` (reproducible), and a normal shuffle otherwise. For new simulations, `simulate(..., seed=...)` (see "Comparing bots on the same decks") is the simpler way to give lineups the same decks. `rerun_decks` is for decks you already have in a file.
 
 ## Statistics
 

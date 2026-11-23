@@ -6,6 +6,7 @@ The LLNWriter observer (saves every finished game automatically) lives in
 observers/llnwriter.py and uses this package.
 """
 from .parser import LLNParseError, load_lln, parse_lln
+from .rerun import rerun_decks
 from .writer import LLN_VERSION, save_lln, to_lln
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "LLNParseError",
     "load_lln",
     "parse_lln",
+    "rerun_decks",
     "save_lln",
     "to_lln",
 ]
