@@ -81,7 +81,7 @@
   box-shadow:
     inset 0 0 0 2px rgb(0 0 0 / 18%),       /* dark rim */
     inset 0 0 60px rgb(0 0 0 / 30%),        /* vignette */
-    0 24px 48px -28px rgb(42 40 41 / 60%);  /* sits on the page */
+    0 24px 48px -28px rgb(var(--shadow) / 60%);  /* sits on the page */
 }
 
 /* the etched edge: a light line with a dark line tucked under it = engraved */
@@ -154,8 +154,8 @@
   padding: 1.15rem 1.1rem;
   border: 1px solid var(--secondary);
   border-radius: 16px;
-  background: rgb(250 250 246 / 82%);
-  box-shadow: 0 12px 30px -26px rgb(42 40 41 / 45%);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: 0 12px 30px -26px rgb(var(--shadow) / 45%);
   overflow-y: auto;
 }
 

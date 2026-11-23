@@ -8,10 +8,10 @@ import { TipRow } from "./TipRow";
 // (blue and red), the outcomes where nothing happened are greys in between.
 
 const PARTS = [
-  { key: "won", label: "Won", color: "#2a78d6", ink: "#fff", note: "target knocked out" },
-  { key: "tied", label: "Tied", color: "#b9b7ad", ink: "#2a2829", note: "same card, nothing happens" },
-  { key: "protected", label: "Protected", color: "#dedcd3", ink: "#2a2829", note: "target had a Handmaid" },
-  { key: "lost", label: "Lost", color: "#e34948", ink: "#fff", note: "the Baron's player knocked out" },
+  { key: "won", label: "Won", color: "var(--pos)", ink: "var(--pos-ink)", note: "target knocked out" },
+  { key: "tied", label: "Tied", color: "var(--grey-1)", ink: "var(--grey-1-ink)", note: "same card, nothing happens" },
+  { key: "protected", label: "Protected", color: "var(--grey-2)", ink: "var(--grey-2-ink)", note: "target had a Handmaid" },
+  { key: "lost", label: "Lost", color: "var(--neg)", ink: "var(--neg-ink)", note: "the Baron's player knocked out" },
 ] as const;
 
 export function BaronBars({ rows }: { rows: { label: string; color: string; line: Line }[] }) {

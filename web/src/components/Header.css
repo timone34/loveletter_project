@@ -47,6 +47,27 @@
   /* padding: 1.0rem; */
 }
 
+/* ----- Light/dark toggle (pushed to the right end of the bar) ----- */
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  width: 2.25rem;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--secondary);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--primary);
+  border-color: var(--accent);
+}
+
 /* ----- Footer ----- */
 .footer {
   font-family: var(--font-display);
