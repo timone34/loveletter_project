@@ -85,6 +85,17 @@ What does a round of Love Letter look like in LLN?
 W3
 ```
 
+### Loading LLN files
+`llnparser.py` turns `.lln` files (version 1.3) back into `GameHistory` objects:
+
+```python
+from llnparser import load_lln
+
+histories = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
+```
+
+A file only stores the deck, the dealer and the players' choices. The parser replays each game through the real engine to fill in everything else (held/drawn cards, Priest sightings, Prince redraws, King swaps, rejections, showdowns). It then checks every turn, result and score against the file. If something doesn't match, it raises an `LLNParseError` that gives the line number.
+
 ## Statistics
 To compare strategies with each other, we need a way of looking at the game data.
 Various statistics can help us in our journey to find the way to perfect play.
