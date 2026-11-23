@@ -59,8 +59,8 @@ A chess-PGN-inspired notation for recording games, currently **LLN 1.5** (the wr
 The main workspace, with three modes:
 
 - **Play** (built): setup page, then the table, live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
-- **Simulate** (not built): pit chosen bots against each other with visual comparisons.
-- **Stats** (not built): compare win rates and explain why a bot wins.
+- **Simulate** (built): pick four bots and the run settings; runs play in the background (`runs/`, one at a time) and land on their Stats page.
+- **Stats** (built): the simulation history (`/stats`, saved in `simulations/`) and one run's stats (`/stats/<id>`), filling in live while it plays. The stat definitions live in `stats/tally.py` (docstring); the charts are hand-written SVG/CSS in `web/src/pages/stats/charts/`.
 
 Style: modern, slightly "vibe-coded" but in the owner's own coding style, JetBrains Mono, palette in `web/src/index.css` (light green is the favourite colour). A dark mode toggle is wanted.
 
@@ -71,4 +71,3 @@ Ideas on the table: live spectate mode showing bots' decisions in real time, acc
 - A `strategy` column in the stats tables, so bot versions can be compared when seats rotate and names differ.
 - Duplicate deals in `simulate()`: replay each shuffle with rotated seats so luck cancels out and fewer games are needed.
 - A single "ladder" experiment function: bot in, win rate and CI against a fixed field out.
-- The Simulate and Stats pages (FastAPI endpoint returning JSON, frontend charts).

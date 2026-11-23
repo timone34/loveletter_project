@@ -1,0 +1,172 @@
+/* Classes shared by several pages (imported once, in main.tsx).
+   Page-specific styles stay next to their page. */
+
+/* ----- Page shell: header, main, footer ----- */
+
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page > main {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ----- Chips and small buttons (Play table, Stats) ----- */
+
+.chip {
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+  color: var(--text-muted)
+}
+
+.btn {
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary,
+.btn[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.btn--primary:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+/* ----- Pill and link buttons ----- */
+
+.ghost-btn {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.link-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ----- Section titles: "01 Seats   note ...   [action]" ----- */
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.section-title h2 {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.section-title__n {
+  margin-right: 0.3rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.section-title__note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.section-title__note strong {
+  color: var(--text);
+}
+
+.section-title__action {
+  margin-left: auto;
+}
+
+/* ----- Notice: a dashed box for "loading" and "can't reach the server" ----- */
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--secondary);
+  border-radius: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.notice code {
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  background: var(--background);
+  font-family: inherit;
+}
+
+/* ----- Status badge for simulation runs: queued / running / done / failed ----- */
+
+.status {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status--running {
+  background: var(--accent-soft);
+  color: var(--primary);
+}
+
+.status--failed {
+  background: #fbe3e2;
+  color: #a12a29;
+}

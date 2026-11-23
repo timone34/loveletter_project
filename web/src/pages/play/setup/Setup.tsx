@@ -1,10 +1,12 @@
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Header, Footer } from "../../../components/Header";
 import { Field, Segmented, Stepper, Toggle } from "../../../components/Field";
 import { Heart } from "../../../components/Heart";
+import { SectionTitle } from "../../../components/SectionTitle";
 import { initial } from "../../../components/initial";
+import { BotTile, LibraryTile, SeatLabel } from "../../../components/BotTiles";
 import {
   DEFAULT_CONFIG, NAME_LIMIT, loadConfig, randomSeed, saveConfig, validate,
   type Opponent, type Speed, type TableConfig, type Visibility,
@@ -263,28 +265,6 @@ function withKnownBots(config: TableConfig, bots: BotInfo[] | null): TableConfig
   };
 }
 
-function SectionTitle({ n, title, note, action }: { n: number; title: string; note?: ReactNode; action?: ReactNode }) {
-  return (
-    <div className="section-title">
-      <h2>
-        <span className="section-title__n">0{n}</span> {title}
-      </h2>
-      {note && <p className="section-title__note">{note}</p>}
-      {action && <div className="section-title__action">{action}</div>}
-    </div>
-  );
-}
-
-function SeatLabel({ seat }: { seat: number }) {
-  return (
-    <div className="tile__top">
-      <span className="tile__seat">Seat {seat + 1}</span>
-      {seat === 0 && <span className="tile__tag">Deals first</span>}
-      {seat === 1 && <span className="tile__tag">Starts</span>}
-    </div>
-  );
-}
-
 function YouTile({ seat, random, name, onName, onMove }: {
   seat: number;
   random: boolean;
@@ -322,54 +302,3 @@ function YouTile({ seat, random, name, onName, onMove }: {
   );
 }
 
-function BotTile({ seat, opponent, bot, active, onActivate, onName }: {
-  seat: number;
-  opponent: Opponent;
-  bot: BotInfo | undefined;
-  active: boolean;
-  onActivate: () => void;
-  onName: (name: string) => void;
-}) {
-  return (
-    // clicking anywhere on the tile picks it; the button below is the keyboard way in
-    <div className={`tile ${active ? "tile--active" : ""}`} onClick={onActivate}>
-      <SeatLabel seat={seat} />
-      <div className="tile__identity">
-        <span className="tile__avatar" aria-hidden="true">{initial(opponent.name)}</span>
-        <input
-          className="tile__name"
-          value={opponent.name}
-          maxLength={NAME_LIMIT}
-          aria-label={`Name of the player in seat ${seat + 1}`}
-          onChange={(e) => onName(e.target.value)}
-        />
-      </div>
-      <div className="tile__foot">
-        <span className="tile__bot" title={bot?.description}>{bot?.name ?? opponent.bot}</span>
-        <button type="button" className="tile__change" onClick={onActivate} aria-pressed={active}>
-          {active ? "Choosing" : "Change"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function LibraryTile({ bot, selected, seatedAt, onPick }: {
-  bot: BotInfo;
-  selected: boolean;
-  seatedAt: number[];
-  onPick: () => void;
-}) {
-  return (
-    <button type="button" className="bot" aria-pressed={selected} onClick={onPick}>
-      <span className="bot__head">
-        <strong className="bot__name">{bot.name}</strong>
-        <code className="bot__id">{bot.id}</code>
-      </span>
-      <span className="bot__desc">{bot.description}</span>
-      <span className="bot__seats">
-        {seatedAt.map((s) => <span key={s} className="bot__seat">Seat {s}</span>)}
-      </span>
-    </button>
-  );
-}

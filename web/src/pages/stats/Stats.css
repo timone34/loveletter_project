@@ -1,0 +1,397 @@
+/* The Statistics pages: the history list (/stats) and one run's stats
+   (/stats/<id>). Chart internals are in charts/charts.css. */
+
+.stats {
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0.5rem clamp(20px, 4vw, 64px) 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stats__message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 600px;
+  margin: 3rem auto;
+}
+
+/* ----- Head: titles left, chips and buttons right ----- */
+
+.stats__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.stats__titles {
+  min-width: 0;
+  flex: 1;
+}
+
+.stats__eyebrow {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.stats__eyebrow a {
+  color: inherit;
+}
+
+/* the run name is edited in place: looks like a heading until hovered */
+.stats__title {
+  display: block;
+  width: 100%;
+  margin: 0.1rem 0 0 -0.4rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.stats__title:hover {
+  border-color: var(--secondary);
+}
+
+.stats__title:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.stats__title--static,
+.stats__title--static:hover {
+  margin-left: 0;
+  padding-left: 0;
+  border-color: transparent;
+}
+
+.stats__lineup {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stats__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.stats__aside .table__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.stats__aside .controls {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.stats__aside a.btn {
+  text-decoration: none;
+}
+
+.stats__problem {
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: #fbe3e2;
+  color: #a12a29;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.stats__filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stats__filters .segmented {
+  width: 280px;
+}
+
+.stats__filter-note {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ----- Progress bar while the run plays ----- */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.progress__text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.progress__text span {
+  color: var(--text-muted);
+}
+
+.progress__track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--accent-soft);
+}
+
+.progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+/* ----- Totals: four tiles in a row ----- */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--secondary);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.kpi__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.kpi__value {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi__sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ----- Chart cards: two columns, wide cards span both ----- */
+
+.stats__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.2rem 1.4rem 1.3rem;
+  border: 1px solid var(--secondary);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px -28px rgb(42 40 41 / 45%);
+}
+
+.stat-card--wide {
+  grid-column: 1 / -1;
+}
+
+.stat-card--flush {
+  padding: 0.4rem 0;
+}
+
+.stat-card__head h2 {
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.stat-card__head p {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ----- All numbers table ----- */
+
+.numbers-wrap {
+  overflow-x: auto;
+}
+
+.numbers {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.numbers th,
+.numbers td {
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--background);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.numbers thead th {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.numbers tbody th,
+.numbers tfoot th,
+.numbers thead th:first-child {
+  text-align: left;
+}
+
+.numbers tfoot {
+  color: var(--text-muted);
+}
+
+/* ----- History list ----- */
+
+.runs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.runs th {
+  padding: 0.6rem 1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.runs td {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--background);
+  vertical-align: middle;
+}
+
+.runs tbody tr {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.runs tbody tr:hover {
+  background: rgb(201 203 178 / 22%);
+}
+
+.runs .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs__name {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.runs__name:hover {
+  text-decoration: underline;
+}
+
+.runs__lineup {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.runs__seed {
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.runs__when {
+  white-space: nowrap;
+}
+
+.runs__when > span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* the small win-rate bars in each history row */
+.mini-rates {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 260px;
+}
+
+.mini-rates__row {
+  display: grid;
+  grid-template-columns: 7rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.mini-rates__name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mini-rates__track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--background);
+}
+
+.mini-rates__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 0 999px 999px 0;
+}
+
+.mini-rates__ref {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 1px;
+  background: var(--text-muted);
+}
+
+.mini-rates__value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
