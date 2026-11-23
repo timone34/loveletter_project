@@ -9,6 +9,26 @@
   margin-left: calc(var(--card-w) * var(--overlap) * -1);
 }
 
+/* ----- Fit rows (discard piles): never wider than their box ----- */
+/* Each card sits in a slot as wide as the visible part of it. The slots can
+   shrink, so with many cards they overlap more instead of overflowing.
+   The last card gets its full width. */
+
+.card-row--fit {
+  min-width: 0;
+}
+
+.card-row--fit > .card-row__slot {
+  flex: 0 1 calc(var(--card-w) * (1 - var(--overlap)));
+  min-width: 0;
+  margin-left: 0;
+}
+
+.card-row--fit > .card-row__slot:last-child {
+  flex: none;
+  width: var(--card-w);
+}
+
 /* ----- Clickable cards (your hand, on your turn) ----- */
 
 .card-pick {

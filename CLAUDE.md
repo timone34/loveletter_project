@@ -17,9 +17,10 @@ A secondary goal is a **YouTube video** on Love Letter and the journey of buildi
 ## Git and branches (read before any commit or push)
 
 - **NEVER commit to or push to a branch whose name doesn't start with `claude/`.** Check `git branch --show-current` before every commit and push.
-- `claude/main` is Claude's main branch. Larger pieces of work may go on `claude/<topic>` branches made from it.
-- Keep Claude's changes separate from the owner's own branches (`main`, `lln`, ...). Do not merge into, push to, rebase or reset those branches unless the owner explicitly says to merge into main.
-- Bringing the owner's changes *into* a `claude/` branch (e.g. `git merge origin/main` while on `claude/main`) is fine. It only changes the `claude/` branch.
+- Work goes on `claude/<topic>` branches made from an up-to-date `main`, one per piece of work, and reaches `main` through a PR (`gh` is installed).
+- Keep Claude's changes separate from the owner's own branches (`main`, ...). Do not merge into, push to, rebase or reset those branches unless the owner explicitly says so.
+- Bringing the owner's changes *into* a `claude/` branch (e.g. `git merge origin/main`) is fine. It only changes the `claude/` branch.
+- **Don't leave old branches lying around.** Once a branch is merged, delete it locally and on GitHub. The owner wants only active branches in the repo; finished experiments are kept as `archived/<name>` (e.g. `archived/copilot`).
 
 ## Working agreement
 

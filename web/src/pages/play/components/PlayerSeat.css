@@ -16,8 +16,7 @@
 
 .seat--you {
   justify-self: center;
-  width: fit-content;
-  min-width: 460px;
+  width: 640px; /* fixed, so a long discard pile doesn't widen the seat */
 }
 
 .seat--active {
@@ -156,6 +155,13 @@
   gap: 2rem;
 }
 
+/* the hand always has room for two cards (you hold two on your turn),
+   so the discard area next to it keeps the same size all round */
+.seat__hand {
+  flex: none;
+  width: calc(var(--card-w) * (2 - var(--overlap)));
+}
+
 .seat--you .seat__hand .card:hover {
   transform: translateY(-8px);
 }
@@ -177,7 +183,7 @@
 }
 
 .seat__pile {
-  min-width: 3.5rem;
+  min-width: 0;
   padding: 4px;
   border: 1.5px dashed rgb(250 250 246 / 22%);
   border-radius: 10px;

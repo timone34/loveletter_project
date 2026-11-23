@@ -67,7 +67,7 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCar
         <div className="seat__discards" style={{ "--hand-card-w": size.hand } as CSSProperties}>
           <p  className="seat__label">Discards · {discardTotal} Total</p>
           <div className="seat__pile">
-            <CardRow cards={player.discards} width={size.discard} overlap={0.6} />
+            <CardRow cards={player.discards} width={size.discard} overlap={0.6} fit />
           </div>
         </div>
       </div>
