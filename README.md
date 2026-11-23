@@ -181,21 +181,22 @@ At the very start of a round, the deck is shuffled. Its order is saved in a stri
 Thus we can immediately see the card put aside is the Countess.
 If we know who is dealing this round, the starting hands are determined as well. The player who is after the dealer in rotation receives the second card in the deck string, the next player the third, etc.
 
-Each turn is written as `cycle.seat. move`, where a move is the card played, optionally followed by a target seat, a `:` and a Guard guess, and finally a result symbol.
+A move is the card played, optionally followed by a target seat, a `:` and a Guard guess, and finally a result symbol, e.g. `g1:H`, `p4*` or `B3<#`. A `-` is the turn of a player who has already been rejected.
 
-A file starts with `[Version: ...]`. Each game then has a header: the seats (name and strategy), `[Target]` (round wins needed to win the game) and `[Score]` (the final score per seat). Each round has its number, the dealer's seat, the deck string and the result (`W3`: seat 3 wins; `T13`: seats 1 and 3 tie). The turns follow. Text after `//` is a comment.
+A file starts with `[Version: ...]`, followed by the lineup shared by every game in the file: the seats (name and strategy) and `[Target]` (round wins needed to win a game). Each game then has its `[Score]` (the final score per seat). In a multi-game file where players change seats between games, as `simulate()` does, a game says `[Rotation: k]`: seat 1 is taken by whoever had seat 1+k in the shared lineup, and so on. A game with a completely different lineup lists its own `[Seat]` tags instead. Each round has its number, the dealer's seat, the deck string and the result (`W3`: seat 3 wins; `T13`: seats 1 and 3 tie). The turns follow, one line per cycle, in the order they were played, like moves in chess notation. Text after `//` is a comment.
 
 What does a game of Love Letter look like in LLN? This one is played to a single round win:
 
 ```
-[Version: 1.4]
+[Version: 1.5]
 
-[Game: 1]
 [Seat 1: Alice, RandomChoice]
 [Seat 2: Bob, RandomChoice]
 [Seat 3: Charlie, RandomChoice]
 [Seat 4: Diane, RandomChoice]
 [Target: 1]
+
+[Game: 1]
 [Score: 0-0-1-0]
 
 [Round: 1]
@@ -203,30 +204,20 @@ What does a game of Love Letter look like in LLN? This one is played to a single
 [Deck: CBpBQgpgggHPgPKH]
 [Result: W3]
 
-1.2. g1:H
-1.3. p2
-1.4. g1:Q#
-1.1. -
-
-2.2. g3:H
-2.3. g2:B#
-2.4. H
-2.1. -
-
-3.2. -
-3.3. p4*
-3.4. g3:K
-3.1. -
-
-4.2. -
-4.3. P3
-4.4. B3<#
+1. g1:H p2 g1:Q# -
+2. g3:H g2:B# H -
+3. - p4* g3:K -
+4. - P3 B3<#
 ```
 
-The same game is in [games/example_game.lln](games/example_game.lln), and with commentary in [games/example_game_annotated.lln](games/example_game_annotated.lln). Files in older LLN versions are kept in [games/legacy/](games/legacy/).
+Seat 1 deals, so seat 2 plays first in every cycle: in cycle 1, Bob plays `g1:H`, Charlie `p2`, Diane `g1:Q#` (rejecting Alice), and Alice's turn is skipped (`-`).
+
+Turns can also be written one per line in the long form `cycle.seat. move`, e.g. `1.2. g1:H` (cycle 1, seat 2). This is handy for commenting on each turn, and the two forms can be mixed. Earlier versions of LLN (1.4 and before) always used the long form and repeated the seats in every game.
+
+The same game is in [games/example_game_v1.5.lln](games/example_game_v1.5.lln), and with commentary per turn in [games/example_game_annotated_v1.5.lln](games/example_game_annotated_v1.5.lln). The LLN 1.4 versions are [games/example_game.lln](games/example_game.lln) and [games/example_game_annotated.lln](games/example_game_annotated.lln). Files in even older LLN versions are kept in [games/legacy/](games/legacy/).
 
 ### Loading LLN files
-[lln/parser.py](lln/parser.py) turns `.lln` files (version 1.3 and 1.4) back into `GameHistory` objects. Since 1.4, each game stores its round-win target in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
+[lln/parser.py](lln/parser.py) turns `.lln` files (versions 1.3, 1.4 and 1.5) back into `GameHistory` objects. Since 1.4, the round-win target is stored in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
 
 ```python
 from lln import load_lln

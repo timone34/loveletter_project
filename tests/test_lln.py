@@ -1,5 +1,6 @@
 import dataclasses
 import random
+import re
 from pathlib import Path
 
 import pytest
@@ -130,6 +131,26 @@ def test_errors(old, new, message):
         parse_lln(SAMPLE.replace(old, new))
 
 
+@pytest.mark.parametrize("old, new, message", [
+    ("[Score:", "[Rotation: 1]\n[Seat 1: A, X]\n[Seat 2: B, X]\n[Seat 3: C, X]\n[Seat 4: D, X]\n[Score:",
+     "both [Seat] tags and a [Rotation]"),
+    ("[Score:", "[Rotation: 4]\n[Score:", "[Rotation: 4] must be between 0 and 3"),
+    ("1. H p2* g3:K# B4<#\n2. P4#", "1. H p2* g3:K# B4<# P4#", "is written in cycle 1"),
+    ("1. H p2* g3:K# B4<#", "1. H p2* g3:K# B4>#", "does not match the replay"),
+    ("1. H p2*", "1. H p2^", "malformed turn 'p2^'"),
+])
+def test_v15_errors(old, new, message):
+    assert old in SAMPLE_15
+    with pytest.raises(LLNParseError, match=re.escape(message)):
+        parse_lln(SAMPLE_15.replace(old, new))
+
+
+def test_v15_without_any_seats():
+    no_seats = "\n".join(l for l in SAMPLE_15.splitlines() if not l.startswith("[Seat"))
+    with pytest.raises(LLNParseError, match="has no seats"):
+        parse_lln(no_seats)
+
+
 def test_error_reports_line_number():
     with pytest.raises(LLNParseError) as exc:
         parse_lln(SAMPLE.replace("1.1. B4<#", "1.1. B4=#"))
@@ -142,10 +163,74 @@ def test_target_is_written_and_read_back():
     for gh in originals:
         assert gh.target_round_wins == 3
     lines = to_lln(originals)
-    assert lines.count("[Target: 3]") == 10
+    assert lines.count("[Target: 3]") == 1  # shared in the file header (LLN 1.5)
+    assert all(gh.target_round_wins == 3 for gh in parse_lln("\n".join(lines)))
 
     (gh,) = parse_lln(SAMPLE)
     assert gh.target_round_wins == 1
+
+
+# The same game as SAMPLE, in LLN 1.5: shared header, one line per cycle.
+SAMPLE_15 = """\
+[Version: 1.5]
+
+[Seat 1: Alice, CardCounter]
+[Seat 2: Bob, RandomChoice]
+[Seat 3: Charlie, RandomChoice]
+[Seat 4: Diane, RandomChoice]
+[Target: 1]
+
+[Game: 1]
+[Score: 0-1-0-0]
+
+[Round: 1]
+[Dealer: 1]
+[Deck: CgpgBHKQgPggpBHP]
+[Result: W2]
+
+1. H p2* g3:K# B4<#
+2. P4#
+"""
+
+
+def test_v15_cycle_lines_equal_long_form():
+    assert same(parse_lln(SAMPLE_15), parse_lln(SAMPLE))
+
+
+def test_writer_emits_v15_cycle_lines():
+    assert "\n".join(to_lln(parse_lln(SAMPLE))).strip() == SAMPLE_15.strip()
+
+
+def test_long_form_lines_are_accepted_in_v15():
+    long_form = SAMPLE_15.replace("1. H p2* g3:K# B4<#\n2. P4#", "1.2. H\n1.3. p2*\n1. g3:K# B4<#\n2.2. P4#")
+    assert same(parse_lln(long_form), parse_lln(SAMPLE))
+
+
+def test_game_target_overrides_shared_target():
+    text = SAMPLE_15.replace("[Target: 1]", "[Target: 3]").replace("[Score:", "[Target: 1]\n[Score:")
+    (gh,) = parse_lln(text)
+    assert gh.target_round_wins == 1
+
+
+def test_rotation_is_written_and_read_back():
+    random.seed(9)
+    originals = simulate(5, {"A": CardCounter(), "B": RandomChoice(), "C": RandomChoice(), "D": RandomChoice()})
+    lines = to_lln(originals)
+    assert sum(line.startswith("[Seat") for line in lines) == 4  # lineup written once
+    assert ["[Rotation: 1]", "[Rotation: 2]", "[Rotation: 3]"] == [l for l in lines if l.startswith("[Rotation")][:3]
+    parsed = parse_lln("\n".join(lines))
+    assert [gh.players for gh in parsed] == [gh.players for gh in originals]
+    assert [gh.strategies for gh in parsed] == [gh.strategies for gh in originals]
+
+
+def test_game_that_is_not_a_rotation_gets_its_own_seats():
+    random.seed(10)
+    a = simulate(2, {"A": RandomChoice(), "B": RandomChoice(), "C": RandomChoice()})
+    b = simulate(2, {"X": CardCounter(), "Y": NoPrincess(), "Z": RandomChoice()})
+    lines = to_lln(a + b)
+    assert sum(line.startswith("[Seat") for line in lines) == 3 + 3 + 3  # header + games 3 and 4
+    parsed = parse_lln("\n".join(lines))
+    assert all(same(o, p) for o, p in zip(a + b, parsed))
 
 
 def test_target_from_file_overrides_argument():
@@ -172,16 +257,23 @@ def test_extra_round_after_game_decided():
         parse_lln(extra)
 
 
-@pytest.mark.parametrize("name", ["example_game.lln", "example_game_annotated.lln"])
+EXAMPLES = [  # LLN 1.4 and 1.5 versions of the same game, plain and annotated
+    "example_game.lln",
+    "example_game_annotated.lln",
+    "example_game_v1.5.lln",
+    "example_game_annotated_v1.5.lln",
+]
+
+
+@pytest.mark.parametrize("name", EXAMPLES)
 def test_example_files_parse(name):
     (gh,) = load_lln(GAMES_DIR / name)
     assert gh.rounds[0].winners == [2] and gh.scores == {0: 0, 1: 0, 2: 1, 3: 0}
 
 
-def test_annotated_example_is_the_same_game():
-    plain = load_lln(GAMES_DIR / "example_game.lln")
-    annotated = load_lln(GAMES_DIR / "example_game_annotated.lln")
-    assert same(plain, annotated)
+@pytest.mark.parametrize("name", EXAMPLES[1:])
+def test_examples_are_the_same_game(name):
+    assert same(load_lln(GAMES_DIR / EXAMPLES[0]), load_lln(GAMES_DIR / name))
 
 
 def deck_strings(gh):

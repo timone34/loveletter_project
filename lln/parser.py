@@ -17,22 +17,24 @@ from typing import TYPE_CHECKING
 
 from engine import Deck, Game, GameHistory, Observers, Strategy
 
-from .writer import CARD_TO_LLN, generate_turn_line
+from .writer import CARD_TO_LLN, generate_turn_body, generate_turn_line
 
 if TYPE_CHECKING:
     from engine import Card, Player
 
-SUPPORTED_VERSIONS = {"1.3", "1.4"}  # 1.4 added the [Target: n] tag
-KNOWN_TAGS = {"Version", "Game", "Seat", "Target", "Score", "Round", "Dealer", "Deck", "Result"}
+# 1.4 added [Target: n]; 1.5 added the shared file header, [Rotation: k] and one line per cycle
+SUPPORTED_VERSIONS = {"1.3", "1.4", "1.5"}
+KNOWN_TAGS = {"Version", "Game", "Seat", "Target", "Rotation", "Score", "Round", "Dealer", "Deck", "Result"}
 LLN_TO_CARD: dict[str, type[Card]] = {letter: card for card, letter in CARD_TO_LLN.items()}
 DECK_COUNTS = Counter(CARD_TO_LLN[type(card)] for card in Deck().cards)
 
 _TAG_RE = re.compile(r"^\[(\w+)(?: (\d+))?:\s*(.*?)\s*\]$")
-_TURN_RE = re.compile(
-    r"^(\d+)\.(\d+)\.\s+"
-    r"(-|(?P<card>[gpBHPKCQ])(?P<target>\d)?(?::(?P<guess>[pBHPKCQ]))?"
+_BODY_RE = re.compile(
+    r"^(-|(?P<card>[gpBHPKCQ])(?P<target>\d)?(?::(?P<guess>[pBHPKCQ]))?"
     r"(?P<baron>[<>=])?(?P<protected>\*)?(?P<rejected>#)?)$"
 )
+_LONG_TURN_RE = re.compile(r"^(\d+)\.(\d+)\.\s+(\S+)$")  # "1.2. g1:H": one turn, cycle 1, seat 2
+_CYCLE_RE = re.compile(r"^(\d+)\.\s+(.+)$")  # "1. g1:H p2 g1:Q# -": a whole cycle, in play order
 _RESULT_RE = re.compile(r"^(W\d|T\d{2,})$")
 
 
@@ -48,15 +50,17 @@ class LLNParseError(ValueError):
 class ParsedTurn:
     line: int
     cycle: int
-    seat: int  # 0-based
-    body: str  # everything after "c.s. ", e.g. "g3:K*"
+    seat: int | None  # 0-based; None in cycle lines (the replay knows whose turn it is)
+    body: str  # the move itself, e.g. "g3:K*" or "-"
     card: type[Card] | None = None  # None = skipped turn ("-")
     target: int | None = None  # 0-based seat
     guess: type[Card] | None = None
 
     @property
     def text(self) -> str:
-        return f"{self.cycle}.{self.seat + 1}. {self.body}"
+        if self.seat is None:
+            return f"{self.body!r} in cycle {self.cycle}"
+        return repr(f"{self.cycle}.{self.seat + 1}. {self.body}")
 
 
 @dataclass
@@ -76,12 +80,14 @@ class ParsedGame:
     players: list[str] = field(default_factory=list)
     strategies: list[str] = field(default_factory=list)
     scores: list[int] | None = None
-    target_round_wins: int | None = None  # None = not in file (LLN 1.3)
+    target_round_wins: int | None = None  # None = not in file (LLN 1.3) or inherited
+    rotation: int | None = None  # [Rotation: k]: shared lineup shifted by k seats
     rounds: list[ParsedRound] = field(default_factory=list)
 
 
 def parse_text(text: str) -> list[ParsedGame]:
     games: list[ParsedGame] = []
+    defaults = ParsedGame(0, 0)  # file header (LLN 1.5): shared lineup and target
     version: str | None = None
     game: ParsedGame | None = None
     rnd: ParsedRound | None = None
@@ -114,16 +120,26 @@ def parse_text(text: str) -> list[ParsedGame]:
                 raise LLNParseError(f"unknown tag [{tag}]{hint}", line_no)
 
             if tag == "Game":
-                if game: _finish_game(game, version)
+                if game: _finish_game(game, defaults, version)
                 game = ParsedGame(line_no, _int(value, line_no))
                 games.append(game)
                 rnd = None
                 continue
-            if game is None:
-                raise LLNParseError(f"[{tag}] tag outside of a [Game: ...] block", line_no)
+            if game is None:  # file header: the shared lineup and target
+                if tag == "Seat":
+                    _parse_seat(defaults, index, value, line_no)
+                elif tag == "Target":
+                    defaults.target_round_wins = _parse_target(value, line_no)
+                else:
+                    raise LLNParseError(f"[{tag}] tag outside of a [Game: ...] block", line_no)
+                continue
 
             if tag == "Seat":
                 _parse_seat(game, index, value, line_no)
+            elif tag == "Rotation":
+                if game.rounds:
+                    raise LLNParseError("[Rotation] must come before the first round", line_no)
+                game.rotation = _int(value, line_no)
             elif tag == "Score":
                 if game.rounds:
                     raise LLNParseError("[Score] must come before the first round", line_no)
@@ -131,10 +147,10 @@ def parse_text(text: str) -> list[ParsedGame]:
             elif tag == "Target":
                 if game.rounds:
                     raise LLNParseError("[Target] must come before the first round", line_no)
-                game.target_round_wins = _int(value, line_no)
-                if game.target_round_wins < 1:
-                    raise LLNParseError("[Target] must be at least 1", line_no)
+                game.target_round_wins = _parse_target(value, line_no)
             elif tag == "Round":
+                if not game.rounds:
+                    _resolve_lineup(game, defaults, line_no)
                 rnd = ParsedRound(line_no, _int(value, line_no))
                 game.rounds.append(rnd)
             elif rnd is None:
@@ -151,14 +167,15 @@ def parse_text(text: str) -> list[ParsedGame]:
 
         if rnd is None:
             raise LLNParseError(f"turn line outside of a round: {line!r}", line_no)
-        rnd.turns.append(_parse_turn(line, len(game.players), line_no))
+        assert game is not None
+        rnd.turns.extend(_parse_turns(line, len(game.players), line_no))
 
     if version is None:
         raise LLNParseError("empty file: no [Version: ...] tag")
     if not games:
         raise LLNParseError("no [Game: ...] blocks found")
     assert game is not None
-    _finish_game(game, version)
+    _finish_game(game, defaults, version)
     return games
 
 
@@ -181,6 +198,32 @@ def _parse_seat(game: ParsedGame, index: str | None, value: str, line: int) -> N
         raise LLNParseError(f"duplicate player name {name.strip()!r}", line)
     game.players.append(name.strip())
     game.strategies.append(strategy.strip())
+
+
+def _parse_target(value: str, line: int) -> int:
+    target = _int(value, line)
+    if target < 1:
+        raise LLNParseError("[Target] must be at least 1", line)
+    return target
+
+
+def _resolve_lineup(game: ParsedGame, defaults: ParsedGame, line: int) -> None:
+    """Fill in a game's seats and target from the file header, unless it has its own."""
+    if game.target_round_wins is None:
+        game.target_round_wins = defaults.target_round_wins
+    if game.players:
+        if game.rotation is not None:
+            raise LLNParseError(f"game {game.number} has both [Seat] tags and a [Rotation]", line)
+        return
+    if not defaults.players:
+        raise LLNParseError(
+            f"game {game.number} has no seats: add [Seat] tags to the file header or to the game", line
+        )
+    n, k = len(defaults.players), game.rotation or 0
+    if not 0 <= k < n:
+        raise LLNParseError(f"[Rotation: {k}] must be between 0 and {n - 1}", line)
+    game.players = [defaults.players[(s + k) % n] for s in range(n)]
+    game.strategies = [defaults.strategies[(s + k) % n] for s in range(n)]
 
 
 def _parse_seat_ref(game: ParsedGame, value: str, line: int) -> int:
@@ -216,15 +259,27 @@ def _parse_result(value: str, num_players: int, line: int) -> list[int]:
     return winners
 
 
-def _parse_turn(line_text: str, num_players: int, line: int) -> ParsedTurn:
-    m = _TURN_RE.match(line_text)
-    if not m:
-        raise LLNParseError(f"malformed turn {line_text!r}", line)
-    seat = int(m.group(2)) - 1
-    if not 0 <= seat < num_players:
-        raise LLNParseError(f"seat {seat + 1} does not exist", line)
+def _parse_turns(line_text: str, num_players: int, line: int) -> list[ParsedTurn]:
+    """A long-form line ('1.2. g1:H') or a cycle line ('1. g1:H p2 g1:Q# -')."""
+    m = _LONG_TURN_RE.match(line_text)
+    if m:
+        seat = int(m.group(2)) - 1
+        if not 0 <= seat < num_players:
+            raise LLNParseError(f"seat {seat + 1} does not exist", line)
+        return [_parse_body(m.group(3), int(m.group(1)), seat, num_players, line)]
 
-    turn = ParsedTurn(line, int(m.group(1)), seat, m.group(3))
+    m = _CYCLE_RE.match(line_text)
+    if not m:
+        raise LLNParseError(f"malformed turn line {line_text!r}", line)
+    cycle = int(m.group(1))
+    return [_parse_body(body, cycle, None, num_players, line) for body in m.group(2).split()]
+
+
+def _parse_body(body: str, cycle: int, seat: int | None, num_players: int, line: int) -> ParsedTurn:
+    m = _BODY_RE.match(body)
+    if not m:
+        raise LLNParseError(f"malformed turn {body!r}", line)
+    turn = ParsedTurn(line, cycle, seat, body)
     if m.group("card"):
         turn.card = LLN_TO_CARD[m.group("card")]
         if m.group("target"):
@@ -236,7 +291,9 @@ def _parse_turn(line_text: str, num_players: int, line: int) -> ParsedTurn:
     return turn
 
 
-def _finish_game(game: ParsedGame, version: str) -> None:
+def _finish_game(game: ParsedGame, defaults: ParsedGame, version: str) -> None:
+    if not game.rounds:
+        _resolve_lineup(game, defaults, game.line)
     if version != "1.3" and game.target_round_wins is None:
         raise LLNParseError(f"game {game.number} has no [Target] tag", game.line)
     if len(game.players) < 2:
@@ -344,9 +401,14 @@ class ReplayGame(Game):
                 pr.turns[-1].line if pr.turns else pr.line,
             )
         turn = pr.turns[index]
-        if (turn.cycle, turn.seat) != (rnd.cycle, player.seat):
+        if turn.seat is not None and (turn.cycle, turn.seat) != (rnd.cycle, player.seat):
             raise LLNParseError(
                 f"expected turn {rnd.cycle}.{player.seat + 1}., got {turn.cycle}.{turn.seat + 1}.", turn.line
+            )
+        if turn.cycle != rnd.cycle:  # cycle line with too many or too few turns
+            raise LLNParseError(
+                f"{turn.body!r} is written in cycle {turn.cycle}, but in the replay it is "
+                f"seat {player.seat + 1}'s turn in cycle {rnd.cycle}", turn.line,
             )
         return turn
 
@@ -359,18 +421,22 @@ class ReplayGame(Game):
 
         for rh, pr in zip(gh.rounds, pg.rounds):
             for i, th in enumerate(rh.turns):
-                expected = generate_turn_line(th)
+                expected = generate_turn_line(th)  # long form: names cycle and seat
                 if i >= len(pr.turns):
                     end = pr.turns[-1].line if pr.turns else pr.line
                     raise LLNParseError(f"round {pr.number} is missing turn {expected!r}", end)
-                if pr.turns[i].text != expected:
+                pt = pr.turns[i]
+                if (
+                    pt.body != generate_turn_body(th)
+                    or pt.cycle != th.cycle
+                    or (pt.seat is not None and pt.seat != th.seat)
+                ):
                     raise LLNParseError(
-                        f"turn {pr.turns[i].text!r} does not match the replay, which gives {expected!r}",
-                        pr.turns[i].line,
+                        f"turn {pt.text} does not match the replay, which gives {expected!r}", pt.line
                     )
             if len(pr.turns) > len(rh.turns):
                 extra = pr.turns[len(rh.turns)]
-                raise LLNParseError(f"round {pr.number} was already over before {extra.text!r}", extra.line)
+                raise LLNParseError(f"round {pr.number} was already over before {extra.text}", extra.line)
             if rh.winners != pr.winners:
                 raise LLNParseError(
                     f"round {pr.number}: [Result] says seat(s) {_seats(pr.winners)} won, "

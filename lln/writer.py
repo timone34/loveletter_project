@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from engine.cards import Card
     from engine.history import GameHistory, RoundHistory, TurnHistory
 
-LLN_VERSION = "1.4"
+LLN_VERSION = "1.5"
 CARD_TO_LLN: dict[type[Card], str] = {
     Guard: "g",
     Priest: "p",
@@ -34,31 +34,63 @@ GAMES_DIR = Path(__file__).resolve().parent.parent / "games"
 
 
 def to_lln(ghs: list[GameHistory]) -> list[str]:
+    """LLN 1.5: a shared lineup/target in the file header, one line per cycle."""
     if not ghs:
         raise ValueError("Nothing to write: no game histories given.")
-    
+
+    base = ghs[0]
     lines = [f"[Version: {LLN_VERSION}]", ""]
+    lines.extend(generate_seat_lines(base))
+    lines.append(f"[Target: {base.target_round_wins}]")
+    lines.append("")
+
     for number, gh in enumerate(ghs, start=1):
-        lines.extend(generate_game_lines(gh, number))
+        lines.extend(generate_game_lines(gh, number, base))
         for rh in gh.rounds:
             lines.extend(generate_round_lines(rh))
-            lines.extend(generate_turn_line(th) for th in rh.turns)
+            lines.extend(generate_cycle_lines(rh))
             lines.append("")
         lines.append("")
     return lines
 
 
-def generate_game_lines(gh: GameHistory, number: int) -> list[str]:
+def generate_seat_lines(gh: GameHistory) -> list[str]:
+    return [
+        f"[Seat {seat + 1}: {name}, {strat}]"
+        for seat, (name, strat) in enumerate(zip(gh.players, gh.strategies))
+    ]
+
+
+def rotation_of(base: GameHistory, gh: GameHistory) -> int | None:
+    """k such that seat s of gh holds base's seat (s + k) % n, or None if gh isn't a rotation.
+
+    simulate(rotate_seats=True) moves everyone one seat per game, so game i has rotation i % n.
+    """
+    n = len(base.players)
+    if len(gh.players) != n:
+        return None
+    lineup = list(zip(base.players, base.strategies))
+    seats = list(zip(gh.players, gh.strategies))
+    for k in range(n):
+        if all(seats[s] == lineup[(s + k) % n] for s in range(n)):
+            return k
+    return None
+
+
+def generate_game_lines(gh: GameHistory, number: int, base: GameHistory) -> list[str]:
     lines = [f"[Game: {number}]"]
 
-    for seat, (name, strat) in enumerate(zip(gh.players, gh.strategies)):
-        line = f"[Seat {seat + 1}: {name}, {strat}]"
-        lines.append(line)
+    k = rotation_of(base, gh)
+    if k is None:  # not a rotation of the shared lineup: spell out this game's seats
+        lines.extend(generate_seat_lines(gh))
+    elif k:
+        lines.append(f"[Rotation: {k}]")
 
-    lines.append(f"[Target: {gh.target_round_wins}]")
-    score_string = "-".join(str(score) for score in gh.scores.values())
+    if gh.target_round_wins != base.target_round_wins:
+        lines.append(f"[Target: {gh.target_round_wins}]")
+    score_string = "-".join(str(gh.scores[seat]) for seat in range(len(gh.players)))
     lines.append(f"[Score: {score_string}]")
-    lines.append(f"")
+    lines.append("")
 
     return lines
 
@@ -77,52 +109,49 @@ def generate_round_lines(rh: RoundHistory) -> list[str]:
         tie_string = "".join(str(seat + 1) for seat in rh.winners)
         result_string = f"[Result: T{tie_string}]"
     lines.append(result_string)
-    lines.append(f"")
+    lines.append("")
 
     return lines
 
 
+def generate_cycle_lines(rh: RoundHistory) -> list[str]:
+    """One line per cycle, turns in play order: '1. g1:H p2 g1:Q# -'."""
+    cycles: dict[int, list[str]] = {}
+    for th in rh.turns:
+        cycles.setdefault(th.cycle, []).append(generate_turn_body(th))
+    return [f"{cycle}. {' '.join(bodies)}" for cycle, bodies in cycles.items()]
+
+
 def generate_turn_line(th: TurnHistory) -> str:
-    line: str = ""
+    """Long form, one turn per line: '1.2. g1:H' (cycle 1, seat 2)."""
+    return f"{th.cycle}.{th.seat + 1}. {generate_turn_body(th)}"
 
-    line += (f"{th.cycle}.{th.seat + 1}. ")
 
-    if th.played is None: 
-        line += "-"
-        return line
-    
-    played_letter = CARD_TO_LLN[type(th.played)]
+def generate_turn_body(th: TurnHistory) -> str:
+    """The move itself, e.g. 'g1:H', 'B3<#', 'p4*' or '-' (skipped turn)."""
+    if th.played is None:
+        return "-"
+
+    body = CARD_TO_LLN[type(th.played)]
     if isinstance(th.played, Guard):
         assert th.target is not None and th.guess is not None
-        guessed_letter = CARD_TO_LLN[type(th.guess)]
-        line += f"{played_letter}{th.target + 1}:{guessed_letter}"
-    elif isinstance(th.played, Priest):
-        assert th.target is not None
-        line += f"{played_letter}{th.target + 1}"
+        body += f"{th.target + 1}:{CARD_TO_LLN[type(th.guess)]}"
     elif isinstance(th.played, Baron):
         assert th.target is not None
-        line += f"{played_letter}{th.target + 1}"
+        body += f"{th.target + 1}"
         if th.outcome in OUTCOME_TO_LLN and th.outcome is not Outcome.PROTECTED:
-            line += OUTCOME_TO_LLN[th.outcome]
-    elif isinstance(th.played, Handmaid):
-        line += f"{played_letter}"
-    elif isinstance(th.played, Prince):
+            body += OUTCOME_TO_LLN[th.outcome]
+    elif isinstance(th.played, (Priest, Prince, King)):
         assert th.target is not None
-        line += f"{played_letter}{th.target + 1}"
-    elif isinstance(th.played, King):
-        assert th.target is not None
-        line += f"{played_letter}{th.target + 1}"
-    elif isinstance(th.played, Countess):
-        line += f"{played_letter}"
-    elif isinstance(th.played, Princess):
-        line += f"{played_letter}"
+        body += f"{th.target + 1}"
+    # Handmaid, Countess and Princess have no target
 
     if th.outcome == Outcome.PROTECTED:
-        line += "*"
+        body += "*"
     if th.rejected:
-        line += "#"
+        body += "#"
 
-    return line
+    return body
 
 
 def print_file_to_terminal(file_lines: list[str]):
