@@ -206,6 +206,19 @@
   color: var(--text-muted);
 }
 
+/* ----- Sections: Outcome, Play, Context (the README's categories) ----- */
+
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stats-section .section-title {
+  margin-bottom: 0;
+}
+
 /* ----- Chart cards: two columns that fill independently, then full-width cards ----- */
 
 .stats__columns {
