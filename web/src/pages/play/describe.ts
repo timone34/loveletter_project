@@ -1,3 +1,4 @@
+import { cardName } from "../../components/cardData";
 import type { GameEvent, TableView, TurnEvent } from "./types";
 
 // One sentence per game event. Used for the caption on the felt now,
@@ -18,9 +19,9 @@ export function describe(event: GameEvent, table: TableView): string {
       return `Round ${event.number}. ${name(event.dealer)} ${verb(event.dealer, "deal")} the cards.`;
 
     case "turn_start":
-      if (event.seat === you) return `Your turn. You drew the ${event.drawn}.`;
+      if (event.seat === you) return `Your turn. You drew the ${cardName(event.drawn)}.`;
       return event.drawn
-        ? `${name(event.seat)} draws the ${event.drawn}.`
+        ? `${name(event.seat)} draws the ${cardName(event.drawn)}.`
         : `${name(event.seat)} draws a card.`;
 
     case "turn_end":
@@ -30,8 +31,8 @@ export function describe(event: GameEvent, table: TableView): string {
       return `${name(event.seat)} ${isAre(event.seat)} out of this round.`;
 
     case "showdown": {
-      const hands = Object.entries(event.hands)
-        .map(([seat, card]) => `${name(Number(seat))} ${verb(Number(seat), "have", "has")} the ${card}`)
+      const hands = Object.entries(event.contender_hands)
+        .map(([seat, card]) => `${name(Number(seat))} ${verb(Number(seat), "have", "has")} the ${cardName(card)}`)
         .join(", ");
       const tie = Object.keys(event.discard_totals).length > 0 ? " Tied, so discards decide." : "";
       return `Showdown! ${hands}.${tie}`;
@@ -59,10 +60,10 @@ function describeTurn(
   const who = name(t.seat);
   const does = (base: string, third?: string) => verb(t.seat, base, third);
 
-  let line = `${who} ${does("play")} the ${t.played}`;
+  let line = `${who} ${does("play")} the ${cardName(t.played)}`;
 
   if (t.target === null) {
-    line += t.played === "Handmaid" ? ` and ${isAre(t.seat)} protected.` : ".";
+    line += t.played === "handmaid" ? ` and ${isAre(t.seat)} protected.` : ".";
   } else {
     const target = t.target;
     const object =
@@ -74,13 +75,13 @@ function describeTurn(
       line += ` on ${object}, but ${target === you ? "you are" : "they are"} protected.`;
     } else {
       switch (t.played) {
-        case "Guard":
-          line += ` on ${object} and ${does("guess", "guesses")} ${t.guess}. ${t.outcome === "CORRECT" ? "Correct!" : "Wrong."}`;
+        case "guard":
+          line += ` on ${object} and ${does("guess", "guesses")} ${cardName(t.guess)}. ${t.outcome === "CORRECT" ? "Correct!" : "Wrong."}`;
           break;
-        case "Priest":
-          line += t.seen ? ` on ${object} and ${does("see")} the ${t.seen}.` : ` on ${object}.`;
+        case "priest":
+          line += t.seen ? ` on ${object} and ${does("see")} the ${cardName(t.seen)}.` : ` on ${object}.`;
           break;
-        case "Baron": {
+        case "baron": {
           const result =
             t.outcome === "WIN" ? `${who} ${does("win")} the comparison.`
             : t.outcome === "LOSE" ? `${who} ${does("lose")} the comparison.`
@@ -88,11 +89,11 @@ function describeTurn(
           line += ` on ${object}. ${result}`;
           break;
         }
-        case "Prince":
-          line += ` on ${object}. ${name(target)} ${verb(target, "discard")} the ${t.discarded}`;
-          line += t.redrawn ? ` and ${verb(target, "draw")} the ${t.redrawn}.` : ".";
+        case "prince":
+          line += ` on ${object}. ${name(target)} ${verb(target, "discard")} the ${cardName(t.discarded)}`;
+          line += t.redrawn ? ` and ${verb(target, "draw")} the ${cardName(t.redrawn)}.` : ".";
           break;
-        case "King":
+        case "king":
           line += ` and ${does("swap")} hands with ${object}.`;
           break;
         default:

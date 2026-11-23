@@ -54,6 +54,9 @@ export const CARD_BY_ID = Object.fromEntries(
     [...GAME_CARDS, ...MODE_CARDS].map((c) => [c.id, c]),
 ) as Record<CardId, CardInfo>;
 
+// "guard" -> "Guard"; null (a card you can't see) -> "card"
+export const cardName = (id: CardId | null) => (id ? CARD_BY_ID[id].name : "card");
+
 
 // // HOME PAGE CARDS
 

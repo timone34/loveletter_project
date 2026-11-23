@@ -26,25 +26,26 @@ export type TableView = {
 
 // ----- Messages from server.py's /ws/play ----- //
 
-// Card names in events are display names ("Guard"); the table uses ids ("guard").
-type CardName = string;
+// Cards are ids ("guard") everywhere; look up display names with cardName().
+// A turn's fields are TurnHistory's (engine/history.py), sent as-is.
+type CardRef = GameCardId;
 
 export type Outcome = "NONE" | "PROTECTED" | "CORRECT" | "INCORRECT" | "WIN" | "LOSE" | "DRAW";
 
 export type TurnEvent = {
-    type: "turn_start" | "turn_end";
+    type: "turn_start" | "turn_end" | "turn_skipped"; // skipped: only cycle and seat are set
     cycle: number;
     seat: number;
-    held: CardName | null;
-    drawn: CardName | null;
-    played: CardName | null;
+    held: CardRef | null;
+    drawn: CardRef | null;
+    played: CardRef | null;
     target: number | null;
-    guess: CardName | null;
+    guess: CardRef | null;
     outcome: Outcome;
-    seen: CardName | null;
-    discarded: CardName | null;
-    redrawn: CardName | null;
-    received: CardName | null; // King: the card the player got in the swap
+    seen: CardRef | null;
+    discarded: CardRef | null;
+    redrawn: CardRef | null;
+    received: CardRef | null; // King: the card the player got in the swap
     rejected: number[];
 };
 
@@ -53,10 +54,9 @@ type BySeat<T> = Record<string, T>;
 
 export type GameEvent =
     | { type: "game_start"; players: string[]; strategies: string[] }
-    | { type: "round_start"; number: number; dealer: number; burn: CardName | null; starting_hands: BySeat<CardName> }
+    | { type: "round_start"; number: number; dealer: number }
     | TurnEvent
-    | { type: "turn_skipped"; cycle: number; seat: number }
-    | { type: "showdown"; hands: BySeat<CardName>; discard_totals: BySeat<number>; winners: number[] }
+    | { type: "showdown"; contender_hands: BySeat<CardRef>; discard_totals: BySeat<number>; winners: number[] }
     | { type: "round_end"; number: number; winners: number[] }
     | { type: "game_end"; winner: number; scores: BySeat<number> };
 
