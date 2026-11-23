@@ -1,4 +1,10 @@
 __pycache__/
 *.py[cod]
 .venv/
+.pytest_cache/
+
+# games saved by LLNWriter / save_lln (games/YYYY-MM-DD/)
 games/20??-??-??/
+
+# personal Claude Code settings
+.claude/settings.local.json
