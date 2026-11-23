@@ -28,6 +28,7 @@ def unseen(view: PlayerView) -> Counter[type[Card]]:
 
 class CardCounter(NoPrincess):
     def __init__(self) -> None:
+        self.id = "CardCounter"
         self.name = "Card Counter Bot"
         self.description = "This bot keeps track of how many cards are still unknown to it."
         self.debug = False

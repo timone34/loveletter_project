@@ -2,7 +2,7 @@ import time
 
 from bots import RandomChoice, CardCounter, TerminalPlayer
 from engine import Game, Strategy
-from observers import ConsoleLogger
+from observers import ConsoleLogger, LLNWriter
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
         "Diane": RandomChoice()
     }
 
-    observers = ConsoleLogger()
+    observers = LLNWriter()
 
     game = Game(players=players, target_round_wins=3, observers=observers)
     game.play()

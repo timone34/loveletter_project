@@ -44,7 +44,8 @@ class Game:
 
         self.history = GameHistory(
             players=[p.name for p in self.players],
-            strategies=[p.strategy.name for p in self.players],
+            strategies=[p.strategy.id for p in self.players],
+            target_round_wins=target_round_wins,
         )
 
     def play(self) -> None:

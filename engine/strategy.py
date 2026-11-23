@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 class Strategy:
     def __init__(self):
+        self.id = "Strategy"
         self.name = "Base Strategy"
         self.description = "This Strategy forms the base of all strategies."
 

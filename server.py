@@ -1,107 +1,18 @@
 import asyncio
-import copy
+import dataclasses
 import queue
 import threading
 import traceback
+from enum import Enum
+from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from bots import RandomChoice, NoPrincess
-from engine.cards import Card, guessable
-from engine.game import Game
-from engine.observer import Observer
-from engine.strategy import Strategy
+from bots import NoPrincess, RandomChoice
+from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
+from engine.view import redact_turn
 
 app = FastAPI()
-
-
-def turn_dict(turn) -> dict:
-    name = lambda c: c.name if c is not None else None
-    return {
-        "cycle": turn.cycle,
-        "seat": turn.seat,
-        "held": name(turn.held),
-        "drawn": name(turn.drawn),
-        "played": name(turn.played),
-        "target": turn.target,
-        "guess": name(turn.guess),
-        "outcome": turn.outcome.name,
-        "seen": name(turn.seen),
-        "discarded": name(turn.discarded),
-        "redrawn": name(turn.redrawn),
-        "rejected": turn.rejected,
-    }
-
-
-class QueueObserver(Observer):
-    """Turns game events into JSON-able dicts and puts them on a queue."""
-
-    def __init__(self, loop: asyncio.AbstractEventLoop, queue: asyncio.Queue):
-        self.loop, self.queue = loop, queue
-
-    def _emit(self, type_: str, **data) -> None:
-        # the game runs in another thread, so hand over safely
-        self.loop.call_soon_threadsafe(self.queue.put_nowait, {"type": type_, **data})
-
-    def on_game_start(self, game):
-        self._emit("game_start", players=game.players, strategies=game.strategies)
-
-    def on_round_start(self, game, rnd):
-        self._emit(
-            "round_start",
-            number=rnd.number,
-            dealer=rnd.dealer,
-            burn=rnd.burn.name if rnd.burn else None,
-            starting_hands={s: c.name for s, c in rnd.starting_hands.items()},
-        )
-
-    def on_turn_start(self, game, rnd, turn):
-        self._emit("turn_start", **turn_dict(turn))
-
-    def on_turn_end(self, game, rnd, turn):
-        self._emit("turn_end", **turn_dict(turn))
-
-    def on_turn_skipped(self, game, rnd, turn):
-        self._emit("turn_skipped", cycle=turn.cycle, seat=turn.seat)
-
-    def on_showdown(self, game, rnd, showdown):
-        self._emit(
-            "showdown",
-            hands={s: c.name for s, c in showdown.contender_hands.items()},
-            discard_totals=showdown.discard_totals,
-            winners=showdown.winners,
-        )
-
-    def on_round_end(self, game, rnd):
-        self._emit("round_end", number=rnd.number, winners=rnd.winners)
-
-    def on_game_end(self, game):
-        self._emit("game_end", winner=game.winner, scores=game.scores)
-
-
-@app.websocket("/ws/spectate")
-async def spectate(ws: WebSocket):
-    await ws.accept()
-    loop = asyncio.get_running_loop()
-    queue: asyncio.Queue = asyncio.Queue()
-
-    players: dict[str, Strategy] = {
-        n: RandomChoice() for n in ["Alice", "Bob", "Charlie", "Diane"]
-    }
-    game = Game(players, target_round_wins=3, observers=QueueObserver(loop, queue))
-    asyncio.create_task(asyncio.to_thread(game.play))  # game runs instantly in a thread
-
-    try:
-        while True:
-            msg = await queue.get()
-            await ws.send_json(msg)
-            if msg["type"] == "game_end":
-                break
-            await asyncio.sleep(0.8)  # pacing lives here, not in the game
-        await ws.close()
-    except WebSocketDisconnect:
-        pass
-
 
 TARGET_ROUND_WINS = 3
 
@@ -117,9 +28,6 @@ PACE = {
 }
 PACE_YOUR_TURN_START = 0.3
 
-def card_id(card: Card | None) -> str | None:
-    """Card -> the id the frontend uses ("Guard" -> "guard")."""
-    return card.name.lower() if card is not None else None
 
 def lineup(session: "Session") -> dict[str, Strategy]:
     return {
@@ -129,6 +37,39 @@ def lineup(session: "Session") -> dict[str, Strategy]:
         "You": Web_Strategy(session),
     }
 
+
+# --- Engine objects -> JSON --- #
+
+def card_id(card: Card | None) -> str | None:
+    """Card -> the id the frontend uses ("Guard" -> "guard")."""
+    return card.name.lower() if card is not None else None
+
+
+def to_json(obj: Any) -> Any:
+    """Engine objects -> JSON-able values. Cards become ids, enums their name,
+    dataclasses (TurnHistory, ShowdownHistory, ...) dicts of all their fields,
+    so a field added to the engine reaches the browser without touching this file."""
+    if isinstance(obj, Card):
+        return card_id(obj)
+    if isinstance(obj, Enum):
+        return obj.name
+    if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+        return {f.name: to_json(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
+    if isinstance(obj, dict):
+        return {k: to_json(v) for k, v in obj.items()}  # int keys become strings in JSON
+    if isinstance(obj, (list, tuple)):
+        return [to_json(v) for v in obj]
+    return obj
+
+
+def snapshot(turn: TurnHistory) -> TurnHistory:
+    """A copy of turn as it is now. The engine keeps filling in the original
+    after on_turn_start, but the browser sees the message later."""
+    return dataclasses.replace(turn, rejected=list(turn.rejected))
+
+
+# --- The browser's seat --- #
+
 class GameAborted(Exception):
     """Raised inside the game thread to unwind a game nobody is watching anymore."""
 
@@ -137,6 +78,7 @@ class Web_Strategy(Strategy):
     waits for the answer. The connection only forwards valid answers."""
 
     def __init__(self, session: "Session") -> None:
+        self.id = "WebPlayer"
         self.name = "Player Input"
         self.session = session
 
@@ -163,8 +105,8 @@ class Web_Strategy(Strategy):
 class TableObserver(Observer):
     """Sends every game event to the session, with a full snapshot of the table.
 
-    The snapshot is taken here, on the game thread, at the moment of the event,
-    so it stays correct even though the browser sees it later. It holds
+    Everything is captured here, on the game thread, at the moment of the event,
+    so it stays correct even though the browser sees it later. Messages hold
     everything; redact() decides what the human may see when it's sent."""
 
     def __init__(self, session: "Session") -> None:
@@ -207,33 +149,22 @@ class TableObserver(Observer):
 
     def on_round_start(self, game, rnd):
         self.active, self.showdown = None, False
-        self._emit(
-            "round_start",
-            number=rnd.number,
-            dealer=rnd.dealer,
-            burn=rnd.burn.name if rnd.burn else None,
-            starting_hands={s: c.name for s, c in rnd.starting_hands.items()},
-        )
+        self._emit("round_start", number=rnd.number, dealer=rnd.dealer)
 
     def on_turn_start(self, game, rnd, turn):
         self.active = turn.seat
-        self._emit("turn_start", **turn_dict(turn))
+        self._emit("turn_start", turn=snapshot(turn))
 
     def on_turn_end(self, game, rnd, turn):
-        self._emit("turn_end", **turn_dict(turn))
+        self._emit("turn_end", turn=snapshot(turn))
 
     def on_turn_skipped(self, game, rnd, turn):
         self.active = turn.seat
-        self._emit("turn_skipped", cycle=turn.cycle, seat=turn.seat)
+        self._emit("turn_skipped", turn=snapshot(turn))
 
     def on_showdown(self, game, rnd, showdown):
         self.active, self.showdown = None, True
-        self._emit(
-            "showdown",
-            hands={s: c.name for s, c in showdown.contender_hands.items()},
-            discard_totals=showdown.discard_totals,
-            winners=showdown.winners,
-        )
+        self._emit("showdown", **to_json(showdown))
 
     def on_round_end(self, game, rnd):
         self.active = None
@@ -303,30 +234,36 @@ class Session:
         self.aborted.set()
         self.answers.put(None)  # wake the thread if it's waiting on a prompt
 
+
 def redact(msg: dict) -> dict:
-    """Return a copy of msg with everything the human seat can't know removed."""
+    """Return a copy of msg with everything the human seat can't know removed.
+
+    Turns go through the engine's redact_turn, the same rules bots get.
+    Only the table snapshot, which the engine doesn't have, is handled here."""
     if "table" not in msg:
         return msg
-    msg = copy.deepcopy(msg)
     table = msg["table"]
     you = table["youSeat"]
 
-    table["burn"] = None
-    if not table["showdown"]:
-        for p in table["players"]:
-            if p["seat"] != you:
-                p["hand"] = [None] * len(p["hand"])
-
-    kind = msg["type"]
-    if kind == "round_start":
-        msg["burn"] = None
-        msg["starting_hands"] = {s: c for s, c in msg["starting_hands"].items() if s == you}
-    elif kind in ("turn_start", "turn_end"):
-        if msg["seat"] != you:
-            msg["held"] = msg["drawn"] = msg["seen"] = None
-        if msg["target"] != you:
-            msg["redrawn"] = None  # a Prince's redraw is only seen by its target
+    players = [
+        p if table["showdown"] or p["seat"] == you
+        else {**p, "hand": [None] * len(p["hand"])}
+        for p in table["players"]
+    ]
+    msg = {**msg, "table": {**table, "burn": None, "players": players}}
+    if "turn" in msg:
+        msg["turn"] = redact_turn(msg["turn"], you)
     return msg
+
+
+def wire(msg: dict) -> dict:
+    """The JSON the browser gets: the turn's fields flattened into the message."""
+    msg = dict(msg)
+    turn = msg.pop("turn", None)
+    if turn is not None:
+        msg.update(to_json(turn))
+    return to_json(msg)
+
 
 class Connection:
     """One browser tab. Owns at most one running Session at a time."""
@@ -422,7 +359,7 @@ class Connection:
                     await self.send_status()
                     return
 
-                if msg["type"] == "turn_start" and msg["seat"] == session.you:
+                if msg["type"] == "turn_start" and msg["turn"].seat == session.you:
                     await asyncio.sleep(PACE_YOUR_TURN_START)
                 else:
                     await asyncio.sleep(PACE.get(msg["type"], 0.0))
@@ -433,7 +370,7 @@ class Connection:
         if not self.reveal:
             msg = redact(msg)
         async with self.send_lock:
-            await self.ws.send_json(msg)
+            await self.ws.send_json(wire(msg))
 
     async def send_status(self) -> None:
         await self.send(

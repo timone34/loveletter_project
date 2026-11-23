@@ -62,3 +62,4 @@ class GameHistory:
     rounds: list[RoundHistory] = field(default_factory=list)
     winner: int | None = None
     scores: dict[int, int] = field(default_factory=dict)
+    target_round_wins: int = 3  # as configured at the start (Game raises it on ties)

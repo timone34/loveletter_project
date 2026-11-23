@@ -90,7 +90,8 @@ The *Simulate* and *Stats* pages are placeholders for now.
 | [engine/history.py](engine/history.py) | Records of every turn, showdown, round and game |
 | [engine/observer.py](engine/observer.py) | `Observer` base class: hooks into game events |
 | [bots/](bots/) | Bot strategies (see below), including `TerminalPlayer` for playing in the terminal |
-| [observers/](observers/) | Observer implementations; `ConsoleLogger` prints games to the terminal |
+| [observers/](observers/) | Observer implementations; `ConsoleLogger` prints games to the terminal, `LLNWriter` saves them as `.lln` files |
+| [lln/](lln/) | Love Letter Notation: writing (`save_lln`) and parsing (`load_lln`) `.lln` files |
 | [stats/](stats/) | `simulate()`, `Dataset`, metrics (`winrate`, `guard_accuracy`, ...) and plots |
 | [server.py](server.py) | FastAPI WebSocket server (`/ws/play`, `/ws/spectate`) |
 | [web/](web/) | React + TypeScript + Vite front end |
@@ -180,44 +181,64 @@ At the very start of a round, the deck is shuffled. Its order is saved in a stri
 Thus we can immediately see the card put aside is the Countess.
 If we know who is dealing this round, the starting hands are determined as well. The player who is after the dealer in rotation receives the second card in the deck string, the next player the third, etc.
 
-Each turn is written as `cycle.seat. move`, where a move is the card played, optionally followed by a target seat, a `:` and a Guard guess, and finally a result symbol.
+A move is the card played, optionally followed by a target seat, a `:` and a Guard guess, and finally a result symbol, e.g. `g1:H`, `p4*` or `B3<#`. A `-` is the turn of a player who has already been rejected.
 
-What does a round of Love Letter look like in LLN?
+A file starts with `[Version: ...]`, followed by the lineup shared by every game in the file: the seats (name and strategy) and `[Target]` (round wins needed to win a game). Each game then has its `[Score]` (the final score per seat). In a multi-game file where players change seats between games, as `simulate()` does, a game says `[Rotation: k]`: seat 1 is taken by whoever had seat 1+k in the shared lineup, and so on. A game with a completely different lineup lists its own `[Seat]` tags instead. Each round has its number, the dealer's seat, the deck string and the result (`W3`: seat 3 wins; `T13`: seats 1 and 3 tie). The turns follow, one line per cycle, in the order they were played, like moves in chess notation. Text after `//` is a comment.
+
+What does a game of Love Letter look like in LLN? This one is played to a single round win:
 
 ```
-[Seat1: Alice, Random Strategy]
-[Seat2: Bob, Random Strategy]
-[Seat3: Charlie, Random Strategy]
-[Seat4: Diane, Random Strategy]
+[Version: 1.5]
+
+[Seat 1: Alice, RandomChoice]
+[Seat 2: Bob, RandomChoice]
+[Seat 3: Charlie, RandomChoice]
+[Seat 4: Diane, RandomChoice]
+[Target: 1]
+
+[Game: 1]
 [Score: 0-0-1-0]
 
-[Round 1]
-[Dealer: Alice]
+[Round: 1]
+[Dealer: 1]
 [Deck: CBpBQgpgggHPgPKH]
 [Result: W3]
 
-1.2. g1:H
-1.3. p2
-1.4. g1:Q#
-1.1. -
-
-2.2. g3:H
-2.3. g2:B#
-2.4. H
-2.1. -
-
-3.2. -
-3.3. p4*
-3.4. g3:K
-3.1. -
-
-4.2. -
-4.3. P3
-4.4. B3<#
-W3
+1. g1:H p2 g1:Q# -
+2. g3:H g2:B# H -
+3. - p4* g3:K -
+4. - P3 B3<#
 ```
 
-More examples (including an annotated one) are in [games/](games/).
+Seat 1 deals, so seat 2 plays first in every cycle: in cycle 1, Bob plays `g1:H`, Charlie `p2`, Diane `g1:Q#` (rejecting Alice), and Alice's turn is skipped (`-`).
+
+Turns can also be written one per line in the long form `cycle.seat. move`, e.g. `1.2. g1:H` (cycle 1, seat 2). This is handy for commenting on each turn, and the two forms can be mixed. Earlier versions of LLN (1.4 and before) always used the long form and repeated the seats in every game.
+
+The same game is in [games/example_game_v1.5.lln](games/example_game_v1.5.lln), and with commentary per turn in [games/example_game_annotated_v1.5.lln](games/example_game_annotated_v1.5.lln). The LLN 1.4 versions are [games/example_game.lln](games/example_game.lln) and [games/example_game_annotated.lln](games/example_game_annotated.lln). Files in even older LLN versions are kept in [games/legacy/](games/legacy/).
+
+### Loading LLN files
+[lln/parser.py](lln/parser.py) turns `.lln` files (versions 1.3, 1.4 and 1.5) back into `GameHistory` objects. Since 1.4, the round-win target is stored in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
+
+```python
+from lln import load_lln
+
+histories = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
+```
+
+A file only stores the deck, the dealer and the players' choices. The parser replays each game through the real engine to fill in everything else (held/drawn cards, Priest sightings, Prince redraws, King swaps, rejections, showdowns). It then checks every turn, result and score against the file. If something doesn't match, it raises an `LLNParseError` that gives the line number.
+
+### Replaying recorded decks with other bots
+
+`rerun_decks` plays the decks from recorded games again with a different lineup. Round *r* of game *i* gets the deck that round *r* of recorded game *i* had:
+
+```python
+from lln import load_lln, rerun_decks
+
+recorded = load_lln("games/2026-11-23/CardCounter-v-3xRandomChoice_n1000.lln")
+rerun = rerun_decks(recorded, {"Alice": NoPrincess(), "Bob": RandomChoice(), "Charlie": RandomChoice(), "Diane": RandomChoice()}, seed=1)
+```
+
+The new bots may need more rounds than the recording has. Those extra rounds get a seeded deck when you pass `seed` (reproducible), and a normal shuffle otherwise. For new simulations, `simulate(..., seed=...)` (see "Comparing bots on the same decks") is the simpler way to give lineups the same decks. `rerun_decks` is for decks you already have in a file.
 
 ## Statistics
 

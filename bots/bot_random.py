@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 class RandomChoice(Strategy):  # picks a random target regarding all actions.
     def __init__(self) -> None:
+        self.id = "RandomChoice"
         self.name = "Random Bot"
         self.description = "This bot picks cards, targets and guesses at random."
 

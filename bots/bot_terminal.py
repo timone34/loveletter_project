@@ -23,6 +23,7 @@ def _choose_from_menu(title: str, options: list[str]) -> int:
 
 class TerminalPlayer(Strategy):  # asks for user input regarding all actions.
     def __init__(self) -> None:
+        self.id = "TerminalPlayer"
         self.name = "Player Input"
         self.description = "This Strategy asks the user for input through the python terminal."
 
