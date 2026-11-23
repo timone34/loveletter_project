@@ -10,7 +10,7 @@ The project consists of:
 - A **Python game engine** that plays full games of Love Letter between pluggable strategies (bots or humans).
 - A set of **bots** of increasing sophistication, to compare against each other.
 - A **simulation and statistics** package for running thousands of games and measuring how strategies perform.
-- A **web interface** (React + FastAPI) for playing against the bots in the browser.
+- A **web interface** (React + FastAPI) for playing against the bots, running simulations and comparing their stats in the browser.
 - **Love Letter Notation (LLN)**, a text format for recording games, described below.
 
 ## Getting started
@@ -43,7 +43,7 @@ Plays one game (first to 3 round wins) between the bots configured in [main.py](
 python experiment.py
 ```
 
-Simulates 5000 games (rotating seats between games so no bot gets a seat advantage), builds a dataset from the game histories and prints win rates (with Wilson confidence intervals) and Guard accuracy. Edit the lineup and `n` in [experiment.py](experiment.py).
+Simulates 1000 games (rotating seats between games so no bot gets a seat advantage), builds a dataset from the game histories and prints win rates (with Wilson confidence intervals) and Guard accuracy. Edit the lineup and `n` in [experiment.py](experiment.py).
 
 #### Comparing bots on the same decks
 
@@ -72,9 +72,13 @@ npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually http://localhost:5173) and go to **Play**. The Vite dev server proxies `/ws` to the FastAPI server on port 8000. You play as "You" against three bots; the lineup is set in `lineup()` in [server.py](server.py).
+Then open the URL Vite prints (usually http://localhost:5173). The Vite dev server proxies `/ws` and `/api` to the FastAPI server on port 8000. The site has three pages:
 
-The *Simulate* and *Stats* pages are placeholders for now.
+- **Play**: pick three bots and the table settings, then play against them.
+- **Simulate**: seat four bots, choose the number of games, round wins to win, seat rotation, a seed and whether to keep the games as LLN, and press Run. Runs play in the background, one at a time.
+- **Statistics**: the history of every simulation, and each run's stats (see [Statistics](#statistics)), which fill in live while it plays. *Run again* repeats a run game for game (same seed); *Edit & run* starts a new one from its settings; runs that kept their games can be downloaded as `.lln`.
+
+Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln.bz2` if it kept its games). Every saved run records the format of its stats; a run saved by an older format is still listed, marked *outdated*, and can be run again from its seed.
 
 ## Project structure
 
@@ -92,8 +96,9 @@ The *Simulate* and *Stats* pages are placeholders for now.
 | [bots/](bots/) | Bot strategies (see below), including `TerminalPlayer` for playing in the terminal |
 | [observers/](observers/) | Observer implementations; `ConsoleLogger` prints games to the terminal, `LLNWriter` saves them as `.lln` files |
 | [lln/](lln/) | Love Letter Notation: writing (`save_lln`) and parsing (`load_lln`) `.lln` files |
-| [stats/](stats/) | `simulate()`, `Dataset`, metrics (`winrate`, `guard_accuracy`, ...) and plots |
-| [server.py](server.py) | FastAPI WebSocket server (`/ws/play`, `/ws/spectate`) |
+| [stats/](stats/) | `simulate()` / `iter_games()`, `Tally` (the stats the webapp shows), `Dataset`, metrics (`winrate`, `guard_accuracy`, ...) and plots |
+| [runs/](runs/) | Simulation runs for the webapp: settings, a background queue and the saved history |
+| [server.py](server.py) | FastAPI server: the Play WebSocket (`/ws/play`), the bot list and the simulations API (`/api/...`) |
 | [web/](web/) | React + TypeScript + Vite front end |
 | [games/](games/) | Example games recorded in LLN |
 
@@ -244,26 +249,29 @@ The new bots may need more rounds than the recording has. Those extra rounds get
 
 To compare strategies with each other, we need a way of looking at the game data.
 Various statistics can help us in our journey to find the way to perfect play.
-These different stats can be split into multiple categories. Win rates and Guard accuracy are implemented in [stats/metrics.py](stats/metrics.py); the rest is planned.
+These different stats can be split into multiple categories, which is also how a run's page on the **Statistics** tab is laid out.
+
+Every stat can be shown per player, per bot (the players using the same bot, added together) or per seat. Rates come with a 95% Wilson confidence interval. The exact definitions are in the docstring of [stats/tally.py](stats/tally.py), which computes them game by game; [stats/metrics.py](stats/metrics.py) has pandas versions of win rate and Guard accuracy for working in a notebook.
 
 ### 1. Outcome stats
 Did the bot win, and how?
 These stats are important for observing which bot performs best.
-- Game winrate (%)
-- Round winrate (%)
-- Rejection stats (cause, timing, who did it)
-- Seat and dealer specific effects
+- Game win rate (%), and how it developed over the run
+- Round win rate (%). A tied showdown counts as a win for everyone in the tie.
+- Cause of rejection: out to a Guard, an opponent's Baron, your own Baron, an opponent's Prince, your own Prince, the Princess, or still in but beaten at the showdown
+- *Planned:* timing of rejections (which cycle), and who did it
 
 ### 2. Play stats
 What did the bot actually do?
 These stats are important for telling us what to improve.
-- Guard accuracy (%)
-- Baron results (x% win, y% tie, z% loss)
-- Information usage (card counting accuracy)
+- Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted)
+- Baron results: won, tied, protected, lost
+- *Planned:* information usage (card counting accuracy)
 
 ### 3. Context
 How far can we trust these numbers?
 Maybe the least important, but still useful for our purposes.
-- Luck analysis
-- Drawn cards
-- Comparison setup (head-to-head, rating, confidence interval)
+- Games and rounds simulated, rounds per game, tied rounds
+- Turn order: round win rate by when you move in the round, the game's own first-mover advantage (the reason seats rotate)
+- Confidence intervals on every rate
+- *Planned:* luck analysis, drawn cards, head-to-head comparisons and ratings
