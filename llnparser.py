@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from cards import Card
     from player import Player
 
-SUPPORTED_VERSIONS = {"1.3"}
+SUPPORTED_VERSIONS = {"1.3", "1.4"}  # 1.4 added the [Target: n] tag
 LLN_TO_CARD: dict[str, type[Card]] = {letter: card for card, letter in CARD_TO_LLN.items()}
 DECK_COUNTS = Counter(CARD_TO_LLN[type(card)] for card in Deck().cards)
 
@@ -79,12 +79,13 @@ class ParsedGame:
     players: list[str] = field(default_factory=list)
     strategies: list[str] = field(default_factory=list)
     scores: list[int] | None = None
+    target_round_wins: int | None = None  # None = not in file (LLN 1.3)
     rounds: list[ParsedRound] = field(default_factory=list)
 
 
 def parse_text(text: str) -> list[ParsedGame]:
     games: list[ParsedGame] = []
-    version_seen = False
+    version: str | None = None
     game: ParsedGame | None = None
     rnd: ParsedRound | None = None
 
@@ -93,7 +94,7 @@ def parse_text(text: str) -> list[ParsedGame]:
         if not line or line == "...":
             continue
 
-        if not version_seen:
+        if version is None:
             m = _TAG_RE.match(line)
             if not m or m.group(1) != "Version":
                 raise LLNParseError("file must start with a [Version: ...] tag", line_no)
@@ -102,7 +103,7 @@ def parse_text(text: str) -> list[ParsedGame]:
                     f"unsupported LLN version {m.group(3)!r} "
                     f"(supported: {', '.join(sorted(SUPPORTED_VERSIONS))})", line_no
                 )
-            version_seen = True
+            version = m.group(3)
             continue
 
         if line.startswith("["):
@@ -112,7 +113,7 @@ def parse_text(text: str) -> list[ParsedGame]:
             tag, index, value = m.group(1), m.group(2), m.group(3)
 
             if tag == "Game":
-                if game: _finish_game(game)
+                if game: _finish_game(game, version)
                 game = ParsedGame(line_no, _int(value, line_no))
                 games.append(game)
                 rnd = None
@@ -126,6 +127,12 @@ def parse_text(text: str) -> list[ParsedGame]:
                 if game.rounds:
                     raise LLNParseError("[Score] must come before the first round", line_no)
                 game.scores = [_int(s, line_no) for s in value.split("-")]
+            elif tag == "Target":
+                if game.rounds:
+                    raise LLNParseError("[Target] must come before the first round", line_no)
+                game.target_round_wins = _int(value, line_no)
+                if game.target_round_wins < 1:
+                    raise LLNParseError("[Target] must be at least 1", line_no)
             elif tag == "Round":
                 rnd = ParsedRound(line_no, _int(value, line_no))
                 game.rounds.append(rnd)
@@ -145,11 +152,12 @@ def parse_text(text: str) -> list[ParsedGame]:
             raise LLNParseError(f"turn line outside of a round: {line!r}", line_no)
         rnd.turns.append(_parse_turn(line, len(game.players), line_no))
 
-    if not version_seen:
+    if version is None:
         raise LLNParseError("empty file: no [Version: ...] tag")
     if not games:
         raise LLNParseError("no [Game: ...] blocks found")
-    _finish_game(game)
+    assert game is not None
+    _finish_game(game, version)
     return games
 
 
@@ -227,7 +235,9 @@ def _parse_turn(line_text: str, num_players: int, line: int) -> ParsedTurn:
     return turn
 
 
-def _finish_game(game: ParsedGame) -> None:
+def _finish_game(game: ParsedGame, version: str) -> None:
+    if version != "1.3" and game.target_round_wins is None:
+        raise LLNParseError(f"game {game.number} has no [Target] tag", game.line)
     if len(game.players) < 2:
         raise LLNParseError(f"game {game.number} needs at least 2 [Seat] tags", game.line)
     if game.scores is None:
@@ -381,6 +391,9 @@ def _seats(seats: list[int] | None) -> str:
 # ------------------------------------------------------------------ public API
 
 def replay(parsed: ParsedGame, target_round_wins: int = 3) -> GameHistory:
+    """target_round_wins is only used when the file has no [Target] tag (LLN 1.3)."""
+    if parsed.target_round_wins is not None:
+        target_round_wins = parsed.target_round_wins
     game = ReplayGame(parsed, target_round_wins)
     game.play()
     game.verify()
@@ -388,7 +401,10 @@ def replay(parsed: ParsedGame, target_round_wins: int = 3) -> GameHistory:
 
 
 def parse_lln(text: str, target_round_wins: int = 3) -> list[GameHistory]:
-    """Turn the contents of an .lln file into fully populated GameHistory objects."""
+    """Turn the contents of an .lln file into fully populated GameHistory objects.
+
+    target_round_wins is a fallback for LLN 1.3 files; newer files store it in [Target].
+    """
     return [replay(pg, target_round_wins) for pg in parse_text(text)]
 
 

@@ -57,6 +57,7 @@ What does a round of Love Letter look like in LLN?
 [Seat2: Bob, Random Strategy]
 [Seat3: Charlie, Random Strategy]
 [Seat4: Diane, Random Strategy]
+[Target: 3]
 [Score: 0-0-1-0]
 
 [Round 1]
@@ -86,7 +87,7 @@ W3
 ```
 
 ### Loading LLN files
-`llnparser.py` turns `.lln` files (version 1.3) back into `GameHistory` objects:
+`llnparser.py` turns `.lln` files (version 1.3 and 1.4) back into `GameHistory` objects. Since 1.4, each game stores its round-win target in a `[Target: n]` tag. For 1.3 files, pass `target_round_wins=` yourself (default 3).
 
 ```python
 from llnparser import load_lln

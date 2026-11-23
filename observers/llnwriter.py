@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from cards import Card
     from history import GameHistory, RoundHistory, TurnHistory
 
-LLN_VERSION = "1.3"
+LLN_VERSION = "1.4"
 CARD_TO_LLN: dict[type[Card], str] = {
     Guard: "g",
     Priest: "p",
@@ -70,6 +70,7 @@ def generate_game_lines(gh: GameHistory, number: int) -> list[str]:
         line = f"[Seat {seat + 1}: {name}, {strat}]"
         lines.append(line)
 
+    lines.append(f"[Target: {gh.target_round_wins}]")
     score_string = "-".join(str(score) for score in gh.scores.values())
     lines.append(f"[Score: {score_string}]")
     lines.append(f"")

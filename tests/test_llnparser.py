@@ -12,13 +12,14 @@ from stats.sim import simulate
 
 # One 4-player round, played to 1 round win. Seat 1 deals, burn = Countess.
 SAMPLE = """\
-[Version: 1.3]
+[Version: 1.4]
 
 [Game: 1]
 [Seat 1: Alice, CardCounter]
 [Seat 2: Bob, RandomChoice]
 [Seat 3: Charlie, RandomChoice]
 [Seat 4: Diane, RandomChoice]
+[Target: 1]
 [Score: 0-1-0-0]
 
 [Round: 1]
@@ -73,7 +74,7 @@ def test_round_trip_two_and_three_players():
 
 
 def test_sample_fills_in_derived_fields():
-    (gh,) = parse_lln(SAMPLE, target_round_wins=1)
+    (gh,) = parse_lln(SAMPLE)
     assert gh.players == ["Alice", "Bob", "Charlie", "Diane"]
     assert gh.strategies == ["CardCounter", "RandomChoice", "RandomChoice", "RandomChoice"]
     assert gh.winner == 1 and gh.scores == {0: 0, 1: 1, 2: 0, 3: 0}
@@ -95,17 +96,19 @@ def test_sample_fills_in_derived_fields():
 def test_load_lln(tmp_path):
     path = tmp_path / "game.lln"
     path.write_text(SAMPLE, encoding="utf-8")
-    assert to_lln(load_lln(path, target_round_wins=1)) == to_lln(parse_lln(SAMPLE, target_round_wins=1))
+    assert to_lln(load_lln(path)) == to_lln(parse_lln(SAMPLE))
 
 
 def test_dealer_by_name_is_accepted():
-    (gh,) = parse_lln(SAMPLE.replace("[Dealer: 1]", "[Dealer: Alice]"), target_round_wins=1)
+    (gh,) = parse_lln(SAMPLE.replace("[Dealer: 1]", "[Dealer: Alice]"))
     assert gh.rounds[0].dealer == 0
 
 
 @pytest.mark.parametrize("old, new, message", [
-    ("[Version: 1.3]", "[Version: 1.1]", "unsupported LLN version"),
-    ("[Version: 1.3]\n", "", "must start with a [Version"),
+    ("[Version: 1.4]", "[Version: 1.1]", "unsupported LLN version"),
+    ("[Version: 1.4]\n", "", "must start with a [Version"),
+    ("[Target: 1]\n", "", "has no [Target] tag"),
+    ("[Target: 1]", "[Target: 0]", "[Target] must be at least 1"),
     ("CgpgBHKQgPggpBHP", "CgpgBHKQgPggpBHX", "unknown card letter"),
     ("CgpgBHKQgPggpBHP", "CgpgBHKQgPggpBHg", "not a full Love Letter deck"),
     ("1.3. p2*", "1.3. p3*", "not a legal target"),
@@ -121,21 +124,46 @@ def test_dealer_by_name_is_accepted():
 def test_errors(old, new, message):
     assert old in SAMPLE
     with pytest.raises(LLNParseError, match=message.replace("[", r"\[").replace(".", r"\.")):
-        parse_lln(SAMPLE.replace(old, new), target_round_wins=1)
+        parse_lln(SAMPLE.replace(old, new))
 
 
 def test_error_reports_line_number():
     with pytest.raises(LLNParseError) as exc:
-        parse_lln(SAMPLE.replace("1.1. B4<#", "1.1. B4=#"), target_round_wins=1)
-    assert exc.value.line == 18
+        parse_lln(SAMPLE.replace("1.1. B4<#", "1.1. B4=#"))
+    assert exc.value.line == 19
+
+
+def test_target_is_written_and_read_back():
+    random.seed(5)
+    originals = simulate(10, {"A": RandomChoice(), "B": CardCounter(), "C": RandomChoice()})
+    for gh in originals:
+        assert gh.target_round_wins == 3
+    lines = to_lln(originals)
+    assert lines.count("[Target: 3]") == 10
+
+    (gh,) = parse_lln(SAMPLE)
+    assert gh.target_round_wins == 1
+
+
+def test_target_from_file_overrides_argument():
+    (gh,) = parse_lln(SAMPLE, target_round_wins=5)
+    assert gh.target_round_wins == 1
+
+
+def test_v13_files_without_target_use_argument():
+    v13 = SAMPLE.replace("[Version: 1.4]", "[Version: 1.3]").replace("[Target: 1]\n", "")
+    (gh,) = parse_lln(v13, target_round_wins=1)
+    assert gh.target_round_wins == 1
+    with pytest.raises(LLNParseError, match="not decided"):
+        parse_lln(v13)  # default target 3, but only 1 round in the file
 
 
 def test_game_not_decided_by_end_of_file():
     with pytest.raises(LLNParseError, match="not decided"):
-        parse_lln(SAMPLE)  # target 3 round wins, but only 1 round in the file
+        parse_lln(SAMPLE.replace("[Target: 1]", "[Target: 3]"))
 
 
 def test_extra_round_after_game_decided():
     extra = SAMPLE + "\n[Round: 2]\n[Dealer: 1]\n[Deck: CgpgBHKQgPggpBHP]\n[Result: W2]\n1.2. H\n"
     with pytest.raises(LLNParseError, match="already decided"):
-        parse_lln(extra, target_round_wins=1)
+        parse_lln(extra)
