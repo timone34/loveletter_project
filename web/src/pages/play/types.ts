@@ -18,6 +18,8 @@ export type TableView = {
     dealer: number; // seat
     deckCount: number;
     winsNeeded: number;
+    name: string; // table name, from the setup page
+    visibility: "private" | "public";
     youSeat: number;
     players: PlayerView[]; // in seat order
     burn?: CardId | null;

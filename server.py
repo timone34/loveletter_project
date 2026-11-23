@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 import queue
+import random
 import threading
 import traceback
 from enum import Enum
@@ -8,15 +9,14 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from bots import NoPrincess, RandomChoice
+from bots import available_bots
 from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
 from engine.view import redact_turn
 
 app = FastAPI()
 
-TARGET_ROUND_WINS = 3
-
 # seconds to wait after each kind of message, before sending the next one
+# (at normal speed; TableConfig.speed scales these)
 PACE = {
     "game_start": 0.5,
     "round_start": 1.5,
@@ -27,15 +27,85 @@ PACE = {
     "round_end": 2.5,
 }
 PACE_YOUR_TURN_START = 0.3
+SPEEDS = {"slow": 1.6, "normal": 1.0, "fast": 0.4}  # multiplier on PACE
 
 
-def lineup(session: "Session") -> dict[str, Strategy]:
-    return {
-        "Alice": NoPrincess(),
-        "Bob": RandomChoice(),
-        "Charlie": RandomChoice(),
-        "You": Web_Strategy(session),
-    }
+# --- Table settings, sent by the setup page with "new_game" --- #
+
+@dataclasses.dataclass
+class TableConfig:
+    name: str = "The Royal Court"
+    you: str = "You"
+    seat: int | None = 3  # your seat, 0-3; None = random
+    opponents: list[tuple[str, str]] = dataclasses.field(  # (name, bot id), in seat order
+        default_factory=lambda: [("Alice", "NoPrincess"), ("Bob", "RandomChoice"), ("Charlie", "RandomChoice")]
+    )
+    target_round_wins: int = 3
+    speed: str = "normal"
+    deck_seed: str | None = None  # same seed = same deals, round for round
+    visibility: str = "private"  # for multiplayer later; no effect yet
+
+    @classmethod
+    def from_json(cls, data: dict | None) -> "TableConfig":
+        """Validate settings from the browser. Raises ValueError with a readable message."""
+        if not data:
+            return cls()
+
+        def text(key: str, default: str, limit: int = 24) -> str:
+            value = str(data.get(key) or "").strip()[:limit]
+            return value or default
+
+        bots = available_bots()
+        raw = data.get("opponents")
+        if not isinstance(raw, list) or len(raw) != 3:
+            raise ValueError("Pick exactly three opponents.")
+        opponents = []
+        for i, opp in enumerate(raw):
+            if not isinstance(opp, dict) or opp.get("bot") not in bots:
+                raise ValueError(f"Unknown bot for opponent {i + 1}: {opp!r}")
+            name = str(opp.get("name") or "").strip()[:24] or f"Bot {i + 1}"
+            opponents.append((name, opp["bot"]))
+
+        you = text("you", "You")
+        names = [you] + [n for n, _ in opponents]
+        if len({n.casefold() for n in names}) < len(names):
+            raise ValueError("Every player needs a different name.")
+
+        seat = data.get("seat")
+        if seat is not None and seat not in range(4):
+            raise ValueError("Your seat must be 1 to 4, or random.")
+
+        target = data.get("targetRoundWins", 3)
+        if not isinstance(target, int) or not 1 <= target <= 9:
+            raise ValueError("Round wins to win must be between 1 and 9.")
+
+        speed = data.get("speed", "normal")
+        if speed not in SPEEDS:
+            raise ValueError(f"Unknown speed: {speed!r}")
+
+        visibility = data.get("visibility", "private")
+        if visibility not in ("private", "public"):
+            raise ValueError(f"Unknown visibility: {visibility!r}")
+
+        return cls(
+            name=text("name", "The Royal Court", 40),
+            you=you,
+            seat=seat,
+            opponents=opponents,
+            target_round_wins=target,
+            speed=speed,
+            deck_seed=str(data.get("deckSeed") or "").strip()[:40] or None,
+            visibility=visibility,
+        )
+
+
+def lineup(config: TableConfig, session: "Session") -> dict[str, Strategy]:
+    """Players in seat order, with the browser's seat where the config puts it."""
+    bots = available_bots()
+    players: list[tuple[str, Strategy]] = [(name, bots[bot]()) for name, bot in config.opponents]
+    seat = config.seat if config.seat is not None else random.randrange(4)
+    players.insert(seat, (config.you, Web_Strategy(session)))
+    return dict(players)
 
 
 # --- Engine objects -> JSON --- #
@@ -123,6 +193,8 @@ class TableObserver(Observer):
             "deckCount": rnd.deck.cards_left if rnd else 0,
             "burn": card_id(getattr(rnd, "burn_card", None)),
             "winsNeeded": game.target_round_wins,
+            "name": self.session.config.name,
+            "visibility": self.session.config.visibility,
             "youSeat": self.session.you,
             "showdown": self.showdown,
             "players": [
@@ -176,18 +248,24 @@ class TableObserver(Observer):
 class Session:
     """One game, and the bridge between its thread and the event loop."""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, config: TableConfig) -> None:
         self.loop = loop
+        self.config = config
         self.outbox: asyncio.Queue[dict] = asyncio.Queue()  # game thread -> browser
         self.answers: queue.Queue[int | None] = queue.Queue()  # browser -> game thread
         self.aborted = threading.Event()
 
         self.observer = TableObserver(self)
-        players = lineup(self)
+        players = lineup(config, self)
         self.you = next(
             seat for seat, s in enumerate(players.values()) if isinstance(s, Web_Strategy)
         )
-        self.game = Game(players, target_round_wins=TARGET_ROUND_WINS, observers=self.observer)
+        self.game = Game(
+            players,
+            target_round_wins=config.target_round_wins,
+            observers=self.observer,
+            deck_seed=config.deck_seed,
+        )
         self.thread = threading.Thread(target=self._run, daemon=True)
 
     def start(self) -> None:
@@ -296,7 +374,12 @@ class Connection:
     async def handle(self, msg: dict) -> None:
         kind = msg.get("type")
         if kind == "new_game":
-            self.start_game()
+            try:
+                config = TableConfig.from_json(msg.get("config"))
+            except ValueError as exc:
+                await self.send({"type": "error", "message": f"Invalid table settings: {exc}"})
+                return
+            self.start_game(config)
             await self.send_status()
         elif kind == "pause":
             self.unpaused.clear()
@@ -324,9 +407,9 @@ class Connection:
         self.prompt = None  # one answer per prompt, so double clicks do nothing
         session.answers.put(index)
 
-    def start_game(self) -> None:
+    def start_game(self, config: TableConfig) -> None:
         self.stop_game()
-        self.session = Session(self.loop)
+        self.session = Session(self.loop, config)
         self.running = True
         self.unpaused.set()
         self.pump_task = asyncio.create_task(self.pump(self.session))
@@ -360,9 +443,10 @@ class Connection:
                     return
 
                 if msg["type"] == "turn_start" and msg["turn"].seat == session.you:
-                    await asyncio.sleep(PACE_YOUR_TURN_START)
+                    pace = PACE_YOUR_TURN_START
                 else:
-                    await asyncio.sleep(PACE.get(msg["type"], 0.0))
+                    pace = PACE.get(msg["type"], 0.0)
+                await asyncio.sleep(pace * SPEEDS[session.config.speed])
         except (WebSocketDisconnect, RuntimeError):
             pass  # the socket closed mid-send; serve() cleans up
 
@@ -381,6 +465,13 @@ class Connection:
                 "reveal": self.reveal,
             }
         )
+
+@app.get("/api/bots")
+def list_bots() -> list[dict]:
+    """The bots the setup page can seat at the table."""
+    bots = [cls() for cls in available_bots().values()]
+    return [{"id": b.id, "name": b.name, "description": b.description} for b in bots]
+
 
 @app.websocket("/ws/play")
 async def play(ws: WebSocket):

@@ -40,11 +40,11 @@ A secondary goal is a **YouTube video** on Love Letter and the journey of buildi
 - `engine/view.py`: `PlayerView`, `view_for`, `redact_turn`. One view per player is built at the start of each turn, so a strategy sees only legitimate information. The view is also used for the server's live display.
 - `engine/history.py`: dataclasses (`TurnHistory`, `RoundHistory`, `GameHistory`, `ShowdownHistory`). They are write-only while the game runs; the game never reads them back.
 - `engine/observer.py`: `Observer` / `Observers` base classes. The engine calls these hooks (`on_game_start`, `on_round_start`, `on_turn_start`, `on_turn_end`, `on_turn_skipped`, `on_showdown`, `on_round_end`, `on_game_end`).
-- `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`), plus `bot_terminal.py` (`TerminalPlayer`, a human playing in the terminal).
+- `bots/`: the bots themselves (`bot_random.py`, `bot_no_princess.py`, `bot_card_counter.py`), plus `bot_terminal.py` (`TerminalPlayer`, a human playing in the terminal). `bots.available_bots()` finds every `Strategy` subclass in the folder (order of `__all__` first, `human = True` strategies left out); the webapp's bot picker uses it, so a new bot file shows up there automatically.
 - `observers/`: Observer implementations: `ConsoleLogger`, and `LLNWriter` (a thin observer that calls into `lln/`).
 - `lln/`: Love Letter Notation. `writer.py` (`to_lln`, `save_lln`, `generate_turn_line`) and `parser.py` (`load_lln`, `parse_lln`: replays a file through the engine to rebuild full `GameHistory` objects), and `rerun.py` (`rerun_decks`: plays recorded decks again with other bots). Tests in `tests/test_lln.py`; seeded decks in `tests/test_seed.py`.
 - `stats/`: `sim.py` (`simulate(n, players, rotate_seats=True, obs=None, seed=None)` returns `list[GameHistory]`, seats rotate between games; with a `seed`, round r of game i gets a deck that depends only on (seed, i, r), via `Game(deck_seed=...)` and a dedicated `random.Random`, so different lineups face identical decks, and the bots' global `random` is seeded for reproducibility), `dataset.py` (pandas tables), `metrics.py` (win rates with 95% CIs and other metrics), `plots.py` (matplotlib). `experiment.py` sits in the repo root.
-- `server.py`: FastAPI with a `/ws/play` WebSocket (`Web_Strategy`, `TableObserver`, `redact`).
+- `server.py`: FastAPI with `GET /api/bots` and a `/ws/play` WebSocket (`Web_Strategy`, `TableObserver`, `redact`). `new_game` carries a `TableConfig` (opponents, names, seat, target, speed, deck seed, table name, visibility), validated server-side.
 - `web/`: React + TypeScript frontend with its own CSS per component (`.tsx` + `.css` pairs, shared pieces in `web/src/content/Asset.tsx`).
 - `main.py`: runs 4 bots with `target_round_wins=3`.
 - `games/`: example `.lln` files.
@@ -71,7 +71,7 @@ A chess-PGN-inspired notation for recording games. Current version is **LLN 1.5*
 
 Main workspace for the project, with three modes:
 
-- **Play**: play against own bots at `/play`. Live via the FastAPI WebSocket. Layout: three opponents on top, deck in the middle, own hand at the bottom, action log in a column on the right. Designed for the owner's own desktop only (no scaling-based layout). Cards are uniform in design with only the LLN letter differing; the card back uses striped accent colours.
+- **Play**: `/play` is the setup page (pick three bots, table settings; remembered in localStorage), `/play/table` the table. Play against own bots Live via the FastAPI WebSocket. Layout: three opponents on top, deck in the middle, own hand at the bottom, action log in a column on the right. Designed for the owner's own desktop only (no scaling-based layout). Cards are uniform in design with only the LLN letter differing; the card back uses striped accent colours.
 - **Simulate**: pit chosen bots against each other with visual comparisons (not built yet).
 - **Stats**: compare win rates and explain why a bot wins (not built yet).
 

@@ -14,7 +14,7 @@ def no_pacing(monkeypatch):
     monkeypatch.setattr(server, "PACE_YOUR_TURN_START", 0)
 
 
-def play_game(rng: random.Random, reveal: bool = False) -> list[dict]:
+def play_game(rng: random.Random, reveal: bool = False, config: dict | None = None) -> list[dict]:
     """Play one game, answering every prompt with a random legal choice."""
     msgs = []
     with TestClient(server.app).websocket_connect("/ws/play") as ws:
@@ -22,7 +22,7 @@ def play_game(rng: random.Random, reveal: bool = False) -> list[dict]:
         if reveal:
             ws.send_json({"type": "reveal", "on": True})
             ws.receive_json()
-        ws.send_json({"type": "new_game"})
+        ws.send_json({"type": "new_game", "config": config})
         while True:
             msg = ws.receive_json()
             msgs.append(msg)
@@ -80,3 +80,49 @@ def test_cards_are_ids():
             assert {msg[k] for k in ("held", "drawn", "played", "guess", "seen", "discarded", "redrawn", "received")} <= ids
         if msg["type"] == "showdown":
             assert set(msg["contender_hands"].values()) <= ids
+
+
+CONFIG = {
+    "name": "Test Table",
+    "you": "Me",
+    "seat": 0,
+    "opponents": [
+        {"name": "Ann", "bot": "CardCounter"},
+        {"name": "Ben", "bot": "NoPrincess"},
+        {"name": "Cat", "bot": "RandomChoice"},
+    ],
+    "targetRoundWins": 1,
+    "speed": "fast",
+    "deckSeed": "abc",
+    "visibility": "public",
+}
+
+
+def test_bot_list():
+    bots = TestClient(server.app).get("/api/bots").json()
+    ids = [b["id"] for b in bots]
+    assert {"RandomChoice", "NoPrincess", "CardCounter"} <= set(ids)
+    assert "TerminalPlayer" not in ids  # needs a human at the terminal
+    assert all(b["name"] and b["description"] for b in bots)
+
+
+def test_config_is_applied():
+    msgs = play_game(random.Random(4), config=CONFIG)
+    table = msgs[-1]["table"]
+    assert table["name"] == "Test Table" and table["visibility"] == "public"
+    assert table["youSeat"] == 0 and table["winsNeeded"] == 1
+    players = table["players"]
+    assert [p["name"] for p in players] == ["Me", "Ann", "Ben", "Cat"]
+    assert players[1]["strategy"] == "Card Counter Bot"
+    assert msgs[-1]["scores"][str(msgs[-1]["winner"])] == 1
+
+
+def test_bad_config_is_rejected():
+    bad = {**CONFIG, "opponents": [{"name": "Me", "bot": "RandomChoice"}] * 3}
+    with TestClient(server.app).websocket_connect("/ws/play") as ws:
+        ws.receive_json()
+        ws.send_json({"type": "new_game", "config": bad})
+        msg = ws.receive_json()
+        assert msg["type"] == "error" and "different name" in msg["message"]
+        ws.send_json({"type": "new_game", "config": {**CONFIG, "opponents": [{"name": "X", "bot": "Nope"}]}})
+        assert ws.receive_json()["type"] == "error"

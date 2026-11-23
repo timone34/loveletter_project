@@ -30,7 +30,7 @@
   min-height: 0;
 }
 
-.table-header {
+.table__header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
