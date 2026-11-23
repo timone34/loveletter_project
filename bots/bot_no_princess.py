@@ -1,6 +1,6 @@
 import random
 
-from cards import *
+from engine.cards import *
 from bots import RandomChoice
 
 class NoPrincessDumb(RandomChoice):

@@ -4,10 +4,10 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from cards import Card
-    from game import Round
-    from history import TurnHistory
-    from player import Player
+    from .cards import Card
+    from .game import Round
+    from .history import TurnHistory
+    from .player import Player
 
 
 @dataclass(frozen=True)

@@ -7,10 +7,10 @@ import traceback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from bots import RandomChoice, NoPrincess
-from cards import Card, guessable
-from game import Game
-from observers import Observer
-from strategy import Strategy
+from engine.cards import Card, guessable
+from engine.game import Game
+from engine.observer import Observer
+from engine.strategy import Strategy
 
 app = FastAPI()
 

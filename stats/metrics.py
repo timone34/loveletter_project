@@ -1,7 +1,7 @@
 import pandas as pd
 
-from cards import Prince, Princess
-from history import GameHistory
+from engine.cards import Prince, Princess
+from engine.history import GameHistory
 
 from .dataset import Dataset
 

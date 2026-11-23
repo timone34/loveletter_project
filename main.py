@@ -1,9 +1,8 @@
 import time
 
-from bots import RandomChoice, CardCounter
-from game import Game
+from bots import RandomChoice, CardCounter, TerminalPlayer
+from engine import Game, Strategy
 from observers import ConsoleLogger
-from strategy import TerminalPlayer, Strategy
 
 
 def main():
