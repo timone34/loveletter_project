@@ -21,7 +21,7 @@ Secondary goal: a **YouTube video** on Love Letter and the bot-building journey,
 - Commit and push to `claude/` branches freely whenever you make an edit. Keep every local branch in sync with GitHub (`gh` is installed).
 - Only ask before opening a PR into `main`. When you think a feature is finished, first ask the owner to test it, then ask to open the PR.
 - Don't merge into, push to, rebase or reset the owner's branches (`main`, ...) unless explicitly asked. Merging `main` *into* a `claude/` branch is fine.
-- **Don't leave old branches lying around.** Delete merged branches locally and on GitHub. Abandoned work is kept as `archived/<name>` (e.g. `archived/copilot`).
+- **Don't leave old branches lying around.** Delete merged branches locally and on GitHub. Abandoned or superseded work is simply deleted too. Only archive (`archived/<name>`) a **really big** architectural difference or complete rework, e.g. `archived/copilot`, which built the whole website differently.
 
 ## Working agreement
 
