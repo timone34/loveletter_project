@@ -54,8 +54,11 @@ def redact_turn(turn: TurnHistory, viewer: int) -> TurnHistory:
     if turn.target != viewer:
         if turn.redrawn is not None:
             changes["redrawn"] = None
-    if viewer not in (turn.seat, turn.target) and turn.received is not None:
-        changes["received"] = None
+    if viewer not in (turn.seat, turn.target):  # King: only the two traders see the cards
+        if turn.given is not None:
+            changes["given"] = None
+        if turn.received is not None:
+            changes["received"] = None
     if not changes:
         return turn
     copied = replace(turn, rejected=list(turn.rejected))

@@ -68,7 +68,7 @@ def walk(rh: RoundHistory) -> Iterator[tuple[TurnHistory, TableState]]:
             state.hands[me], state.hands[target] = state.hands[target], state.hands[me]
 
         for victim in turn.rejected:  # a knocked-out player's card goes face up
-            card = state.hands[victim]
-            if card is not None:
-                state.discards[victim].append(card)
+            assert turn.revealed is state.hands[victim]
+            if turn.revealed is not None:
+                state.discards[victim].append(turn.revealed)
             state.hands[victim] = None

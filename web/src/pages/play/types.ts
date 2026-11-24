@@ -47,8 +47,10 @@ export type TurnEvent = {
     seen: CardRef | null;
     discarded: CardRef | null;
     redrawn: CardRef | null;
+    given: CardRef | null;    // King: the card the player handed over in the swap
     received: CardRef | null; // King: the card the player got in the swap
     rejected: number[];
+    revealed: CardRef | null; // the card a rejected player had to show (null for a Princed Princess)
 };
 
 // JSON turns the server's int dict keys into strings

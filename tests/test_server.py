@@ -63,7 +63,7 @@ def test_nothing_hidden_leaks():
                 if msg["target"] != you:
                     assert msg["redrawn"] is None
                 if you not in (msg["seat"], msg["target"]):
-                    assert msg["received"] is None
+                    assert msg["given"] is None and msg["received"] is None
 
 
 def test_reveal_shows_everything():
@@ -77,7 +77,7 @@ def test_cards_are_ids():
     ids = {"guard", "priest", "baron", "handmaid", "prince", "king", "countess", "princess", None}
     for msg in play_game(random.Random(3)):
         if msg["type"] in ("turn_start", "turn_end"):
-            assert {msg[k] for k in ("held", "drawn", "played", "guess", "seen", "discarded", "redrawn", "received")} <= ids
+            assert {msg[k] for k in ("held", "drawn", "played", "guess", "seen", "discarded", "redrawn", "given", "received", "revealed")} <= ids
         if msg["type"] == "showdown":
             assert set(msg["contender_hands"].values()) <= ids
 

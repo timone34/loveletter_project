@@ -69,7 +69,8 @@ class ConsoleLogger(Observer):
         print(line)
 
         for seat in turn.rejected:
-            print(f"  {self.names[seat]} is rejected!")
+            shown = f", revealing {turn.revealed.name}" if turn.revealed else ""
+            print(f"  {self.names[seat]} is rejected{shown}!")
 
     def on_turn_skipped(self, game, rnd, turn):
         print(f"\n{turn.cycle}.{turn.seat + 1}. - ")

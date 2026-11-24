@@ -126,6 +126,7 @@ class King(Card):
 
     def apply(self, player, target, rnd, turn):
         player.hand, target.hand = target.hand, player.hand
+        turn.history.given = target.hand[0]
         turn.history.received = player.hand[0]
 
 
@@ -139,6 +140,7 @@ class Princess(Card):
     def apply(self, player, target, rnd, turn):
         rnd.eliminate(player, turn)
 
-
+def all_cards() -> list[Card]:
+    return [Guard(), Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]
 def guessable() -> list[Card]:
     return [Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]

@@ -24,16 +24,18 @@ class TurnHistory:
     cycle: int
     seat: int
     held: Card | None = None
-    drawn: Card | None = None  # None = skipped turn (player rejected)
+    drawn: Card | None = None       # None = skipped turn (player rejected)
     played: Card | None = None
-    target: int | None = None  # seat
-    guess: Card | None = None  # Guard
+    target: int | None = None       # seat
+    guess: Card | None = None       # Guard
     outcome: Outcome = Outcome.NONE
-    seen: Card | None = None  # Priest
-    discarded: Card | None = None  # Prince
-    redrawn: Card | None = None  # Prince
-    received: Card | None = None  # King
+    seen: Card | None = None        # Priest
+    discarded: Card | None = None   # Prince
+    redrawn: Card | None = None     # Prince
+    given: Card | None = None       # King
+    received: Card | None = None    # King
     rejected: list[int] = field(default_factory=list)  # seats
+    revealed: Card | None = None    # card the rejected player had to show; None for a Princed Princess (see `discarded`)
 
 
 @dataclass
