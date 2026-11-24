@@ -12,7 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from bots import available_bots
-from engine import Card, Game, Observer, Strategy, TurnHistory, guessable
+from engine import Card, Game, Observer, Strategy, TurnHistory, GUESSABLE_TYPES
 from engine.view import redact_turn
 from runs import History, RunConfig
 
@@ -187,7 +187,7 @@ class Web_Strategy(Strategy):
         return targets[i]
 
     def guard_guess(self, player, target):
-        options = guessable()
+        options = [card_type() for card_type in GUESSABLE_TYPES]
         i = self.session.ask("guess", [card_id(c) for c in options], target=target.seat)
         return options[i]
 

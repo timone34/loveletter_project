@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import random
 from collections import Counter
 from typing import TYPE_CHECKING
@@ -39,7 +40,7 @@ class CardCounter(NoPrincess):
         unseen_cards = unseen(view)
         pool = {
             card_type: unseen_cards[card_type]
-            for card_type in FULL if unseen_cards[card_type] > 0
+            for card_type in CARD_TYPES if unseen_cards[card_type] > 0
         }
         number_unseen_cards = sum(pool.values()) # including Guard cards, so true odds
         odds: dict[type[Card], float] = {
@@ -66,7 +67,7 @@ class CardCounter(NoPrincess):
             for card_type, p in self.hand_odds(player.view)[target.seat].items()
             if card_type is not Guard and p > 0
         }
-        if not odds: return random.choice(guessable())
+        if not odds: return random.choice(GUESSABLE_TYPES)()
 
         highest_odds = max(odds.values())
         most_likely_types = [card_type for card_type, p in odds.items() if p == highest_odds]
@@ -78,3 +79,42 @@ class CardCounter(NoPrincess):
 
         return guess()
 
+
+class CardCounterV2(CardCounter):
+    def __init__(self) -> None:
+        self.id = "CardCounterV2"
+        self.name = "Card Counter Bot v2"
+        self.description = "It still chooses the most likely card when guessing with the Guard, just in a different way."
+        self.debug = False
+
+    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
+        return {seat: set(CARD_TYPES) for seat in opponent_seats(view)}
+
+    def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
+        possible = self.possible_cards(view)
+        seats = list(possible)
+        unseen_cards = unseen(view)
+
+        totals: dict[int, Counter[type[Card]]] = {s: Counter() for s in seats}
+        total_weight = 0
+        
+        for combination in itertools.product(*(sorted(possible[s], key=lambda t: t.value) for s in seats)):
+            remaining = unseen_cards.copy()
+            weight = 1
+            for card_type in combination:
+                weight *= max(remaining[card_type], 0)
+                remaining[card_type] -= 1
+            if weight == 0:
+                continue
+            total_weight += weight
+            for seat, card_type in zip(seats, combination):
+                totals[seat][card_type] += weight
+
+        if total_weight == 0:
+            return {seat: {} for seat in seats}
+        return {
+            seat: {card_type: w / total_weight 
+                   for card_type, w in totals[seat].items()
+                   }
+            for seat in seats
+        }
