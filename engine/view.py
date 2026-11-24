@@ -57,7 +57,7 @@ def redact_turn(turn: TurnHistory, viewer: int) -> TurnHistory:
     if viewer not in (turn.seat, turn.target) and turn.received is not None:
         changes["received"] = None
     if viewer not in (turn.seat, turn.target) and turn.given is not None:
-            changes["given"] = None
+        changes["given"] = None
     if not changes:
         return turn
     copied = replace(turn, rejected=list(turn.rejected))
