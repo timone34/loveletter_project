@@ -26,5 +26,5 @@
 }
 
 .deck-pile__count strong {
-  color: var(--surface);
+  color: var(--on-primary);
 }

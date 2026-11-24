@@ -27,7 +27,7 @@
   border: 1px solid var(--secondary);
   border-radius: 10px;
   background: var(--surface);
-  box-shadow: 0 10px 24px -12px rgb(42 40 41 / 45%);
+  box-shadow: 0 10px 24px -12px rgb(var(--shadow) / 45%);
   font-size: 0.72rem;
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 14px));

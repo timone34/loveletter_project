@@ -9,10 +9,114 @@
   --accent: #939575;
   --accent-soft: #c9cbb2;
 
+  --primary-fill: var(--primary); /* olive used as a background (buttons, your seat); --primary is for text and lines */
+  --on-primary: #fafaf6; /* text on --primary-fill and on the felt (the felt stays green in both themes) */
+  --shadow: 42 40 41; /* RGB channels, used as rgb(var(--shadow) / 45%) */
+
+  /* Status chips and error boxes */
+  --warn-bg: #f6ecd2;
+  --warn-text: #7a5a12;
+  --error-bg: #fbe3e2;
+  --error-text: #a12a29;
+
+  /* Charts (Stats page). One colour per player, by lineup position (sims/format.ts SERIES) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #199e70;
+  --series-4: #9e3f6e;
+
+  /* Good/bad poles and two greys: Baron outcomes; *-ink is the text that reads on it */
+  --pos: #2a78d6;      --pos-ink: #fff;
+  --neg: #e34948;      --neg-ink: #fff;
+  --grey-1: #b9b7ad;   --grey-1-ink: #2a2829;
+  --grey-2: #dedcd3;   --grey-2-ink: #2a2829;
+
+  /* Heat tables (pages/stats/charts/ramps.ts): sequential blue, faint -> strong */
+  --blue-0: #eef4fc;   --blue-0-ink: #2a2829;
+  --blue-1: #cde2fb;   --blue-1-ink: #2a2829;
+  --blue-2: #9ec5f4;   --blue-2-ink: #2a2829;
+  --blue-3: #6da7ec;   --blue-3-ink: #2a2829;
+  --blue-4: #3987e5;   --blue-4-ink: #fff;
+  --blue-5: #256abf;   --blue-5-ink: #fff;
+  --blue-6: #184f95;   --blue-6-ink: #fff;
+
+  /* Heat tables: diverging, around a neutral middle */
+  --neutral: #efeee8;  --neutral-ink: #2a2829;
+  --above-1: #d7e6f9;  --above-1-ink: #2a2829;
+  --above-2: #86b6ef;  --above-2-ink: #2a2829;
+  --above-3: #2a78d6;  --above-3-ink: #fff;
+  --below-1: #f8dad9;  --below-1-ink: #2a2829;
+  --below-2: #ef9a99;  --below-2-ink: #2a2829;
+  --below-3: #d43c3b;  --below-3-ink: #fff;
+
   --font-display: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
   --font-body: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
 
   color-scheme: light;
+}
+
+/* Dark mode: <html data-theme="dark">, set by src/theme.ts (and before the
+   first paint by the little script in index.html). Only the tokens change;
+   every component reads them, so nothing else needs a dark variant. */
+:root[data-theme="dark"] {
+  --text: #e9e8e1;
+  --text-muted: #a29e96;
+  --background: #1a1b16;
+  --surface: #24251f;
+  --primary: #8a8f5f; /* lifted so it still reads as text on the dark background */
+  --primary-fill: #5c6040; /* but fills stay deep, so white text on them stays readable */
+  --secondary: #3b3c33;
+  --accent: #7a7d5c;
+  --accent-soft: #3e4030;
+
+  --on-primary: #fafaf6;
+  --shadow: 0 0 0;
+
+  --warn-bg: #3d3216;
+  --warn-text: #e9c97a;
+  --error-bg: #46201f;
+  --error-text: #f2a3a2;
+
+  /* brighter, so every series stands out against the dark surface */
+  --series-1: #5598e8;
+  --series-2: #f07d4d;
+  --series-3: #2fb886;
+  --series-4: #cc6aa3;
+
+  --pos: #5598e8;      --pos-ink: #14161a;
+  --neg: #ea6463;      --neg-ink: #14161a;
+  --grey-1: #6e6d65;   --grey-1-ink: #f1f0ea;
+  --grey-2: #45453e;   --grey-2-ink: #f1f0ea;
+
+  /* on a dark background "more" means brighter: the ramp runs dark -> light */
+  --blue-0: #1e2733;   --blue-0-ink: #c9d6e6;
+  --blue-1: #1d3350;   --blue-1-ink: #dbe6f4;
+  --blue-2: #1f4675;   --blue-2-ink: #eef4fc;
+  --blue-3: #255c9f;   --blue-3-ink: #fff;
+  --blue-4: #3478cc;   --blue-4-ink: #fff;
+  --blue-5: #5f9de8;   --blue-5-ink: #10141a;
+  --blue-6: #9cc4f3;   --blue-6-ink: #10141a;
+
+  --neutral: #2c2d27;  --neutral-ink: #e9e8e1;
+  --above-1: #1f3550;  --above-1-ink: #dbe6f4;
+  --above-2: #2a5c99;  --above-2-ink: #fff;
+  --above-3: #6aa6ec;  --above-3-ink: #10141a;
+  --below-1: #4a2524;  --below-1-ink: #f6dcdb;
+  --below-2: #933534;  --below-2-ink: #fff;
+  --below-3: #ec7a79;  --below-3-ink: #1a1010;
+
+  color-scheme: dark;
+}
+
+/* Cards are paper in both themes: inside a card the light palette comes
+   back, with the face dimmed a little so it doesn't glare on the dark page. */
+:root[data-theme="dark"] .card {
+  --surface: #e6e5dc;
+  --text: #2a2829;
+  --text-muted: #6a6663;
+  --secondary: #c9c1ad;
+  --accent: #939575;
+  --accent-soft: #c9cbb2;
 }
 
 *,
@@ -29,6 +133,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 #root {

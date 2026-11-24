@@ -5,8 +5,9 @@ import type { Line, Rate, RunConfig, RunRecord } from "./types";
 // One colour per player (or bot), by position in the lineup: seat 1 of the
 // first game is always blue, and so on. Checked with the dataviz colour
 // validator against --surface: every pair stays distinguishable, also with
-// colour blindness.
-export const SERIES = ["#2a78d6", "#eb6834", "#199e70", "#9e3f6e"];
+// colour blindness. The values live in index.css (--series-1..4), with
+// brighter versions for dark mode.
+export const SERIES = ["var(--series-1)", "var(--series-2)", "var(--series-3)", "var(--series-4)"];
 export const seriesColor = (i: number) => SERIES[i % SERIES.length];
 
 export function pct(x: number | null | undefined, digits = 1): string {

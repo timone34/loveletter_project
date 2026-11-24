@@ -64,10 +64,10 @@ export function BaronByCardTable({ rows }: { rows: HeatRow[] }) {
           tip: (
             <>
               <div className="tip__title">{row.label}: Baron played, kept a {card}</div>
-              <TipRow color="#2a78d6" value={count(o.won)} label="won" />
-              <TipRow color="#b9b7ad" value={count(o.tied)} label="tied" />
-              <TipRow color="#e34948" value={count(o.lost)} label="lost" />
-              <TipRow color="#dedcd3" value={count(o.protected)} label="target protected" />
+              <TipRow color="var(--pos)" value={count(o.won)} label="won" />
+              <TipRow color="var(--grey-1)" value={count(o.tied)} label="tied" />
+              <TipRow color="var(--neg)" value={count(o.lost)} label="lost" />
+              <TipRow color="var(--grey-2)" value={count(o.protected)} label="target protected" />
             </>
           ),
         };

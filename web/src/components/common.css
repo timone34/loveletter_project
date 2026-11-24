@@ -49,9 +49,9 @@
 
 .btn--primary,
 .btn[aria-pressed="true"] {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--surface);
+  border-color: var(--primary-fill);
+  background: var(--primary-fill);
+  color: var(--on-primary);
 }
 
 .btn--primary:hover:not(:disabled) {
@@ -167,11 +167,11 @@
 }
 
 .status--outdated {
-  background: #f6ecd2;
-  color: #7a5a12;
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }
 
 .status--failed {
-  background: #fbe3e2;
-  color: #a12a29;
+  background: var(--error-bg);
+  color: var(--error-text);
 }

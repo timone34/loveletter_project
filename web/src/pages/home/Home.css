@@ -89,7 +89,7 @@
 .mode-button:focus-visible {
   z-index: 2;
   transform: translateY(calc(var(--y) - 18px)) rotate(var(--r)) scale(1.05);
-  box-shadow: 0 30px 40px -18px rgb(42 40 41 / 0.5);
+  box-shadow: 0 30px 40px -18px rgb(var(--shadow) / 0.5);
 }
 
 .mode-button:active {
