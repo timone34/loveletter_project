@@ -35,6 +35,7 @@ class TurnHistory:
     given: Card | None = None       # King
     received: Card | None = None    # King
     rejected: list[int] = field(default_factory=list)  # seats
+    revealed: Card | None = None    # card the rejected player had to show; None for a Princed Princess (see `discarded`)
 
 
 @dataclass

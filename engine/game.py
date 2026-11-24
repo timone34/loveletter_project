@@ -194,7 +194,11 @@ class Round:
         return winners
 
     def eliminate(self, player: Player, turn: Turn):
+        # At most one player is rejected per turn, holding at most one card
+        # (none when a Prince made them discard the Princess).
+        assert not turn.history.rejected and len(player.hand) <= 1
         player.rejected = True
+        turn.history.revealed = player.hand[0] if player.hand else None
         player.discard.extend(player.hand)
         player.hand.clear()
         turn.history.rejected.append(player.seat)

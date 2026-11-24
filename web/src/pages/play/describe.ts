@@ -103,7 +103,8 @@ function describeTurn(
   }
 
   for (const seat of t.rejected) {
-    line += ` ${name(seat)} ${isAre(seat)} rejected.`;
+    line += ` ${name(seat)} ${isAre(seat)} rejected`;
+    line += t.revealed ? `, revealing the ${cardName(t.revealed)}.` : ".";
   }
   return line;
 }
