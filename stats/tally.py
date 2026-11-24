@@ -67,7 +67,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from engine.cards import Baron, Guard, Priest, Prince, Princess, guessable
+from engine.cards import Baron, Guard, Priest, Prince, Princess, GUESSABLE_TYPES
 from engine.deck import Deck
 from engine.history import Outcome
 
@@ -83,7 +83,7 @@ CAUSES = ("guard", "baron", "ownBaron", "prince", "ownPrince", "princess", "show
 # card names, lowest value first, and how many of each are in the deck
 CARDS = tuple(dict.fromkeys(c.name for c in sorted(Deck().cards, key=lambda c: c.value)))
 DECK_COUNTS = Counter(c.name for c in Deck().cards)
-GUESSABLE = tuple(c.name for c in guessable())
+GUESSABLE = tuple(t.name for t in GUESSABLE_TYPES)
 BARON_OUTCOMES = {Outcome.WIN: "won", Outcome.DRAW: "tied", Outcome.LOSE: "lost", Outcome.PROTECTED: "protected"}
 
 CONVERGENCE_POINTS = 100  # win-rate snapshots kept over a run, for the convergence chart

@@ -23,4 +23,4 @@ class RandomChoice(Strategy):  # picks a random target regarding all actions.
     def choose_king_target(self, player: Player, targets: list[Player]) -> Player:   return random.choice(targets)
 
     def guard_guess(self, player: Player, target: Player) -> Card:
-        return random.choice(guessable())
+        return random.choice(GUESSABLE_TYPES)()

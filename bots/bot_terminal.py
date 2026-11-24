@@ -1,4 +1,4 @@
-from engine.cards import guessable
+from engine.cards import GUESSABLE_TYPES
 from engine.strategy import Strategy
 
 
@@ -47,7 +47,7 @@ class TerminalPlayer(Strategy):  # asks for user input regarding all actions.
         return targets[chosen_idx]
 
     def guard_guess(self, player, target):
-        options = guessable()
+        options = [card_type() for card_type in GUESSABLE_TYPES]
         chosen_idx = _choose_from_menu(
             f"{player.name}, guess {target.name}'s card:",
             [card.name for card in options],

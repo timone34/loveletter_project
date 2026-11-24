@@ -140,7 +140,11 @@ class Princess(Card):
     def apply(self, player, target, rnd, turn):
         rnd.eliminate(player, turn)
 
+# Every card type, in value order. Lists rather than sets, so the order is the
+# same every run (sets of classes iterate in memory-address order).
+CARD_TYPES: list[type[Card]] = [Guard, Priest, Baron, Handmaid, Prince, King, Countess, Princess]
+GUESSABLE_TYPES: list[type[Card]] = [t for t in CARD_TYPES if t is not Guard]  # a Guard can't guess Guard
+
+
 def all_cards() -> list[Card]:
-    return [Guard(), Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]
-def guessable() -> list[Card]:
-    return [Priest(), Baron(), Handmaid(), Prince(), King(), Countess(), Princess()]
+    return [card_type() for card_type in CARD_TYPES]
