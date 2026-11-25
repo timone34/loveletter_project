@@ -148,7 +148,7 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
 
           <div className="stats__columns">
             <div className="stats__column">
-              <Card title="By decision" note="Mean time per call: which card to play (every turn), which target (cards that have one), which card to name for a Guard. Stronger blue = slower.">
+              <Card title="By decision" note="Mean time per call: which card to play (every turn), which target (cards that have one), which card to name for a Guard. More highlighted = slower.">
                 <DecisionTable rows={rows} />
               </Card>
             </div>
@@ -169,7 +169,7 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
             </div>
           </div>
 
-          <Card title="By card played" note="Mean think time per turn, by the card that ended up played. Stronger blue = slower; fewer than 20 turns aren't shaded.">
+          <Card title="By card played" note="Mean think time per turn, by the card that ended up played. More highlighted = slower; fewer than 20 turns aren't shaded.">
             <ThinkByCardTable rows={rows} />
           </Card>
 
