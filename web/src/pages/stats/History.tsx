@@ -126,7 +126,14 @@ export default function History() {
                         <Link to={`/stats/${r.id}`} className="runs__name" onClick={(e) => e.stopPropagation()}>
                           {r.config.name}
                         </Link>
-                        <span className="runs__lineup">{lineupText(r)}</span>
+                        <span className="runs__lineup">
+                          {r.config.measureTime && (
+                            <span className="runs__badge" title="Think time measured: this run has the Performance section (and ran about 20% slower)">
+                              think time
+                            </span>
+                          )}
+                          {lineupText(r)}
+                        </span>
                       </td>
                       <td><WinRates run={r} /></td>
                       <td className="num">
@@ -136,7 +143,16 @@ export default function History() {
                       <td><code className="runs__seed">{r.config.seed}</code></td>
                       <td className="runs__when">
                         {when(r.createdAt)}
-                        <span>{r.status === "done" ? duration(r.durationSec) : <span className={`status status--${r.status}`}>{r.status}</span>}</span>
+                        <span>
+                          {r.status === "done" ? (
+                            <>
+                              {duration(r.durationSec)}
+                              {r.durationSec ? ` · ${count(Math.round(r.config.games / r.durationSec))} games/s` : ""}
+                            </>
+                          ) : (
+                            <span className={`status status--${r.status}`}>{r.status}</span>
+                          )}
+                        </span>
                       </td>
                       <td className="num">
                         <button

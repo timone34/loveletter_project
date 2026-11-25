@@ -32,8 +32,10 @@ export function HeatTable({ rows, columns, cell, extra }: {
           {rows.map((row) => (
             <tr key={row.label}>
               <th scope="row">
-                <span className="swatch" style={{ background: row.color }} />
-                {row.label}
+                <span className="heat__name">
+                  <span className="swatch" style={{ background: row.color }} />
+                  {row.label}
+                </span>
               </th>
               {columns.map((c) => {
                 const content = cell(row, c.key);

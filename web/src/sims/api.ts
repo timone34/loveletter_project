@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { isActive, type RunConfig, type RunRecord } from "./types";
+import { isActive, type LineupSpeed, type RunConfig, type RunRecord } from "./types";
 
 // Talking to /api/simulations (server.py). Every call goes through the Vite
 // proxy to FastAPI, like /api/bots.
@@ -26,6 +26,22 @@ export const renameRun = (id: string, name: string) =>
 export const deleteRun = (id: string) => call<null>(`/api/simulations/${id}`, { method: "DELETE" });
 
 export const llnUrl = (id: string) => `/api/simulations/${id}/lln`;
+
+// The latest speed of every lineup run so far (for the Setup page's time estimate).
+// Fetched once per visit; null until it's in, or when the server can't say.
+export function useLineupSpeeds() {
+  const [speeds, setSpeeds] = useState<Record<string, LineupSpeed> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    call<Record<string, LineupSpeed>>("/api/lineup-speeds")
+      .then((s) => !cancelled && setSpeeds(s))
+      .catch(() => {}); // no estimate from history: the default is used
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return speeds;
+}
 
 const POLL_MS = 500; // how often to ask for news while something is running
 

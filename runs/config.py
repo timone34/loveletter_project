@@ -34,6 +34,7 @@ class RunConfig:
     rotate_seats: bool = True
     seed: str = ""
     save_lln: bool = False
+    measure_time: bool = True  # time every bot decision (stats/timing.py); ~20% slower
     # True when the browser left these empty and the server filled them in, so
     # "Edit & run" can leave them empty again (and a new lineup gets a new name)
     name_auto: bool = False
@@ -77,6 +78,7 @@ class RunConfig:
             rotate_seats=bool(data.get("rotateSeats", True)),
             seed=seed or secrets.token_hex(3),
             save_lln=bool(data.get("saveLln", False)),
+            measure_time=bool(data.get("measureTime", True)),
             name_auto=not name,
             seed_auto=not seed,
         )
@@ -91,9 +93,17 @@ class RunConfig:
             "rotateSeats": self.rotate_seats,
             "seed": self.seed,
             "saveLln": self.save_lln,
+            "measureTime": self.measure_time,
             "nameAuto": self.name_auto,
             "seedAuto": self.seed_auto,
         }
+
+
+def lineup_key(bots: list[str], target_round_wins: int) -> str:
+    """What a run's speed depends on: which bots (not their seats or names) and
+    how long a game is. "CardCounter+RandomChoice+RandomChoice+RandomChoice|3".
+    web/src/sims/format.ts (lineupKey) builds the same key."""
+    return f"{'+'.join(sorted(bots))}|{target_round_wins}"
 
 
 def default_name(players: list[Seat]) -> str:

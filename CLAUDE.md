@@ -62,6 +62,7 @@ The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/
 - **Watch**: four bots play one game on the same table (`TableConfig.mode == "watch"`, no human seat, `youSeat` null).
 - **Simulate**: runs play in the background (`runs/`, one at a time) and land on their Stats page.
 - **History / Stats**: the simulation history (`/stats`, saved in `simulations/`) and one run's stats (`/stats/<id>`), filling in live while it plays. The stat definitions live in `stats/tally.py` (docstring); the charts are hand-written SVG/CSS in `web/src/pages/stats/charts/`. Changing what a saved stat means or how it's stored: bump `FORMAT` in `runs/history.py`, so older runs show as outdated (re-runnable from their seed) instead of with wrong numbers.
+- **Performance** (section 4 of a run's Stats page): `stats/timing.py` wraps each bot in a stopwatch (`TimedStrategy`, outside `engine/`; timed games are identical to untimed ones) when the run's "Measure think time" toggle (`measureTime`) is on. Every run also times its phases (play / count / LLN). The latest speed per lineup is kept in `simulations/meta/lineup_speeds.json` for the Setup page's time estimate. Times are wall time: never compare them across machines.
 
 Style: modern, slightly "vibe-coded" but in the owner's own coding style, JetBrains Mono, palette in `web/src/index.css` (light green is the favourite colour). A dark mode toggle is wanted.
 

@@ -1,6 +1,6 @@
 // Formatting and colours shared by the Simulate and Stats pages.
 
-import type { Line, Rate, RunConfig, RunRecord } from "./types";
+import type { LineupSpeed, Line, Rate, RunConfig, RunRecord } from "./types";
 
 // One colour per player (or bot), by position in the lineup: seat 1 of the
 // first game is always blue, and so on. Checked with the dataviz colour
@@ -27,6 +27,14 @@ export function duration(sec: number | null): string {
   if (sec < 1) return `${Math.round(sec * 1000)} ms`;
   if (sec < 60) return `${sec.toFixed(1)} s`;
   return `${Math.floor(sec / 60)} min ${Math.round(sec % 60)} s`;
+}
+
+// A short duration with a unit that fits: "840 ns", "12.3 µs", "2.21 ms", "1.50 s".
+// Three significant digits, which is all the clock is good for.
+export function secs(s: number | null | undefined): string {
+  if (s == null) return "–";
+  const [v, unit] = s < 1e-6 ? [s * 1e9, "ns"] : s < 1e-3 ? [s * 1e6, "µs"] : s < 1 ? [s * 1e3, "ms"] : [s, "s"];
+  return `${v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)} ${unit}`;
 }
 
 export function when(iso: string): string {
@@ -67,3 +75,37 @@ export function editable(config: RunConfig): RunConfig {
 }
 
 export const MS_PER_GAME = 2.2; // playing + counting the stats, on the owner's machine; only for the time estimate
+const TIMING_COST = 1.2; // a timed run takes about this much longer (measured: 3.1 vs 2.6 ms a game)
+const LLN_MS_PER_GAME = 0.15; // writing LLN, when no run of the lineup has measured it yet
+
+// The key runs/config.py's lineup_key builds: which bots (not seats or names) and how long a game is.
+export function lineupKey(bots: string[], targetRoundWins: number): string {
+  return `${[...bots].sort().join("+")}|${targetRoundWins}`;
+}
+
+// How long a run will take, from the latest finished run of the same lineup
+// (with the same timing setting if there is one), else from MS_PER_GAME.
+// `from` is that run's date, or null for the rough default.
+export function estimate(
+  speeds: Record<string, LineupSpeed> | null,
+  bots: string[],
+  targetRoundWins: number,
+  games: number,
+  measureTime: boolean,
+  saveLln: boolean,
+): { sec: number; from: string | null } {
+  const entry = speeds?.[lineupKey(bots, targetRoundWins)];
+  const same = measureTime ? entry?.timed : entry?.plain;
+  const other = measureTime ? entry?.plain : entry?.timed;
+  let ms = MS_PER_GAME * (measureTime ? TIMING_COST : 1);
+  let from: string | null = null;
+  if (same) {
+    ms = same.msPerGame;
+    from = same.at;
+  } else if (other) {
+    ms = other.msPerGame * (measureTime ? TIMING_COST : 1 / TIMING_COST);
+    from = other.at;
+  }
+  if (saveLln) ms += entry?.llnMsPerGame ?? LLN_MS_PER_GAME;
+  return { sec: (games * ms) / 1000, from };
+}

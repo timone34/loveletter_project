@@ -15,6 +15,8 @@ import { LossTable } from "./charts/LossTable";
 import { GuardOdds } from "./charts/GuardOdds";
 import { CardChoices } from "./charts/CardChoices";
 import { BaronByCardTable, StartCardTable } from "./charts/CardTables";
+import { PerformanceSection } from "./Performance";
+import { Card, Kpi } from "./parts";
 import "./charts/charts.css";
 import "./Stats.css";
 
@@ -99,6 +101,7 @@ export default function Results() {
               <span className="chip">First to {run.config.targetRoundWins}</span>
               <span className="chip">{run.config.rotateSeats ? "Seats rotate" : "Fixed seats"}</span>
               <span className="chip">Seed · {run.config.seed}</span>
+              {run.config.measureTime && <span className="chip">Think time measured</span>}
               {run.durationSec != null && <span className="chip">{duration(run.durationSec)}</span>}
             </div>
             <div className="controls">
@@ -293,6 +296,8 @@ export default function Results() {
                 <NumbersTable rows={rows} stats={stats} />
               </Card>
             </section>
+
+            <PerformanceSection run={run} stats={stats} rows={rows} group={shown} />
           </>
         )}
       </div>
@@ -337,28 +342,6 @@ function Progress({ run }: { run: RunRecord }) {
         <div className="progress__fill" style={{ width: `${(done / total) * 100}%` }} />
       </div>
     </div>
-  );
-}
-
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="kpi">
-      <span className="kpi__label">{label}</span>
-      <strong className="kpi__value">{value}</strong>
-      {sub && <span className="kpi__sub">{sub}</span>}
-    </div>
-  );
-}
-
-function Card({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
-  return (
-    <section className="stat-card">
-      <header className="stat-card__head">
-        <h2>{title}</h2>
-        {note && <p>{note}</p>}
-      </header>
-      {children}
-    </section>
   );
 }
 

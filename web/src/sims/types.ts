@@ -11,6 +11,7 @@ export type RunConfig = {
   rotateSeats: boolean;
   seed: string; // "" = the server rolls one, and keeps it with the run
   saveLln: boolean;
+  measureTime?: boolean; // time every bot decision (default on); older runs don't have it
   // set by the server: true when name/seed were left empty and filled in for you
   nameAuto?: boolean;
   seedAuto?: boolean;
@@ -44,7 +45,49 @@ export type Line = {
   priest: { looks: number; chances: number; taken: number; takenRate: Rate };
   baronByCard: Record<string, BaronOutcomes>; // card kept beside the Baron -> outcomes
   choices: Choice[];
+  think?: Think | null; // null when the run wasn't timed; missing on older runs
 };
+
+// A set of durations, all in seconds (stats/timing.py, Timings.to_json).
+// mean has a 95% interval [lo, hi]; median and p95 are accurate to ~12%.
+export type Timing = { n: number; total: number; mean: number; lo: number; hi: number; median: number; p95: number; max: number };
+
+// One line's think time: the time spent inside the bot's own methods on a turn.
+// The definitions are in stats/tally.py's docstring.
+export type Think = {
+  turn: Timing; // per turn played
+  decision: { card: Timing | null; target: Timing | null; guess: Timing | null }; // per call
+  byCycle: (Timing & { cycle: number })[];
+  byRound: (Timing & { round: number })[];
+  byCard: Record<string, Timing | null>; // card played -> per turn
+};
+
+// Think time per turn and game time over one stretch of the run, ending after `games`.
+export type PerfPoint = { games: number; gameTime: number | null; players: (number | null)[]; bots: (number | null)[]; seats: (number | null)[] };
+
+export type Performance = {
+  games: number;
+  gameTime: Timing; // per game, start to end
+  gameHistogram?: [number, number, number][]; // [from s, to s, games]; left out of the history list
+  perRound: number; // s
+  total: number; // s, all games
+  think: number; // s, all bots' think time; the rest of `total` is the engine
+  measuringCount?: number; // s of counting spent on think times: what timing costs there (exact)
+  overTime?: PerfPoint[]; // left out of the history list
+};
+
+// Where a run's time went (runs/history.py), and what it ran on.
+export type RunTiming = {
+  playSec: number;
+  countSec: number;
+  llnSec: number;
+  turns?: number; // turns played (not skipped), all games
+  machine: { cpu: string; cores: number | null; system: string; python: string };
+};
+
+// The latest speed of a lineup (runs/history.py, record_speed), from /api/lineup-speeds.
+export type SpeedRun = { msPerGame: number; playUsPerTurn?: number | null; games: number; runId: string; at: string };
+export type LineupSpeed = { bots: string[]; targetRoundWins: number; timed?: SpeedRun; plain?: SpeedRun; llnMsPerGame?: number };
 
 export type BaronOutcomes = { won: number; tied: number; lost: number; protected: number };
 
@@ -66,6 +109,7 @@ export type Stats = {
   seats: Line[];
   turnOrder: TurnOrder[];
   convergence?: ConvergencePoint[]; // left out of the history list
+  performance?: Performance | null; // null when the run wasn't timed
 };
 
 // outdated = saved by an older version of the stats (see runs/history.py, FORMAT)
@@ -78,6 +122,7 @@ export type RunRecord = {
   error: string | null;
   progress: { done: number; total: number };
   durationSec: number | null;
+  timing?: RunTiming; // missing on runs from before format 4
   hasLln: boolean;
   config: RunConfig;
   botNames: Record<string, string>; // strategy id -> display name

@@ -326,9 +326,20 @@
 
 .heat tbody th {
   text-align: left;
-  white-space: nowrap;
   color: var(--text);
   font-size: 0.8rem;
+}
+
+/* the name column: wider than a card column (fixed layout takes widths from the
+   first row); a longer name wraps onto a second line instead of running into the cells */
+.heat thead th:first-child {
+  width: 10rem;
+}
+
+.heat__name {
+  display: flex;
+  align-items: baseline; /* the swatch stays on the first line, wrapped text lines up under the name */
+  overflow-wrap: anywhere;
 }
 
 .heat td {
@@ -452,4 +463,65 @@
 
 .heat thead th.heat__total {
   width: 9rem;
+}
+
+/* --- Performance section --- */
+
+/* PhaseBar: one 100% bar of where a run's time went */
+.phase {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.phase .legend strong {
+  margin-left: 0.3em;
+  color: var(--text);
+}
+
+.phase__bar {
+  display: flex;
+  gap: 2px;
+  height: 22px;
+}
+
+.phase__part {
+  min-width: 2px;
+  transition: filter 0.15s ease;
+}
+
+.phase__part:first-child { border-radius: 4px 0 0 4px; }
+.phase__part:last-child { border-radius: 0 4px 4px 0; }
+.phase__part:only-child { border-radius: 4px; }
+
+.phase__part:hover,
+.phase__part:focus {
+  outline: none;
+  filter: brightness(1.08);
+}
+
+/* PerfTable: a small bar behind the share column */
+.perf-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 7rem;
+}
+
+.perf-share__track {
+  display: inline-block;
+  width: 4rem;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--neutral);
+  overflow: hidden;
+}
+
+.perf-share__bar {
+  display: block;
+  height: 100%;
+}
+
+/* TimeLines: the legend sits above the plot */
+.chart > .legend + div {
+  margin-top: 0.5rem;
 }

@@ -8,9 +8,9 @@ import { SectionTitle } from "../../components/SectionTitle";
 import { BotTile, LibraryTile, YouTile, type SeatedBot } from "../../components/BotTiles";
 import { useBots, type BotInfo } from "../play/useBots";
 import { randomSeed, saveConfig, type Speed, type Visibility } from "../play/config";
-import { startRun, useRuns } from "../../sims/api";
-import { MS_PER_GAME, count, defaultName, duration, lineupText, when } from "../../sims/format";
-import { isActive, type RunConfig } from "../../sims/types";
+import { startRun, useLineupSpeeds, useRuns } from "../../sims/api";
+import { count, defaultName, duration, estimate, lineupText, when } from "../../sims/format";
+import { isActive, type LineupSpeed, type RunConfig } from "../../sims/types";
 import {
   DEFAULT_SETUP, MAX_GAMES, fromRun, loadSetup, saveSetup, toRunConfig, toTableConfig, validate,
   type Mode, type SetupConfig,
@@ -58,6 +58,7 @@ export default function Setup() {
   const location = useLocation();
   const { bots, error: botsError, retry } = useBots();
   const { runs } = useRuns();
+  const speeds = useLineupSpeeds();
 
   const [draft, setDraft] = useState<SetupConfig>(() => {
     const saved = loadSetup();
@@ -290,7 +291,7 @@ export default function Setup() {
               <Field
                 label="Games"
                 htmlFor={ids.games}
-                hint={<>About {duration((config.games * MS_PER_GAME) / 1000)}. A win rate from this many games is accurate to roughly ±{pctHalfWidth(config.games)}.</>}
+                hint={<>{estimateText(config, speeds)} A win rate from this many games is accurate to roughly ±{pctHalfWidth(config.games)}.</>}
               >
                 <Segmented<number>
                   label="Games"
@@ -409,6 +410,14 @@ export default function Setup() {
                 </Toggle>
               </Field>
             )}
+
+            {simulate && (
+              <Field label="Performance" hint="Time every bot decision, for the Performance section of the stats. Makes the run about 20% slower.">
+                <Toggle checked={config.measureTime} onChange={(measureTime) => update({ measureTime })}>
+                  Measure think time
+                </Toggle>
+              </Field>
+            )}
           </div>
 
           <div className="start">
@@ -443,6 +452,15 @@ export default function Setup() {
 }
 
 // ±half-width of a 95% interval for a 25% win rate over n games, as text
+// "About 2.4 s, going by your last run of this lineup (25 Nov)." or the rough default
+function estimateText(c: SetupConfig, speeds: Record<string, LineupSpeed> | null): string {
+  const { sec, from } = estimate(speeds, c.players.map((p) => p.bot), c.targetRoundWins, c.games, c.measureTime, c.saveLln);
+  const basis = from
+    ? `going by the last run of this lineup (${new Date(from).toLocaleDateString(undefined, { day: "numeric", month: "short" })})`
+    : "a rough guess until this lineup has been run";
+  return `About ${duration(sec)}, ${basis}.`;
+}
+
 function pctHalfWidth(n: number): string {
   const half = 1.96 * Math.sqrt((0.25 * 0.75) / n) * 100;
   return `${half < 1 ? half.toFixed(1) : Math.round(half)} points`;

@@ -12,6 +12,11 @@ page never shows half-understood numbers. Its settings include the seed, so
 running it again gives the same games with today's stats (if the bots haven't
 changed since).
 
+Every run also times its three phases (playing the games, counting the
+stats, writing the LLN) and, with measureTime on, every bot decision (see
+stats/timing.py). The speed of the latest finished run of each lineup is kept
+in simulations/meta/lineup_speeds.json, for the Setup page's time estimate.
+
 Runs play one at a time on a single worker thread, because a seeded run
 reseeds Python's global `random` (see stats.iter_games): two at once would
 make each other unrepeatable.
@@ -20,7 +25,9 @@ from __future__ import annotations
 
 import bz2
 import json
+import functools
 import os
+import platform
 import queue
 import secrets
 import threading
@@ -34,14 +41,34 @@ from bots import available_bots
 from lln.writer import generate_game_block, generate_header_lines
 from stats.sim import iter_games
 from stats.tally import Tally
+from stats.timing import TimingObserver, timed_lineup
 
-from .config import RunConfig
+from .config import RunConfig, lineup_key
 
 HISTORY_DIR = Path(__file__).resolve().parent.parent / "simulations"
+SPEEDS_FILE = Path("meta") / "lineup_speeds.json"  # inside the history dir, out of the way of run ids
+MIN_GAMES_FOR_SPEED = 20  # shorter runs are mostly start-up time: no use as an estimate
 
 # Bump when the saved stats change shape or meaning (a new or redefined stat in
 # stats/tally.py, a renamed field). 1 = the first version, which had no field.
-FORMAT = 3  # 3: start card, guard odds, priest follow-up, baron by card, choices
+FORMAT = 4  # 4: performance (think time, game time, phases); 3: start card, guard odds, priest, baron by card, choices
+
+
+@functools.cache
+def machine() -> dict[str, Any]:
+    """What the run was timed on: times only compare on the same machine."""
+    cpu = ""
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as f:
+            cpu = next((line.split(":", 1)[1].strip() for line in f if line.startswith("model name")), "")
+    except OSError:
+        pass
+    return {
+        "cpu": cpu or platform.processor() or platform.machine(),
+        "cores": os.cpu_count(),
+        "system": f"{platform.system()} {platform.release()}",
+        "python": platform.python_version(),
+    }
 
 
 def checked(record: dict[str, Any]) -> dict[str, Any]:
@@ -61,7 +88,10 @@ class Run:
         self.created_at = now.isoformat(timespec="seconds")
         self.status = "queued"  # queued -> running -> done | failed
         self.error: str | None = None
-        self.duration: float | None = None  # seconds of playing
+        self.duration: float | None = None  # seconds, the whole run
+        self.phases = {"play": 0, "count": 0, "lln": 0}  # ns spent in each, see _play
+        self.turns = 0  # turns played (not skipped), to compare play time per turn between runs
+
         self.has_lln = False
 
         self.tally = Tally(expected_games=config.games)
@@ -69,17 +99,28 @@ class Run:
         self.cancelled = threading.Event()
 
     def to_json(self) -> dict[str, Any]:
+        # one consistent snapshot: the worker sets the status under the same lock,
+        # so a "done" record always carries the final stats
         with self.lock:
-            stats = self.tally.to_json() if self.tally.games else None
+            status = self.status
+            done = self.tally.games
+            stats = self.tally.to_json() if done else None
         bots = available_bots()
         return {
             "format": FORMAT,
             "id": self.id,
             "createdAt": self.created_at,
-            "status": self.status,
+            "status": status,
             "error": self.error,
-            "progress": {"done": self.tally.games, "total": self.config.games},
-            "durationSec": self.duration,
+            "progress": {"done": done, "total": self.config.games},
+            "durationSec": self.duration if status in ("done", "failed") else None,
+            "timing": {
+                "playSec": self.phases["play"] * 1e-9,
+                "countSec": self.phases["count"] * 1e-9,
+                "llnSec": self.phases["lln"] * 1e-9,
+                "turns": self.turns,
+                "machine": machine(),
+            },
             "hasLln": self.has_lln,
             "config": self.config.to_json(),
             # display names, kept with the run in case a bot is renamed later
@@ -110,6 +151,10 @@ class History:
         for r in records:
             if r.get("stats"):
                 r["stats"] = {k: v for k, v in r["stats"].items() if k != "convergence"}
+                if r["stats"].get("performance"):
+                    r["stats"]["performance"] = {
+                        k: v for k, v in r["stats"]["performance"].items() if k not in ("overTime", "gameHistogram")
+                    }
         return sorted(records, key=lambda r: r["id"], reverse=True)
 
     def get(self, run_id: str) -> dict[str, Any] | None:
@@ -120,6 +165,13 @@ class History:
         if path is None or not path.exists():
             return None
         return checked(json.loads(path.read_text(encoding="utf-8")))
+
+    def speeds(self) -> dict[str, Any]:
+        """The latest speed of each lineup (see record_speed), by lineup_key."""
+        try:
+            return json.loads((self.dir / SPEEDS_FILE).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
 
     def lln_path(self, run_id: str) -> Path | None:
         path = self._path(run_id, ".lln.bz2")
@@ -179,6 +231,8 @@ class History:
             self._play(run)
             if not run.cancelled.is_set():
                 self._save(run.id, run.to_json())
+                if run.status == "done":
+                    self.record_speed(run)
             self.active.pop(run.id, None)
 
     def _play(self, run: Run) -> None:
@@ -187,35 +241,55 @@ class History:
         lln = None
         run.status = "running"
         start = time.perf_counter()
+        clock = time.perf_counter_ns
         try:
             bots = available_bots()
             players = {p.name: bots[p.bot]() for p in cfg.players}
+            observer = None
+            if cfg.measure_time:
+                timed = timed_lineup(players)
+                observer = TimingObserver(timed)
+                players = dict(timed)
             if cfg.save_lln:
                 self.dir.mkdir(parents=True, exist_ok=True)
                 lln = bz2.open(lln_tmp, "wt", encoding="utf-8")
 
             games = iter_games(
-                cfg.games, players, rotate_seats=cfg.rotate_seats,
+                cfg.games, players, rotate_seats=cfg.rotate_seats, obs=observer,
                 seed=cfg.seed, target_round_wins=cfg.target_round_wins,
             )
             base = None
-            for number, gh in enumerate(games, start=1):
+            phases = run.phases
+            for number in range(1, cfg.games + 1):
                 if run.cancelled.is_set():
                     break
+                t0 = clock()
+                gh = next(games)  # plays the game
+                t1 = clock()
+                run.turns += sum(t.drawn is not None for rh in gh.rounds for t in rh.turns)
                 with run.lock:
-                    run.tally.add(gh)
+                    run.tally.add(gh, observer.last if observer else None)
+                t2 = clock()
                 if lln is not None:
                     if base is None:
                         base = gh
                         lln.write("\n".join(generate_header_lines(base)) + "\n")
                     lln.write("\n".join(generate_game_block(gh, number, base)) + "\n")
-            run.status = "done"
+                t3 = clock()
+                phases["play"] += t1 - t0
+                phases["count"] += t2 - t1
+                phases["lln"] += t3 - t2
+            with run.lock:
+                run.duration = time.perf_counter() - start
+                run.status = "done"
         except Exception as exc:
             traceback.print_exc()
-            run.status = "failed"
-            run.error = f"{type(exc).__name__}: {exc}"
+            with run.lock:
+                run.error = f"{type(exc).__name__}: {exc}"
+                run.status = "failed"
         finally:
-            run.duration = time.perf_counter() - start
+            if run.duration is None:
+                run.duration = time.perf_counter() - start
             if lln is not None:
                 lln.close()
                 if run.status == "done" and not run.cancelled.is_set():
@@ -223,6 +297,37 @@ class History:
                     run.has_lln = True
                 else:
                     lln_tmp.unlink(missing_ok=True)
+
+    def record_speed(self, run: Run) -> None:
+        """Keep this run's speed as its lineup's latest, separately for runs with
+        and without timing (timing makes a run slower). LLN writing is kept on
+        its own, so the estimate can add it or leave it out. Speeds only compare
+        on one machine, and the file never leaves it."""
+        cfg = run.config
+        games = run.tally.games
+        if games < MIN_GAMES_FOR_SPEED:
+            return
+        bots = [p.bot for p in cfg.players]
+        speeds = self.speeds()
+        entry = speeds.setdefault(lineup_key(bots, cfg.target_round_wins), {})
+        entry["bots"] = sorted(bots)
+        entry["targetRoundWins"] = cfg.target_round_wins
+        entry["timed" if cfg.measure_time else "plain"] = {
+            "msPerGame": (run.phases["play"] + run.phases["count"]) / games * 1e-6,
+            # play time per turn: a timed run's minus an untimed run's is what
+            # the stopwatch costs during play (the Stats page works that out)
+            "playUsPerTurn": run.phases["play"] / run.turns * 1e-3 if run.turns else None,
+            "games": games,
+            "runId": run.id,
+            "at": run.created_at,
+        }
+        if cfg.save_lln:
+            entry["llnMsPerGame"] = run.phases["lln"] / games * 1e-6
+        path = self.dir / SPEEDS_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.part")
+        tmp.write_text(json.dumps(speeds, indent=1), encoding="utf-8")
+        os.replace(tmp, path)
 
     # --- files --- #
 
