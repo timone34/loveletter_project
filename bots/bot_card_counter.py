@@ -122,25 +122,19 @@ class CardCounterV2(CardCounter):
 
 
 class FastCardCounterV2(CardCounterV2):
-    """CardCounterV2 with the same odds, computed faster (see _joint_odds).
-
-    Only hand_odds is replaced; possible_cards and guard_guess are inherited from V2.
-    One visible difference: when card types are tied for most likely, guard_guess gets them in
-    card-value order (like CardCounter) instead of V2's enumeration order, so the same seed can
-    pick the other tied card. Both picks are equally good.
-    """
+    """CardCounterV2 with the same odds, computed faster. Ties come in card-value order."""
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
         self.name = "Fast Card Counter Bot v2"
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False
+        _prefill_cache()
 
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
         seats = list(possible)
         unseen_cards = unseen(view)
 
-        # Plain, hashable inputs for the cached function: card types become their index in CARD_TYPES.
         counts = tuple(max(unseen_cards[t], 0) for t in CARD_TYPES)
         options = tuple(frozenset(_INDEX[t] for t in possible[s]) for s in seats)
         rows = _joint_odds(counts, options)
@@ -155,41 +149,23 @@ _ALL_TYPES = frozenset(range(len(CARD_TYPES)))
 
 @functools.lru_cache(maxsize=1 << 16)
 def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[tuple[float, ...], ...]:
-    """P(opponent k holds card type i), for each opponent k: row k, column i (index in CARD_TYPES).
+    """Same odds as CardCounterV2.hand_odds, one row per opponent, columns in CARD_TYPES order.
 
-    `counts[i]` is how many cards of type i are unseen; `options[k]` the types opponent k can hold.
-    Gives exactly the same numbers as CardCounterV2.hand_odds, which enumerates every combination
-    of hands (8^3 = 512 with three opponents) and weights each by how many ways the unseen cards
-    can produce it: weight = count[a] * count[b]-after-a * ... (drawing without replacement).
-
-    Three changes make it fast:
-    1. "Free" opponents (could hold any type) are left out of the enumeration. For any fixed
-       hands of the others, summing a free opponent's weight over all its types gives
-       sum(remaining) = cards left, the same number every time. A constant factor cancels in
-       the normalisation, so it changes nobody else's odds. The free opponent's own odds are
-       then E[remaining count of type i] / cards left, averaged over the other hands' weights.
-       With no constraints at all (the current possible_cards) this is counts / total: one
-       pass instead of 512 combinations, the same answer as CardCounter.
-    2. Constrained opponents are enumerated depth-first with one mutable count list (no
-       Counter copy per combination) and a type that has run out is skipped, which cuts off
-       its whole subtree (all its combinations have weight 0).
-    3. Results are cached: the same unseen pool and constraints come up again and again,
-       across turns and across games.
-    All weights stay integers until the final division, so equal odds compare exactly equal
-    (guard_guess's tie check `p == highest_odds` relies on that).
+    Opponents who can hold any type are left out of the enumeration (they only add a constant
+    factor); their odds are the expected leftover counts divided by the cards left.
     """
     n = len(counts)
     constrained = [k for k, opts in enumerate(options) if not opts >= _ALL_TYPES]
     branches = [sorted(options[k]) for k in constrained]
     remaining = list(counts)
-    picked = [0] * len(constrained)          # the type each constrained opponent holds on the current path
-    seat_weight = [[0] * n for _ in options] # per opponent: summed weight of each type
-    leftover_weight = [0] * n                # sum of weight * remaining count, for free opponents
+    picked = [0] * len(constrained)
+    seat_weight = [[0] * n for _ in options]
+    leftover_weight = [0] * n
     total = 0
 
     def visit(depth: int, weight: int) -> None:
         nonlocal total
-        if depth == len(constrained):  # a full assignment of the constrained opponents
+        if depth == len(constrained):
             total += weight
             for k, i in zip(constrained, picked):
                 seat_weight[k][i] += weight
@@ -207,7 +183,7 @@ def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) ->
 
     visit(0, 1)
     cards_left = sum(counts) - len(constrained)
-    if total == 0 or cards_left < len(options) - len(constrained):  # not enough cards to go round
+    if total == 0 or cards_left < len(options) - len(constrained):
         return tuple((0.0,) * n for _ in options)
 
     rows: list[tuple[float, ...]] = []
@@ -217,3 +193,16 @@ def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) ->
         else:
             rows.append(tuple(w / (total * cards_left) for w in leftover_weight))
     return tuple(rows)
+
+
+_prefilled = False
+
+def _prefill_cache() -> None:
+    """Fill the cache for every unconstrained case (~12k entries, ~60 ms), once per process."""
+    global _prefilled
+    if _prefilled:
+        return
+    for counts in itertools.product(*(range(FULL[t] + 1) for t in CARD_TYPES)):
+        for opponents in (1, 2, 3):
+            _joint_odds(counts, (_ALL_TYPES,) * opponents)
+    _prefilled = True
