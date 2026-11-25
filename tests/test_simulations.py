@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 import server
 from lln import parse_lln
 from runs import History
+from tests.test_timing import without_timing
 
 CONFIG = {
     "name": "Test run",
@@ -82,7 +83,7 @@ def test_saved_settings_repeat_the_run(client):
     assert first["config"]["seed"]  # an empty seed gets a random one, kept with the run
     assert first["config"]["seedAuto"] and not first["config"]["nameAuto"]
     again = finish(client, client.post("/api/simulations", json=first["config"]).json()["id"])
-    assert again["stats"] == first["stats"]
+    assert without_timing(again["stats"]) == without_timing(first["stats"])  # clock readings differ
 
 
 def test_delete(client):
@@ -144,3 +145,31 @@ def test_records_from_another_format_are_outdated(client, tmp_path):
     # renaming changes only the name on disk; the old stats stay there
     client.patch(f"/api/simulations/{record['id']}", json={"name": "Old run"})
     assert "stats" in json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_timing_and_lineup_speeds(client):
+    record = finish(client, client.post("/api/simulations", json=CONFIG).json()["id"])
+    perf = record["stats"]["performance"]
+    assert perf["games"] == 60 and all(p["think"] for p in record["stats"]["players"])
+    timing = record["timing"]
+    assert 0 < timing["playSec"] and 0 < timing["countSec"] and 0 < timing["llnSec"]
+    assert timing["playSec"] + timing["countSec"] + timing["llnSec"] <= record["durationSec"]
+    assert perf["total"] <= timing["playSec"]  # games are timed inside the play phase
+    assert timing["machine"]["python"]
+
+    speeds = client.get("/api/lineup-speeds").json()
+    entry = speeds["CardCounter+NoPrincess+RandomChoice+RandomChoice|2"]
+    assert entry["timed"]["runId"] == record["id"] and entry["timed"]["msPerGame"] > 0
+    assert "plain" not in entry and entry["llnMsPerGame"] > 0
+
+    plain = finish(client, client.post("/api/simulations", json={**CONFIG, "measureTime": False, "saveLln": False}).json()["id"])
+    assert plain["stats"]["performance"] is None and plain["config"]["measureTime"] is False
+    assert all(p["think"] is None for p in plain["stats"]["players"])
+    entry = client.get("/api/lineup-speeds").json()["CardCounter+NoPrincess+RandomChoice+RandomChoice|2"]
+    assert entry["plain"]["runId"] == plain["id"] and entry["timed"]["runId"] == record["id"]
+    assert len(client.get("/api/simulations").json()) == 2  # the speeds file isn't a run
+
+
+def test_short_runs_leave_the_speeds_alone(client):
+    finish(client, client.post("/api/simulations", json={**CONFIG, "games": 5}).json()["id"])
+    assert client.get("/api/lineup-speeds").json() == {}

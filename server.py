@@ -518,6 +518,13 @@ def start_simulation(config: dict = Body(...)) -> dict:
         raise HTTPException(400, str(exc))
 
 
+@app.get("/api/lineup-speeds")
+def lineup_speeds() -> dict:
+    """The latest speed of every lineup run so far, for the Setup page's time
+    estimate. Keyed by runs.config.lineup_key."""
+    return history.speeds()
+
+
 @app.get("/api/simulations/{run_id}")
 def get_simulation(run_id: str) -> dict:
     record = history.get(run_id)
