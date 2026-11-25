@@ -1,6 +1,6 @@
 import { SectionTitle } from "../../components/SectionTitle";
 import { useLineupSpeeds } from "../../sims/api";
-import { count, lineupKey, pct, secs } from "../../sims/format";
+import { count, duration, lineupKey, pct, secs } from "../../sims/format";
 import type { LineupSpeed, Line, RunRecord, RunTiming, Stats, Timing } from "../../sims/types";
 import { DecisionTable, ThinkByCardTable } from "./charts/ThinkTables";
 import { PerfTable } from "./charts/PerfTable";
@@ -79,6 +79,11 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
       </p>
 
       <section className="kpis" aria-label="Speed">
+        <Kpi
+          label="Simulation time"
+          value={duration(wall)}
+          sub={`${run.durationSec == null ? "so far · " : ""}play ${secs(timing.playSec)} · stats ${secs(timing.countSec)} · LLN ${secs(timing.llnSec)}`}
+        />
         <Kpi label="Games per second" value={wall > 0 ? count(Math.round(stats.games / wall)) : "–"} sub={`${secs(wall / stats.games)} a game, whole run`} />
         {perf && (
           <>
