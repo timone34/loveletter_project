@@ -30,6 +30,7 @@ export type SetupConfig = {
   games: number;
   rotateSeats: boolean;
   saveLln: boolean;
+  measureTime: boolean; // time every bot decision (the Performance section of the stats)
 };
 
 export const MAX_GAMES = 100_000; // matches runs/config.py
@@ -54,6 +55,7 @@ export const DEFAULT_SETUP: SetupConfig = {
   games: 1000,
   rotateSeats: true,
   saveLln: false,
+  measureTime: true,
 };
 
 const STORAGE_KEY = "loveletter.setup";
@@ -114,6 +116,7 @@ export function toRunConfig(c: SetupConfig): RunConfig {
     rotateSeats: c.rotateSeats,
     seed: c.seed,
     saveLln: c.saveLln,
+    measureTime: c.measureTime,
   };
 }
 
@@ -131,5 +134,6 @@ export function fromRun(run: RunConfig, base: SetupConfig): SetupConfig {
     rotateSeats: r.rotateSeats,
     seed: r.seed,
     saveLln: r.saveLln,
+    measureTime: r.measureTime ?? true,
   };
 }

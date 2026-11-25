@@ -148,6 +148,10 @@ class History:
         for r in records:
             if r.get("stats"):
                 r["stats"] = {k: v for k, v in r["stats"].items() if k != "convergence"}
+                if r["stats"].get("performance"):
+                    r["stats"]["performance"] = {
+                        k: v for k, v in r["stats"]["performance"].items() if k not in ("overTime", "gameHistogram")
+                    }
         return sorted(records, key=lambda r: r["id"], reverse=True)
 
     def get(self, run_id: str) -> dict[str, Any] | None:

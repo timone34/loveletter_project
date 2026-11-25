@@ -58,6 +58,7 @@ def test_run_and_history(client):
     listed = client.get("/api/simulations").json()
     assert [r["id"] for r in listed] == [run_id]
     assert "convergence" not in listed[0]["stats"]  # the list stays light
+    assert "overTime" not in listed[0]["stats"]["performance"]
 
     renamed = client.patch(f"/api/simulations/{run_id}", json={"name": "Renamed"}).json()
     assert renamed["config"]["name"] == "Renamed"

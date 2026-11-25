@@ -81,7 +81,16 @@ export default function History() {
                       <td><code className="runs__seed">{r.config.seed}</code></td>
                       <td className="runs__when">
                         {when(r.createdAt)}
-                        <span>{r.status === "done" ? duration(r.durationSec) : <span className={`status status--${r.status}`}>{r.status}</span>}</span>
+                        <span>
+                          {r.status === "done" ? (
+                            <>
+                              {duration(r.durationSec)}
+                              {r.durationSec ? ` · ${count(Math.round(r.config.games / r.durationSec))} games/s` : ""}
+                            </>
+                          ) : (
+                            <span className={`status status--${r.status}`}>{r.status}</span>
+                          )}
+                        </span>
                       </td>
                       <td className="num">
                         <button
