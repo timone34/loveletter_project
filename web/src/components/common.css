@@ -58,6 +58,18 @@
   border-color: var(--primary);
 }
 
+/* for destructive actions, like deleting several runs */
+.btn--danger {
+  border-color: var(--error-text);
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.btn--danger:hover:not(:disabled) {
+  border-color: var(--error-text);
+  filter: brightness(0.97);
+}
+
 /* ----- Pill and link buttons ----- */
 
 .ghost-btn {
