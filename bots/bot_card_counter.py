@@ -132,22 +132,36 @@ class FastCardCounterV2(CardCounterV2):
 
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
-        seats = list(possible)
-        unseen_cards = unseen(view)
-
-        counts = tuple(max(unseen_cards[t], 0) for t in CARD_TYPES)
-        options = tuple(frozenset(_INDEX[t] for t in possible[s]) for s in seats)
-        rows = _joint_odds(counts, options)
-        return {
-            seat: {CARD_TYPES[i]: p for i, p in enumerate(row) if p > 0}
-            for seat, row in zip(seats, rows)
-        }
+        options = tuple(
+            _ALL_TYPES if len(types) == len(CARD_TYPES) else frozenset(_INDEX[t] for t in types)
+            for types in possible.values()
+        )
+        rows = _typed_odds(_unseen_counts(view), options)
+        return {seat: dict(row) for seat, row in zip(possible, rows)}  # copies: the cached rows stay untouched
 
 
 _INDEX: dict[type[Card], int] = {t: i for i, t in enumerate(CARD_TYPES)}
 _ALL_TYPES = frozenset(range(len(CARD_TYPES)))
+_FULL_COUNTS = [FULL[t] for t in CARD_TYPES]
+
+def _unseen_counts(view: PlayerView) -> tuple[int, ...]:
+    """unseen(view) as a tuple in CARD_TYPES order, without building a Counter."""
+    counts = _FULL_COUNTS.copy()
+    for card in view.hand:
+        counts[_INDEX[type(card)]] -= 1
+    for player in view.players:
+        for card in player.discards:
+            counts[_INDEX[type(card)]] -= 1
+    return tuple(c if c > 0 else 0 for c in counts)
 
 @functools.lru_cache(maxsize=1 << 16)
+def _typed_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[dict[type[Card], float], ...]:
+    """_joint_odds as {card type: probability} per opponent, zeros left out. Cached."""
+    return tuple(
+        {CARD_TYPES[i]: p for i, p in enumerate(row) if p > 0}
+        for row in _joint_odds(counts, options)
+    )
+
 def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[tuple[float, ...], ...]:
     """Same odds as CardCounterV2.hand_odds, one row per opponent, columns in CARD_TYPES order.
 
@@ -204,5 +218,5 @@ def _prefill_cache() -> None:
         return
     for counts in itertools.product(*(range(FULL[t] + 1) for t in CARD_TYPES)):
         for opponents in (1, 2, 3):
-            _joint_odds(counts, (_ALL_TYPES,) * opponents)
+            _typed_odds(counts, (_ALL_TYPES,) * opponents)
     _prefilled = True
