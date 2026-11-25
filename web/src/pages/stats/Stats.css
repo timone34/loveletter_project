@@ -332,6 +332,21 @@
   background: color-mix(in srgb, var(--accent-soft) 22%, transparent);
 }
 
+/* the checkbox column for deleting several runs at once */
+.runs .runs__pick {
+  width: 1px;
+  padding-right: 0;
+}
+
+.runs__pick input {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.runs tbody tr.runs__row--picked {
+  background: color-mix(in srgb, var(--accent-soft) 35%, transparent);
+}
+
 .runs .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
