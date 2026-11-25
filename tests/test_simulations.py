@@ -156,11 +156,14 @@ def test_timing_and_lineup_speeds(client):
     assert 0 < timing["playSec"] and 0 < timing["countSec"] and 0 < timing["llnSec"]
     assert timing["playSec"] + timing["countSec"] + timing["llnSec"] <= record["durationSec"]
     assert perf["total"] <= timing["playSec"]  # games are timed inside the play phase
+    assert 0 < perf["measuringCount"] < timing["countSec"]  # part of counting the stats
+    assert timing["turns"] == sum(p["think"]["turn"]["n"] for p in record["stats"]["players"])
     assert timing["machine"]["python"]
 
     speeds = client.get("/api/lineup-speeds").json()
     entry = speeds["CardCounter+NoPrincess+RandomChoice+RandomChoice|2"]
     assert entry["timed"]["runId"] == record["id"] and entry["timed"]["msPerGame"] > 0
+    assert entry["timed"]["playUsPerTurn"] == pytest.approx(timing["playSec"] / timing["turns"] * 1e6)
     assert "plain" not in entry and entry["llnMsPerGame"] > 0
 
     plain = finish(client, client.post("/api/simulations", json={**CONFIG, "measureTime": False, "saveLln": False}).json()["id"])

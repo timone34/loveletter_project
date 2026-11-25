@@ -81,6 +81,11 @@ ran it, so it varies a little from run to run even with the same seed):
   game time       start to end of each game: engine + bots. `perRound` is the
                   total over all rounds. `think` / total game time is the bots'
                   share; the rest is the engine (and the stopwatch itself).
+  measuring       what timing costs while counting: the time add() spends on
+                  think times (clocked, so exact; part of counting the stats).
+                  What it costs during play can't be clocked without adding
+                  more cost; the Stats page estimates it by comparing play
+                  time per turn with the latest untimed run of the lineup.
   over time       per stretch of the run (the same snapshots as the
                   convergence chart, but each covering only the games since
                   the last one): ms per game and each line's think time per
@@ -91,6 +96,7 @@ from __future__ import annotations
 
 import dataclasses
 from collections import Counter
+from time import perf_counter_ns
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -178,13 +184,19 @@ class Counts:
     think_by_card: TimingsBy = field(default_factory=TimingsBy)  # card played -> per turn
 
     def __iadd__(self, other: Counts) -> Counts:
+        self.merge(other, think=False)
+        self.merge(other, think=True)
+        return self
+
+    def merge(self, other: Counts, think: bool) -> None:
+        """Add other's counts into these: the think-time fields (think=True) or
+        all the others. Split so Tally can time what measuring costs."""
         # in place for the Counters and Timings (other is left as it was): this
         # runs three times per seat per game, so building new ones adds up
-        for f in dataclasses.fields(self):
-            mine = getattr(self, f.name)
-            mine += getattr(other, f.name)
-            setattr(self, f.name, mine)
-        return self
+        for name in THINK_FIELDS if think else PLAIN_FIELDS:
+            mine = getattr(self, name)
+            mine += getattr(other, name)
+            setattr(self, name, mine)
 
     def to_json(self) -> dict[str, Any]:
         checked = self.guard_correct + self.guard_incorrect
@@ -254,6 +266,10 @@ class Counts:
             "byRound": [{"round": k, **t.to_json()} for k, t in sorted(self.think_by_round.items()) if t.n],  # type: ignore[dict-item]
             "byCard": {card: self.think_by_card[card].to_json() for card in CARDS if card in self.think_by_card},
         }
+
+
+THINK_FIELDS = tuple(f.name for f in dataclasses.fields(Counts) if f.name.startswith("think"))
+PLAIN_FIELDS = tuple(f.name for f in dataclasses.fields(Counts) if not f.name.startswith("think"))
 
 
 def loss_cause(turn: TurnHistory, victim: int) -> str:
@@ -415,16 +431,20 @@ class Tally:
         self.game_time = Timings()
         self.perf_over_time: list[dict[str, Any]] = []
         self._perf_last: dict[str, Any] | None = None  # running totals at the last snapshot
+        self.measure_count_ns = 0  # time spent here on the think times: what measuring costs in counting
 
     def add(self, gh: GameHistory, timing: GameTiming | None = None) -> None:
         """Count one finished game, with its think times if it was timed."""
         n = len(gh.players)
         game = count_game(gh)  # this game's counts, per seat
+        timed = timing is not None
         if timing is not None:
+            start = perf_counter_ns()
             count_timing(timing, game)
             self.timed_games += 1
             self.timed_rounds += len(gh.rounds)
             self.game_time.add(timing.ns)
+            self.measure_count_ns += perf_counter_ns() - start
 
         self.games += 1
         self.rounds += len(gh.rounds)
@@ -432,11 +452,16 @@ class Tally:
         self.tied_rounds += sum(len(rh.winners) > 1 for rh in gh.rounds)
 
         for seat, counts in enumerate(game):
-            self.players.setdefault((gh.players[seat], gh.strategies[seat]), Counts())
-            self.players[gh.players[seat], gh.strategies[seat]] += counts
+            player = self.players.setdefault((gh.players[seat], gh.strategies[seat]), Counts())
             while len(self.seats) <= seat:
                 self.seats.append(Counts())
-            self.seats[seat] += counts
+            player.merge(counts, think=False)
+            self.seats[seat].merge(counts, think=False)
+            if timed:
+                start = perf_counter_ns()
+                player.merge(counts, think=True)
+                self.seats[seat].merge(counts, think=True)
+                self.measure_count_ns += perf_counter_ns() - start
 
         for rh in gh.rounds:
             for seat in range(n):
@@ -449,9 +474,11 @@ class Tally:
         if self.games % self.every == 0:
             self.convergence.append(self._point())
             if self.timed_games:
+                start = perf_counter_ns()
                 totals = self._perf_totals()
                 self.perf_over_time.append(perf_window(self._perf_last, totals))
                 self._perf_last = totals
+                self.measure_count_ns += perf_counter_ns() - start
 
     def _point(self) -> dict[str, Any]:
         """The game win rates right now, in the order of to_json's players and bots."""
@@ -489,6 +516,7 @@ class Tally:
             "perRound": self.game_time.total / self.timed_rounds * 1e-9,
             "total": self.game_time.total * 1e-9,
             "think": think * 1e-9,
+            "measuringCount": self.measure_count_ns * 1e-9,  # exact: clocked inside add()
             "overTime": over_time,
         }
 

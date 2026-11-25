@@ -72,6 +72,7 @@ export type Performance = {
   perRound: number; // s
   total: number; // s, all games
   think: number; // s, all bots' think time; the rest of `total` is the engine
+  measuringCount?: number; // s of counting spent on think times: what timing costs there (exact)
   overTime?: PerfPoint[]; // left out of the history list
 };
 
@@ -80,11 +81,12 @@ export type RunTiming = {
   playSec: number;
   countSec: number;
   llnSec: number;
+  turns?: number; // turns played (not skipped), all games
   machine: { cpu: string; cores: number | null; system: string; python: string };
 };
 
 // The latest speed of a lineup (runs/history.py, record_speed), from /api/lineup-speeds.
-export type SpeedRun = { msPerGame: number; games: number; runId: string; at: string };
+export type SpeedRun = { msPerGame: number; playUsPerTurn?: number | null; games: number; runId: string; at: string };
 export type LineupSpeed = { bots: string[]; targetRoundWins: number; timed?: SpeedRun; plain?: SpeedRun; llnMsPerGame?: number };
 
 export type BaronOutcomes = { won: number; tied: number; lost: number; protected: number };

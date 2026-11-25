@@ -90,6 +90,8 @@ class Run:
         self.error: str | None = None
         self.duration: float | None = None  # seconds, the whole run
         self.phases = {"play": 0, "count": 0, "lln": 0}  # ns spent in each, see _play
+        self.turns = 0  # turns played (not skipped), to compare play time per turn between runs
+
         self.has_lln = False
 
         self.tally = Tally(expected_games=config.games)
@@ -116,6 +118,7 @@ class Run:
                 "playSec": self.phases["play"] * 1e-9,
                 "countSec": self.phases["count"] * 1e-9,
                 "llnSec": self.phases["lln"] * 1e-9,
+                "turns": self.turns,
                 "machine": machine(),
             },
             "hasLln": self.has_lln,
@@ -263,6 +266,7 @@ class History:
                 t0 = clock()
                 gh = next(games)  # plays the game
                 t1 = clock()
+                run.turns += sum(t.drawn is not None for rh in gh.rounds for t in rh.turns)
                 with run.lock:
                     run.tally.add(gh, observer.last if observer else None)
                 t2 = clock()
@@ -297,7 +301,8 @@ class History:
     def record_speed(self, run: Run) -> None:
         """Keep this run's speed as its lineup's latest, separately for runs with
         and without timing (timing makes a run slower). LLN writing is kept on
-        its own, so the estimate can add it or leave it out."""
+        its own, so the estimate can add it or leave it out. Speeds only compare
+        on one machine, and the file never leaves it."""
         cfg = run.config
         games = run.tally.games
         if games < MIN_GAMES_FOR_SPEED:
@@ -309,6 +314,9 @@ class History:
         entry["targetRoundWins"] = cfg.target_round_wins
         entry["timed" if cfg.measure_time else "plain"] = {
             "msPerGame": (run.phases["play"] + run.phases["count"]) / games * 1e-6,
+            # play time per turn: a timed run's minus an untimed run's is what
+            # the stopwatch costs during play (the Stats page works that out)
+            "playUsPerTurn": run.phases["play"] / run.turns * 1e-3 if run.turns else None,
             "games": games,
             "runId": run.id,
             "at": run.created_at,

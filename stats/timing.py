@@ -15,7 +15,10 @@ TimingObserver collects those readings per turn (with the turn's cycle, round
 number and card played) and times each whole game, from on_game_start to
 on_game_end. "Think time" is the time spent inside the bot's own methods;
 the rest of a game's time is the engine (dealing, resolving, history,
-observers) plus the stopwatch itself, a few hundred nanoseconds a turn.
+observers) plus the stopwatch itself. What the stopwatch costs can't be
+clocked without adding more cost: a run with timing on plays about 10% slower
+(more allocations, so more garbage collection, too), which the Stats page
+estimates by comparing play time per turn with an untimed run of the lineup.
 
 Durations are kept as Timings: counts in log-spaced buckets, so a run of any
 length takes the same memory while medians and p95s can still be read off

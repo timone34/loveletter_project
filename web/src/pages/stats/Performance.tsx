@@ -1,6 +1,7 @@
 import { SectionTitle } from "../../components/SectionTitle";
-import { count, pct, secs } from "../../sims/format";
-import type { Line, RunRecord, Stats, Timing } from "../../sims/types";
+import { useLineupSpeeds } from "../../sims/api";
+import { count, lineupKey, pct, secs } from "../../sims/format";
+import type { LineupSpeed, Line, RunRecord, RunTiming, Stats, Timing } from "../../sims/types";
 import { DecisionTable, ThinkByCardTable } from "./charts/ThinkTables";
 import { PerfTable } from "./charts/PerfTable";
 import { PhaseBar, type Phase } from "./charts/PhaseBar";
@@ -14,6 +15,11 @@ import { Card, Kpi } from "./parts";
 //
 // Think time needs the run's "Measure think time" setting; the phase split
 // (playing / counting / writing LLN) is there for every run since format 4.
+//
+// What timing itself costs gets its own parts of the bar, striped in the colour
+// of the part it was taken out of: while counting it's clocked (exact); while
+// playing it can't be, so it's estimated from this run's play time per turn
+// against the latest untimed run of the same lineup (see measuringPlay).
 // Rows follow the page's "By player / By bot / By seat" switch.
 
 type Row = { label: string; color: string; line: Line };
@@ -21,10 +27,19 @@ type Group = "players" | "bots" | "seats";
 
 const MIN_TURNS = 30; // a cycle or round with fewer turns than this is left off the line charts
 
+// stripes of a part's colour and a lighter shade of it, for what measuring
+// took out of that part: clearly related, but not mistaken for another part
+const lighter = (color: string) =>
+  `repeating-linear-gradient(135deg, ${color} 0 3px, color-mix(in srgb, ${color} 40%, var(--surface)) 3px 6px)`;
+
 export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord; stats: Stats; rows: Row[]; group: Group }) {
+  const speeds = useLineupSpeeds();
   const timing = run.timing;
   const perf = stats.performance;
   if (!timing) return null; // a run from before performance was measured
+  const mPlay = perf ? measuringPlay(run, timing, speeds) : null;
+  const mCount = perf?.measuringCount ?? 0;
+  const mPlaySec = mPlay && mPlay.sec > 0 ? mPlay.sec : 0;
 
   const elapsed = timing.playSec + timing.countSec + timing.llnSec;
   const wall = run.durationSec ?? elapsed; // durationSec only once the run is over
@@ -32,10 +47,24 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
     ...(perf
       ? [
           { label: "Bots thinking", sec: perf.think, color: "var(--blue-4)", note: "inside the bots' own methods" },
-          { label: "Engine", sec: Math.max(0, timing.playSec - perf.think), color: "var(--primary)", note: "dealing, resolving cards, history, observers, the stopwatch" },
+          {
+            label: "Engine",
+            sec: Math.max(0, timing.playSec - perf.think - mPlaySec),
+            color: "var(--primary)",
+            note: mPlay ? "dealing, resolving cards, history, observers" : "dealing, resolving cards, history, observers, and the stopwatch (not measured separately, see below)",
+          },
+          {
+            label: "Measuring · play",
+            sec: mPlaySec,
+            color: lighter("var(--primary)"),
+            note: mPlay
+              ? `estimate: ${secs(mPlay.perTurn)} more per turn than the latest untimed run of this lineup (${mPlay.date}), times ${count(timing.turns ?? 0)} turns`
+              : "",
+          },
         ]
       : [{ label: "Playing", sec: timing.playSec, color: "var(--primary)", note: "the games: engine and bots together (think time wasn't measured)" }]),
-    { label: "Counting stats", sec: timing.countSec, color: "var(--accent)", note: "Tally.add after every game: the numbers on this page" },
+    { label: "Counting stats", sec: Math.max(0, timing.countSec - mCount), color: "var(--accent)", note: "Tally.add after every game: the numbers on this page" },
+    { label: "Measuring · counting", sec: mCount, color: lighter("var(--accent)"), note: "adding up the think times after every game (clocked, so exact)" },
     { label: "Writing LLN", sec: timing.llnSec, color: "var(--grey-1)", note: "saving every game as compressed LLN" },
     { label: "Other", sec: Math.max(0, wall - elapsed), color: "var(--grey-2)", note: "setting up the bots, opening files" },
   ];
@@ -60,8 +89,21 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
         )}
       </section>
 
-      <Card title="Where the time went" note="The whole run, from the first game to the last. Hover a part for seconds.">
+      <Card
+        title="Where the time went"
+        note="The whole run, from the first game to the last. Striped parts: what measuring think time cost, taken out of the part next to it. Hover a part for seconds."
+      >
         <PhaseBar phases={phases} />
+        {perf && !mPlay && (
+          <p className="stats__filter-note">
+            What the stopwatch costs during play is still inside Engine: run this lineup once with “Measure think time” off to measure it.
+          </p>
+        )}
+        {mPlay && mPlay.sec <= 0 && (
+          <p className="stats__filter-note">
+            This run played no slower per turn than the latest untimed run of this lineup ({mPlay.date}): the stopwatch's cost is lost in the noise between runs.
+          </p>
+        )}
       </Card>
 
       {!perf ? (
@@ -141,6 +183,19 @@ export function PerformanceSection({ run, stats, rows, group }: { run: RunRecord
 }
 
 const point = (y: number | null): TimePoint => (y == null ? null : { y });
+
+// What the stopwatch cost while playing, estimated: this run's play time per
+// turn minus that of the latest untimed run of the same lineup (same bots, same
+// game length) on this machine, times this run's turns. Comparing per turn
+// takes out most of the difference in game lengths between seeds; what's left
+// is noise between runs (other programs, the CPU's clock speed), so it's an
+// estimate, and it's only as recent as that untimed run.
+function measuringPlay(run: RunRecord, timing: RunTiming, speeds: Record<string, LineupSpeed> | null) {
+  const plain = speeds?.[lineupKey(run.config.players.map((p) => p.bot), run.config.targetRoundWins)]?.plain;
+  if (!plain?.playUsPerTurn || !timing.turns) return null;
+  const perTurn = timing.playSec / timing.turns - plain.playUsPerTurn * 1e-6;
+  return { sec: perTurn * timing.turns, perTurn, date: new Date(plain.at).toLocaleDateString(undefined, { day: "numeric", month: "short" }) };
+}
 
 // Think time per turn against a step (cycle or round number), one line per row.
 function ByStep({ rows, steps, name }: { rows: Row[]; steps: (t: NonNullable<Line["think"]>) => [number, Timing][]; name: string }) {
