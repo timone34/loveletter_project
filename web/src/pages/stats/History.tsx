@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { Header, Footer } from "../../components/Header";
@@ -8,6 +9,7 @@ import "./Stats.css";
 
 // The simulation history (/stats): every run, newest first. Click a row for
 // its stats. Runs still going show their progress and update by themselves.
+// Tick the checkboxes to delete (or stop) several runs at once.
 
 export default function History() {
   const navigate = useNavigate();
@@ -17,6 +19,31 @@ export default function History() {
     const msg = isActive(run) ? `Stop “${run.config.name}”?` : `Delete “${run.config.name}” from the history?`;
     if (!window.confirm(msg)) return;
     await deleteRun(run.id).catch(() => undefined);
+    reload();
+  };
+
+  // ids of the ticked rows; ids of runs that no longer exist are ignored
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const selected = (runs ?? []).filter((r) => picked.has(r.id));
+  const allPicked = !!runs?.length && selected.length === runs.length;
+
+  const toggle = (id: string) =>
+    setPicked((old) => {
+      const next = new Set(old);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const toggleAll = () => setPicked(allPicked ? new Set() : new Set(runs?.map((r) => r.id)));
+
+  const removeSelected = async () => {
+    const active = selected.filter(isActive).length;
+    const n = selected.length;
+    const msg =
+      `Delete ${n} simulation${n === 1 ? "" : "s"} from the history?` +
+      (active ? ` ${active} still going will be stopped.` : "");
+    if (!window.confirm(msg)) return;
+    await Promise.allSettled(selected.map((r) => deleteRun(r.id)));
+    setPicked(new Set());
     reload();
   };
 
@@ -33,6 +60,11 @@ export default function History() {
             </div>
             <div className="stats__aside">
               <div className="controls">
+                {selected.length > 0 && (
+                  <button type="button" className="btn btn--danger" onClick={removeSelected}>
+                    Delete {selected.length} selected
+                  </button>
+                )}
                 <button type="button" className="btn btn--primary" onClick={() => navigate("/new?mode=simulate")}>New simulation</button>
               </div>
             </div>
@@ -55,6 +87,9 @@ export default function History() {
               <table className="runs">
                 <thead>
                   <tr>
+                    <th className="runs__pick">
+                      <input type="checkbox" aria-label="Select all" checked={allPicked} onChange={toggleAll} />
+                    </th>
                     <th>Run</th>
                     <th>Game win rates</th>
                     <th className="num">Games</th>
@@ -66,7 +101,27 @@ export default function History() {
                 </thead>
                 <tbody>
                   {runs.map((r) => (
-                    <tr key={r.id} onClick={() => navigate(`/stats/${r.id}`)}>
+                    <tr
+                      key={r.id}
+                      className={picked.has(r.id) ? "runs__row--picked" : undefined}
+                      onClick={() => navigate(`/stats/${r.id}`)}
+                    >
+                      {/* the whole cell toggles, so a near-miss doesn't open the run */}
+                      <td
+                        className="runs__pick"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggle(r.id);
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${r.config.name}`}
+                          checked={picked.has(r.id)}
+                          onChange={() => toggle(r.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
                       <td>
                         <Link to={`/stats/${r.id}`} className="runs__name" onClick={(e) => e.stopPropagation()}>
                           {r.config.name}
