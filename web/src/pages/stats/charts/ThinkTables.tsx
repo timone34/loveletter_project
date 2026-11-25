@@ -6,7 +6,8 @@ import { TipRow } from "./TipRow";
 import { blue } from "./ramps";
 
 // Two tables of mean think time, built on HeatTable and shaded one blue,
-// darker = slower, against the slowest cell in the table:
+// stronger = slower (darker in light mode, brighter in dark mode, see ramps.ts),
+// against the slowest cell in the table:
 //   by decision   which call the time goes to (choosing the card, the target,
 //                 the Guard guess), each averaged over the turns it happened on
 //   by card       per turn, by the card that was played
