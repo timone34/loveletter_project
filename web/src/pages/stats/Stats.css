@@ -354,6 +354,19 @@
   color: var(--text-muted);
 }
 
+/* "think time" beside a run's name: the run measured think time (runs/config.py, measureTime) */
+.runs__badge {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .runs__seed {
   font-family: inherit;
   font-size: 0.72rem;

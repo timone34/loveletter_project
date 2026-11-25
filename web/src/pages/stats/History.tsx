@@ -71,7 +71,14 @@ export default function History() {
                         <Link to={`/stats/${r.id}`} className="runs__name" onClick={(e) => e.stopPropagation()}>
                           {r.config.name}
                         </Link>
-                        <span className="runs__lineup">{lineupText(r)}</span>
+                        <span className="runs__lineup">
+                          {r.config.measureTime && (
+                            <span className="runs__badge" title="Think time measured: this run has the Performance section (and ran about 20% slower)">
+                              think time
+                            </span>
+                          )}
+                          {lineupText(r)}
+                        </span>
                       </td>
                       <td><WinRates run={r} /></td>
                       <td className="num">

@@ -101,6 +101,7 @@ export default function Results() {
               <span className="chip">First to {run.config.targetRoundWins}</span>
               <span className="chip">{run.config.rotateSeats ? "Seats rotate" : "Fixed seats"}</span>
               <span className="chip">Seed · {run.config.seed}</span>
+              {run.config.measureTime && <span className="chip">Think time measured</span>}
               {run.durationSec != null && <span className="chip">{duration(run.durationSec)}</span>}
             </div>
             <div className="controls">
