@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import itertools
+import functools
 import random
 from collections import Counter
 from typing import TYPE_CHECKING
@@ -95,26 +95,74 @@ class CardCounterV2(CardCounter):
         seats = list(possible)
         unseen_cards = unseen(view)
 
-        totals: dict[int, Counter[type[Card]]] = {s: Counter() for s in seats}
-        total_weight = 0
-        
-        for combination in itertools.product(*(sorted(possible[s], key=lambda t: t.value) for s in seats)):
-            remaining = unseen_cards.copy()
-            weight = 1
-            for card_type in combination:
-                weight *= max(remaining[card_type], 0)
-                remaining[card_type] -= 1
-            if weight == 0:
-                continue
-            total_weight += weight
-            for seat, card_type in zip(seats, combination):
-                totals[seat][card_type] += weight
-
-        if total_weight == 0:
-            return {seat: {} for seat in seats}
+        counts = tuple(max(unseen_cards[t], 0) for t in CARD_TYPES)
+        options = tuple(frozenset(_INDEX[t] for t in possible[s]) for s in seats)
+        rows = _joint_odds(counts, options)
         return {
-            seat: {card_type: w / total_weight 
-                   for card_type, w in totals[seat].items()
-                   }
-            for seat in seats
+            seat: {CARD_TYPES[i]: p for i, p in enumerate(row) if p > 0}
+            for seat, row in zip(seats, rows)
         }
+
+
+_INDEX: dict[type[Card], int] = {t: i for i, t in enumerate(CARD_TYPES)}
+_ALL_TYPES = frozenset(range(len(CARD_TYPES)))
+
+@functools.lru_cache(maxsize=1 << 16)
+def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[tuple[float, ...], ...]:
+    """P(opponent k holds card type i), for each opponent k: row k, column i (index in CARD_TYPES).
+
+    `counts[i]` is how many cards of type i are unseen; `options[k]` the types opponent k can hold.
+    Every hand assignment that fits the options is weighted by how many ways the unseen cards can
+    produce it (drawing without replacement), exactly like enumerating all combinations would.
+
+    Two shortcuts keep this fast without changing the answer:
+    - An opponent who could hold anything ("free") is left out of the enumeration. Summed over
+      its card, it always adds the same factor (the number of cards left), so it doesn't change
+      anyone else's odds; its own odds are the expected leftover counts divided by that number.
+      With no constraints at all this is just counts / total, one pass instead of 8^3 combinations.
+    - Only constrained opponents are enumerated, depth-first with a mutable count list, skipping
+      types that have run out (whole subtrees with weight 0).
+    Results are cached: the same unseen pool and constraints come up again and again.
+    All weights are integers until the final division, so equal odds compare equal.
+    """
+    n = len(counts)
+    constrained = [k for k, opts in enumerate(options) if not opts >= _ALL_TYPES]
+    branches = [sorted(options[k]) for k in constrained]
+    remaining = list(counts)
+    picked = [0] * len(constrained)
+    seat_weight = [[0] * n for _ in options]  # per opponent: weight of each type
+    leftover_weight = [0] * n                 # sum of weight * remaining count, for free opponents
+    total = 0
+
+    def visit(depth: int, weight: int) -> None:
+        nonlocal total
+        if depth == len(constrained):
+            total += weight
+            for k, i in zip(constrained, picked):
+                seat_weight[k][i] += weight
+            for i in range(n):
+                leftover_weight[i] += weight * remaining[i]
+            return
+        for i in branches[depth]:
+            c = remaining[i]
+            if c <= 0:
+                continue
+            remaining[i] = c - 1
+            picked[depth] = i
+            visit(depth + 1, weight * c)
+            remaining[i] = c
+
+    visit(0, 1)
+    cards_left = sum(counts) - len(constrained)
+    if total == 0 or cards_left < len(options) - len(constrained):  # not enough cards to go round
+        return tuple((0.0,) * n for _ in options)
+
+    rows: list[tuple[float, ...]] = []
+    for k in range(len(options)):
+        if k in constrained:
+            rows.append(tuple(w / total for w in seat_weight[k]))
+        elif cards_left > 0:
+            rows.append(tuple(w / (total * cards_left) for w in leftover_weight))
+        else:
+            rows.append((0.0,) * n)
+    return tuple(rows)
