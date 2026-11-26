@@ -217,7 +217,7 @@ export default function Results() {
                   </Card>
 
                   <Card
-                    title="Guard guesses vs the odds"
+                    title="Guard guesses vs card counting"
                     note="Odds from the face-up cards alone: the deck minus the guesser's own cards and all discards. The tick is the best a pure card counter can do; Priest looks or King swaps can beat it. Right: how often it named the likeliest card."
                   >
                     <GuardOdds rows={rows} />
