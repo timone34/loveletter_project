@@ -41,7 +41,6 @@ export type Line = {
   losses: Record<Cause, number>; // how each lost round was lost
   // the definitions of these are in stats/tally.py's docstring
   startCard: Record<string, { rounds: number; wins: number; rate: Rate }>; // card name -> rounds started with it
-  guardOdds: { checked: number; pickedBest: Rate; expected: number | null; countingBest: number | null };
   priest: { looks: number; chances: number; taken: number; takenRate: Rate };
   baronByCard: Record<string, BaronOutcomes>; // card kept beside the Baron -> outcomes
   choices: Choice[];

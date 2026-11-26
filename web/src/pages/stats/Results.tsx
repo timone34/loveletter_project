@@ -12,7 +12,6 @@ import { ConvergenceChart } from "./charts/ConvergenceChart";
 import { Histogram } from "./charts/Histogram";
 import { BaronBars } from "./charts/BaronBars";
 import { LossTable } from "./charts/LossTable";
-import { GuardOdds } from "./charts/GuardOdds";
 import { CardChoices } from "./charts/CardChoices";
 import { BaronByCardTable, StartCardTable } from "./charts/CardTables";
 import { PerformanceSection } from "./Performance";
@@ -206,22 +205,21 @@ export default function Results() {
               <SectionTitle n={2} title="Play" note="What did the bot actually do?" />
               <div className="stats__columns">
                 <div className="stats__column">
-                  <Card title="Guard accuracy" note="Correct guesses out of guesses checked. Guards on a protected player don't count.">
+                  <Card
+                    title="Guard accuracy"
+                    note="Correct guesses out of guesses checked. Guards on a protected player don't count. The tick is the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards); Priest looks or King swaps can beat it."
+                  >
                     <RateBars
+                      markLabel="Best from card counting"
                       rows={rows.map((r) => ({
                         ...r,
                         rate: r.line.guard.accuracy,
+                        mark: r.line.guard.countingBest,
                         detail: `${count(r.line.guard.correct)} of ${count(r.line.guard.correct + r.line.guard.incorrect)} guesses right · ${count(r.line.guard.protected)} on a protected player`,
                       }))}
                     />
                   </Card>
 
-                  <Card
-                    title="Guard guesses vs card counting"
-                    note="Odds from the face-up cards alone: the deck minus the guesser's own cards and all discards. The tick is the best a pure card counter can do; Priest looks or King swaps can beat it. Right: how often it named the likeliest card."
-                  >
-                    <GuardOdds rows={rows} />
-                  </Card>
 
                   <Card
                     title="Priest follow-up"

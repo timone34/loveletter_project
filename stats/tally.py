@@ -35,19 +35,14 @@ starts it), whoever sat there.
 
   start card      round win rate by the card a player was dealt: how much of
                   a round the deal decides (the luck baseline).
-  guard odds      every checked Guard guess, held against the cards its player
-                  couldn't see at that moment: the deck minus their own two
-                  cards and every face-up discard (what CardCounter counts).
-                  Assuming the target's card is any of those unseen cards with
-                  equal chance: `expected` is the average chance its guesses
-                  had, `countingBest` the chance of always naming the likeliest
-                  card, `pickedBest` how often it did. Expected is accuracy
-                  without the luck. countingBest is the best a pure card
-                  counter can do, not a ceiling: it ignores everything but the
-                  face-up cards (Priest looks, King swaps, missed Guard
-                  guesses), so a bot that uses those can beat it, and the
-                  equal-chance assumption is only exact when opponents keep
-                  cards at random.
+  counting best   for the same checked Guard guesses, the accuracy a pure card
+                  counter would get: the chance of the likeliest card among the
+                  ones its player couldn't see (the deck minus their own two
+                  cards and every face-up discard), each unseen card equally
+                  likely, averaged over the guesses. Not a ceiling: it ignores
+                  Priest looks, King swaps and missed Guard guesses, so a bot
+                  that uses those beats it. And the equal chances are only exact
+                  when opponents keep cards at random.
   priest          after a Priest look, the player's next turn: a chance to use
                   it when they then hold a Guard (and the card seen isn't a
                   Guard) or a Baron with a higher card beside it, and the seen
@@ -169,9 +164,7 @@ class Counts:
     start_rounds: Counter[str] = field(default_factory=Counter)  # start card -> rounds
     start_wins: Counter[str] = field(default_factory=Counter)  # start card -> rounds won
 
-    guard_picked_best: int = 0  # checked guesses that named a likeliest card
-    guard_expected: float = 0.0  # sum over checked guesses of the chance the guess had
-    guard_counting_best: float = 0.0  # sum of the chance of the likeliest card
+    guard_counting_best: float = 0.0  # sum over checked guesses of the chance of the likeliest card
 
     priest_looks: int = 0  # Priests that saw a card
     priest_chances: int = 0
@@ -220,7 +213,8 @@ class Counts:
                 "correct": self.guard_correct,
                 "incorrect": self.guard_incorrect,
                 "protected": self.guard_protected,
-                "accuracy": wilson(self.guard_correct, self.guard_correct + self.guard_incorrect),
+                "accuracy": wilson(self.guard_correct, checked),
+                "countingBest": self.guard_counting_best / checked if checked else None,
             },
             "baron": {
                 "played": self.barons,
@@ -237,12 +231,6 @@ class Counts:
                     "rate": wilson(self.start_wins[card], self.start_rounds[card]),
                 }
                 for card in CARDS
-            },
-            "guardOdds": {
-                "checked": checked,
-                "pickedBest": wilson(self.guard_picked_best, checked),
-                "expected": self.guard_expected / checked if checked else None,
-                "countingBest": self.guard_counting_best / checked if checked else None,
             },
             "priest": {
                 "looks": self.priest_looks,
@@ -356,11 +344,7 @@ def count_round(rh: RoundHistory, counts: list[Counts]) -> None:
                 me.guard_incorrect += turn.outcome is Outcome.INCORRECT
                 pool = unseen(turn, table.discards)
                 total = sum(pool.values())
-                best = max(pool[name] for name in GUESSABLE)
-                assert turn.guess is not None
-                me.guard_expected += pool[turn.guess.name] / total
-                me.guard_counting_best += best / total
-                me.guard_picked_best += pool[turn.guess.name] == best
+                me.guard_counting_best += max(pool[name] for name in GUESSABLE) / total
             elif turn.outcome is Outcome.PROTECTED:
                 me.guard_protected += 1
 
