@@ -12,6 +12,7 @@ type Props = {
   winner: number | null;
   error: string | null;
   onChoose: (index: number) => void;
+  onCancel: () => void; // "Back" on a target or guess prompt
   onNewGame: () => void;
   onSettings: () => void;
   opponents: string[]; // names of the bots at the table, for the "waiting" text before a game
@@ -51,7 +52,7 @@ export function TablePanel(props: Props) {
     );
   }
 
-  if (prompt && table) return <PromptPanel prompt={prompt} table={table} onChoose={props.onChoose} />;
+  if (prompt && table) return <PromptPanel prompt={prompt} table={table} onChoose={props.onChoose} onCancel={props.onCancel} />;
 
   if (winner !== null && table) {
     const name = winner === table.youSeat ? "You win" : `${table.players[winner].name} wins`;
@@ -94,7 +95,16 @@ export function TablePanel(props: Props) {
   return null;
 }
 
-function PromptPanel({ prompt, table, onChoose }: { prompt: Prompt; table: TableView; onChoose: (i: number) => void }) {
+type PromptProps = { prompt: Prompt; table: TableView; onChoose: (i: number) => void; onCancel: () => void };
+
+function PromptPanel({ prompt, table, onChoose, onCancel }: PromptProps) {
+  // "Back": choose another card instead (Esc or Backspace)
+  const back = prompt.kind !== "card" && prompt.cancellable && (
+    <button type="button" className="panel__back" onClick={onCancel} title="Pick another card (Esc)">
+      ← Back
+    </button>
+  );
+
   switch (prompt.kind) {
     case "card":
       return (
@@ -123,6 +133,7 @@ function PromptPanel({ prompt, table, onChoose }: { prompt: Prompt; table: Table
               );
             })}
           </div>
+          {back}
         </Panel>
       );
 
@@ -139,6 +150,7 @@ function PromptPanel({ prompt, table, onChoose }: { prompt: Prompt; table: Table
               </button>
             ))}
           </div>
+          {back}
         </Panel>
       );
     }

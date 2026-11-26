@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Header, Footer } from "../../components/Header";
-import { CARD_BY_ID } from "../../components/cardData";
 
 import { PlayerSeat } from "./components/PlayerSeat";
 import { DeckPile } from "./components/DeckPile";
@@ -11,6 +10,7 @@ import { ActionLog } from "./components/ActionLog";
 import { CheatSheet } from "./components/CheatSheet";
 import { FlightLayer } from "./motion/FlightLayer";
 import { isLogged, useGame } from "./useGame";
+import { useBrowse } from "./useBrowse";
 import { useFullscreen } from "./useFullscreen";
 import { botsAtTable, loadConfig, saveConfig, type Speed } from "./config";
 import "./Play.css";
@@ -42,25 +42,12 @@ export default function Play() {
     }
   }, [status.connected, game, config]);
 
-  // ----- Browsing the log: an index into feed, or null for the live table ----- //
-  const [viewing, setViewing] = useState<number | null>(null);
-  const view = viewing !== null && viewing < feed.length ? viewing : null; // a new game empties the feed
+  // ----- Browsing the log (useBrowse.ts): which event is on the table, null = live ----- //
+  const browse = useBrowse(feed, speed);
+  const view = browse.shown;
   const table = view !== null ? feed[view].table : game.table;
-  const live = view === null;
-
-  // one step through the logged lines; past the newest one is live again
-  const step = useCallback((dir: -1 | 1) => {
-    const logged = feed.map((e, i) => (isLogged(e) ? i : -1)).filter((i) => i >= 0);
-    if (!logged.length) return;
-    if (view === null) {
-      if (dir < 0) setViewing(logged[logged.length - 1]);
-      return;
-    }
-    const at = logged.findIndex((i) => i >= view);
-    const next = at + dir;
-    if (next >= logged.length) setViewing(null);
-    else setViewing(logged[Math.max(0, next)]);
-  }, [feed, view]);
+  const live = browse.live;
+  const step = browse.stepLog;
 
   // ----- Panels and full screen ----- //
   const [cheatSheet, setCheatSheet] = useState(() => {
@@ -112,8 +99,9 @@ export default function Play() {
       const digit = Number(e.key);
       if (key === "arrowleft" || key === "arrowup") step(-1);
       else if (key === "arrowright" || key === "arrowdown") step(1);
-      else if (key === "home") setViewing(feed.findIndex(isLogged) >= 0 ? feed.findIndex(isLogged) : null);
-      else if (key === "end" || key === "escape") setViewing(null);
+      else if (key === "home") browse.goTo(feed.findIndex(isLogged) >= 0 ? feed.findIndex(isLogged) : null);
+      else if ((key === "escape" || key === "backspace") && livePrompt && livePrompt.kind !== "card" && livePrompt.cancellable) game.cancel();
+      else if (key === "end" || key === "escape") browse.goTo(null);
       else if (key === " " && status.running) game.togglePause();
       else if (key === "f") fullscreen.toggle();
       else if (key === "c") toggleCheatSheet();
@@ -129,7 +117,7 @@ export default function Play() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, feed, status, game, fullscreen, toggleCheatSheet, livePrompt]);
+  }, [step, feed, status, game, fullscreen, toggleCheatSheet, livePrompt, browse]);
 
   const caption = view !== null ? feed[view].caption : game.caption;
 
@@ -158,7 +146,6 @@ export default function Play() {
                   <span className="chip">First to {table.winsNeeded}</span>
                   {table.youSeat !== null && <span className="chip">{table.visibility === "public" ? "Public" : "Private"}</span>}
                   {config.deckSeed && <span className="chip">Seed · {config.deckSeed}</span>}
-                  {table.burn && <span className="chip">Burned · {CARD_BY_ID[table.burn].name}</span>}
                 </div>
               )}
 
@@ -168,7 +155,7 @@ export default function Play() {
                 fullscreen={fullscreen.active}
                 cheatSheet={cheatSheet}
                 onNewGame={newGame}
-                onSettings={() => navigate("/new")}
+                onSettings={() => navigate("/new", { state: { keep: true } })}
                 onPause={game.togglePause}
                 onReveal={game.toggleReveal}
                 onSpeed={changeSpeed}
@@ -180,7 +167,7 @@ export default function Play() {
 
           <div className={live ? "felt" : "felt felt--past"} ref={felt}>
             {!live && (
-              <button type="button" className="felt__past" onClick={() => setViewing(null)}>
+              <button type="button" className="felt__past" onClick={() => browse.goTo(null)}>
                 Earlier in the game · back to live (End)
               </button>
             )}
@@ -193,7 +180,7 @@ export default function Play() {
 
             <div className="deck-area">
               <p className="deck-area__caption" aria-live="polite">{caption}</p>
-              {table ? <DeckPile count={table.deckCount} /> : <span />}
+              {table ? <DeckPile count={table.deckCount} burn={table.burn ?? null} /> : <span />}
               <TablePanel
                 table={table}
                 prompt={livePrompt}
@@ -201,8 +188,9 @@ export default function Play() {
                 winner={live ? game.winner : null}
                 error={game.error}
                 onChoose={game.choose}
+                onCancel={game.cancel}
                 onNewGame={newGame}
-                onSettings={() => navigate("/new")}
+                onSettings={() => navigate("/new", { state: { keep: true } })}
                 opponents={botsAtTable(config).map((o) => o.name)}
                 watching={config.mode === "watch"}
                 onResume={game.togglePause}
@@ -221,13 +209,14 @@ export default function Play() {
                 onTarget={onTarget(you.seat)}
               />
             )}
-
-            <FlightLayer entry={game.latest} live={live} speed={speed} root={felt} />
           </div>
         </section>
 
-        <ActionLog feed={feed} viewing={view} table={table} onSelect={setViewing} />
+        <ActionLog feed={feed} viewing={browse.headed ?? view} table={table} onSelect={browse.goTo} />
       </main>
+
+      {/* outside the felt: its "earlier in the game" filter would shift fixed-position ghosts */}
+      <FlightLayer step={browse.motion} root={felt} />
 
       {!fullscreen.active && <Footer />}
     </div>

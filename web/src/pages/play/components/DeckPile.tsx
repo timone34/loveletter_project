@@ -1,12 +1,16 @@
 import type { CSSProperties } from "react";
 import { Card } from "../../../components/Card";
+import { CARD_BY_ID, type CardId } from "../../../components/cardData";
 import "./DeckPile.css";
 
-type Props = { count: number };
+type Props = {
+  count: number;
+  burn: CardId | null; // the burned card, only known with "reveal hands" on
+};
 
 const CARD_W = 84; // px, matches the opponents' hands
 
-export function DeckPile({ count }: Props) {
+export function DeckPile({ count, burn }: Props) {
   const layers = Math.min(count, 5); // the stack's thickness, not the real count
 
   return (
@@ -29,6 +33,8 @@ export function DeckPile({ count }: Props) {
       <p className="deck-pile__count">
         <strong>{count} cards left</strong>
       </p>
+      {/* absolutely positioned, so showing it never moves the deck or the header */}
+      {burn && <p className="deck-pile__burn">Burned · {CARD_BY_ID[burn].name}</p>}
     </div>
   );
 }

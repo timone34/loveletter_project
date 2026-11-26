@@ -131,6 +131,12 @@ export function useGame() {
     send({ type: "choice", index });
   }, [send]);
 
+  // "Back" on a target or guess prompt: the server asks for a card again
+  const cancel = useCallback(() => {
+    setPrompt(null);
+    send({ type: "cancel" });
+  }, [send]);
+
   const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
 
   const latest = feed.length ? feed[feed.length - 1] : null;
@@ -138,6 +144,6 @@ export function useGame() {
   return {
     table, prompt, feed, latest, winner, error, status,
     caption: latest?.caption ?? "",
-    newGame, togglePause, toggleReveal, setSpeed, choose, reconnect,
+    newGame, togglePause, toggleReveal, setSpeed, choose, cancel, reconnect,
   };
 }

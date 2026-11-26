@@ -27,6 +27,19 @@
   padding-bottom: 1rem;
 }
 
+.table__header > div:first-child {
+  flex: none;
+}
+
+.table__chips .chip {
+  flex: none;
+  white-space: nowrap;
+}
+
+.table__aside .controls {
+  flex: none;
+}
+
 .table__eyebrow {
   font-size: 0.875rem;
   color: var(--text-muted);
@@ -38,9 +51,13 @@
   color: var(--text);
 }
 
+/* one line, always: chips that don't fit are clipped instead of wrapping
+   onto a second line (which would push the table down) */
 .table__aside {
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
@@ -48,6 +65,9 @@
 
 .table__chips {
   display: flex;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 1;
   gap: 0.5rem;
   padding-top: 0.25rem;
   padding-bottom: 0.35rem;

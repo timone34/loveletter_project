@@ -73,6 +73,25 @@
   color: var(--primary);
 }
 
+/* "← Back" under a target or guess prompt */
+.panel__back {
+  align-self: flex-start;
+  padding: 0.15rem 0;
+  border: 0;
+  background: none;
+  color: rgb(250 250 246 / 70%);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.panel__back:hover,
+.panel__back:focus-visible {
+  outline: none;
+  color: var(--on-primary);
+  text-decoration: underline;
+}
+
 /* the number key that picks this option (handled in Play.tsx) */
 .panel__key {
   display: inline-grid;

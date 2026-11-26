@@ -1,14 +1,18 @@
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Card } from "../../../components/Card";
-import type { Speed } from "../config";
 import type { FeedEntry } from "../useGame";
-import { planMotion, type Badge, type Flight } from "./plan";
+import { planMotion, reversePlan, type Badge, type Flight } from "./plan";
 import "./FlightLayer.css";
 
-// Seconds per beat (plan.ts), by table speed. A turn_end takes at most three
-// beats, which fits in the server's pause after it (PACE in server.py).
-const BEAT: Record<Speed, number> = { slow: 0.6, normal: 0.42, fast: 0.22 };
+// One event to animate: the newest one while live, or one step through the
+// log while browsing (reverse = stepping back, so the moves play backwards).
+export type MotionStep = {
+  key: number; // a new key = a new animation
+  entry: FeedEntry; // its `before` must be the table that was on screen
+  reverse: boolean;
+  beat: number; // seconds per beat
+};
 
 type Rects = Map<string, DOMRect>; // data-slot / data-seat -> where it is on screen
 
@@ -16,13 +20,11 @@ type Ghost = Flight & { id: number; start: DOMRect; end: DOMRect };
 type Pop = Badge & { id: number; rect: DOMRect };
 
 type Props = {
-  entry: FeedEntry | null; // the newest event
-  live: boolean; // false while browsing the log: then nothing animates
-  speed: Speed;
+  step: MotionStep | null; // null: nothing to animate
   root: RefObject<HTMLElement | null>; // the felt: where the data-slot cards are
 };
 
-// Draws the animations of the newest event on top of the table (see plan.ts).
+// Draws the animation of one event on top of the table (see plan.ts).
 //
 // How it works, per event:
 // 1. render: planMotion() lists the flights, and a <style> hides each
@@ -33,13 +35,17 @@ type Props = {
 //    end rectangle.
 // 3. motion animates each ghost; when one lands it's removed and the real
 //    card underneath shows again.
-export function FlightLayer({ entry, live, speed, root }: Props) {
+export function FlightLayer({ step, root }: Props) {
   const reduced = useReducedMotion();
-  const plan = useMemo(() => (entry && live && !reduced ? planMotion(entry) : null), [entry, live, reduced]);
+  const plan = useMemo(() => {
+    if (!step || reduced) return null;
+    const forward = planMotion(step.entry);
+    return step.reverse ? reversePlan(forward) : forward;
+  }, [step, reduced]);
 
   const [active, setActive] = useState<{ seq: number; ghosts: Ghost[]; pops: Pop[] }>({ seq: -1, ghosts: [], pops: [] });
   const rects = useRef<Rects>(new Map());
-  const started = useRef(-1); // the seq whose ghosts were built
+  const started = useRef(-1); // the step key whose ghosts were built
   const ids = useRef(0);
 
   // Runs after every render (no dependency list on purpose): the positions
@@ -48,8 +54,8 @@ export function FlightLayer({ entry, live, speed, root }: Props) {
   useLayoutEffect(() => {
     const now = measure(root.current);
     let next: typeof active | null = null;
-    if (plan && entry && started.current !== entry.seq) {
-      started.current = entry.seq;
+    if (plan && step && started.current !== step.key) {
+      started.current = step.key;
       const old = rects.current;
       const ghosts: Ghost[] = [];
       for (const f of plan.flights) {
@@ -62,7 +68,7 @@ export function FlightLayer({ entry, live, speed, root }: Props) {
         const rect = now.get(`seat${b.seat}`);
         if (rect) pops.push({ ...b, id: ++ids.current, rect });
       }
-      next = { seq: entry.seq, ghosts, pops };
+      next = { seq: step.key, ghosts, pops };
     } else if (!plan && (active.ghosts.length || active.pops.length)) {
       // browsing the log, or a new event without animations: drop what's left
       next = { seq: -1, ghosts: [], pops: [] };
@@ -73,12 +79,13 @@ export function FlightLayer({ entry, live, speed, root }: Props) {
     if (next) setActive(next);
   });
 
-  const current = plan && entry && active.seq === entry.seq ? active : null;
+  const current = plan && step && active.seq === step.key ? active : null;
 
   // destinations stay hidden until their ghost lands (before the ghosts exist: all of them)
   // (a peek hides the card it lifts, which stays where it is)
+  // (and never the deck: cards flying back onto it land on the pile)
   const spot = (f: Flight) => (f.kind === "peek" ? f.from : f.to);
-  const hidden = !plan ? [] : current ? current.ghosts.map(spot) : plan.flights.map(spot);
+  const hidden = (!plan ? [] : current ? current.ghosts.map(spot) : plan.flights.map(spot)).filter((s) => s !== "deck");
   const css = hidden.map((slot) => `[data-slot="${slot}"]{visibility:hidden}`).join("\n");
 
   const land = (id: number) =>
@@ -86,7 +93,7 @@ export function FlightLayer({ entry, live, speed, root }: Props) {
   const fade = (id: number) =>
     setActive((a) => ({ ...a, pops: a.pops.filter((p) => p.id !== id) }));
 
-  const beat = BEAT[speed];
+  const beat = step?.beat ?? 0.4;
 
   return (
     <>

@@ -1,6 +1,7 @@
 import { cardName, type CardId } from "../../../components/cardData";
 import type { FeedEntry } from "../useGame";
 import type { PlayerView } from "../types";
+import type { Speed } from "../config";
 
 // ----- What an animation is made of ----- //
 //
@@ -41,6 +42,31 @@ export type Badge = {
 };
 
 export type MotionPlan = { flights: Flight[]; badges: Badge[] };
+
+// Seconds per beat, by table speed. A turn_end takes at most three beats,
+// which fits in the server's pause after it (PACE in server.py).
+export const BEAT: Record<Speed, number> = { slow: 0.6, normal: 0.42, fast: 0.22 };
+export const BROWSE_BEAT = 0.26; // stepping through the log: a bit quicker than live
+
+// How long a plan's card flights take, in beats (badges may outlast it).
+export function planLength(plan: MotionPlan | null): number {
+  return plan ? Math.max(0, ...plan.flights.map((f) => f.delay + f.duration)) : 0;
+}
+
+// The same moves played backwards, for stepping back through the log: every
+// card flies from where it ended up to where it came from, last move first.
+// No badges: they describe what happened, which is being undone.
+export function reversePlan(plan: MotionPlan | null): MotionPlan | null {
+  if (!plan) return null;
+  const end = planLength(plan);
+  const flights = plan.flights.map((f): Flight => {
+    const delay = end - f.delay - f.duration;
+    return f.kind === "peek"
+      ? { ...f, delay }
+      : { ...f, from: f.to, to: f.from, fromCard: f.toCard, toCard: f.fromCard, delay };
+  });
+  return flights.length ? { flights, badges: [] } : null;
+}
 
 export const hand = (seat: number, i: number): Slot => `s${seat}-h${i}`;
 export const discard = (seat: number, i: number): Slot => `s${seat}-d${i}`;

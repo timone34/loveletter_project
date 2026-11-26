@@ -201,3 +201,39 @@ def test_speed_can_change_mid_game():
         ws.send_json({"type": "speed", "speed": "warp"})  # ignored
         while ws.receive_json()["type"] != "game_end":
             pass
+
+
+def test_back_returns_to_picking_a_card():
+    """'Back' on a target or guess prompt asks for a card again; on a card prompt it does nothing."""
+    rng = random.Random(7)
+    backed = {"target": 0, "guess": 0}
+    with TestClient(server.app).websocket_connect("/ws/play") as ws:
+        ws.receive_json()  # status
+        bots = [{"name": n, "bot": "RandomChoice"} for n in ("Alice", "Bob", "Charlie")]
+        ws.send_json({"type": "new_game", "config": {"opponents": bots, "targetRoundWins": 5}})
+        last, last_was_back = None, False
+        while True:
+            msg = ws.receive_json()
+            if msg["type"] == "error":
+                pytest.fail(msg["message"])
+            if msg["type"] == "game_end":
+                break
+            if msg["type"] != "prompt":
+                continue
+            p = msg["prompt"]
+            if last in ("target", "guess") and last_was_back:
+                assert p["kind"] == "card"  # straight back to the hand
+            last_was_back = False
+            if p["kind"] == "card":
+                assert not p.get("cancellable")
+                ws.send_json({"type": "cancel"})  # ignored
+            elif backed[p["kind"]] < 3:
+                assert p["cancellable"]
+                backed[p["kind"]] += 1
+                ws.send_json({"type": "cancel"})
+                last, last_was_back = p["kind"], True
+                continue
+            legal = [i for i in range(len(p["options"])) if p["kind"] != "card" or p["playable"][i]]
+            ws.send_json({"type": "choice", "index": rng.choice(legal)})
+            last = p["kind"]
+    assert backed["target"] == 3 and backed["guess"] >= 1

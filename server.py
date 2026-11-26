@@ -12,7 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
 from bots import available_bots
-from engine import Card, Game, Observer, Strategy, TurnHistory, GUESSABLE_TYPES
+from engine import Card, Game, Guard, Observer, Strategy, TurnHistory, GUESSABLE_TYPES
 from engine.view import redact_turn
 from lln.writer import generate_turn_line
 from runs import History, RunConfig
@@ -160,6 +160,9 @@ def snapshot(turn: TurnHistory) -> TurnHistory:
 
 # --- The browser's seat --- #
 
+CANCEL = -1  # the answer to a cancellable prompt when "Back" is clicked
+
+
 class GameAborted(Exception):
     """Raised inside the game thread to unwind a game nobody is watching anymore."""
 
@@ -171,26 +174,49 @@ class Web_Strategy(Strategy):
         self.id = "WebPlayer"
         self.name = "Player Input"
         self.session = session
+        # Decided in choose_card, handed to the engine when it asks. Until the
+        # engine has the card, "Back" can still go back to picking a card.
+        self.target_seat: int | None = None
+        self.guess: Card | None = None
 
     def choose_card(self, player, playable):
-        # answer = index into the hand, so two Guards stay distinguishable
-        allowed = [any(card is p for p in playable) for card in player.hand]
-        i = self.session.ask(
-            "card",
-            [card_id(c) for c in player.hand],
-            playable=allowed,
-            forced=len(playable) < len(player.hand),  # Countess rule
-        )
-        return player.hand[i]
+        rnd = self.session.game.current_round
+        assert rnd is not None
+        while True:
+            # answer = index into the hand, so two Guards stay distinguishable
+            allowed = [any(card is p for p in playable) for card in player.hand]
+            i = self.session.ask(
+                "card",
+                [card_id(c) for c in player.hand],
+                playable=allowed,
+                forced=len(playable) < len(player.hand),  # Countess rule
+            )
+            card = player.hand[i]
+            self.target_seat, self.guess = None, None
+            if not card.targeted:
+                return card
+
+            # the same targets the engine will offer (Card.resolve)
+            targets = rnd.get_valid_targets(player, allow_self=card.self_target)
+            t = self.session.ask("target", [p.seat for p in targets], card=card_id(card), cancellable=True)
+            if t == CANCEL:
+                continue
+            self.target_seat = targets[t].seat
+
+            if isinstance(card, Guard):
+                options = [card_type() for card_type in GUESSABLE_TYPES]
+                g = self.session.ask("guess", [card_id(c) for c in options], target=self.target_seat, cancellable=True)
+                if g == CANCEL:
+                    continue
+                self.guess = options[g]
+            return card
 
     def choose_target(self, player, card, targets):
-        i = self.session.ask("target", [t.seat for t in targets], card=card_id(card))
-        return targets[i]
+        return next(t for t in targets if t.seat == self.target_seat)
 
     def guard_guess(self, player, target):
-        options = [card_type() for card_type in GUESSABLE_TYPES]
-        i = self.session.ask("guess", [card_id(c) for c in options], target=target.seat)
-        return options[i]
+        assert self.guess is not None
+        return self.guess
 
 class TableObserver(Observer):
     """Sends every game event to the session, with a full snapshot of the table.
@@ -418,6 +444,8 @@ class Connection:
         elif kind == "speed":  # changed on the table; applies from the next message on
             if msg.get("speed") in SPEEDS and self.session is not None:
                 self.session.config.speed = msg["speed"]
+        elif kind == "cancel":
+            self.cancel()
         elif kind == "choice":
             self.answer(msg.get("index"))
 
@@ -432,6 +460,15 @@ class Connection:
             return
         self.prompt = None  # one answer per prompt, so double clicks do nothing
         session.answers.put(index)
+
+    def cancel(self) -> None:
+        """'Back' on a target or guess prompt: pick a card again."""
+        session = self.session
+        prompt = self.prompt["prompt"] if self.prompt else None
+        if prompt is None or session is None or not prompt.get("cancellable"):
+            return
+        self.prompt = None
+        session.answers.put(CANCEL)
 
     def start_game(self, config: TableConfig) -> None:
         self.stop_game()

@@ -67,8 +67,8 @@ export type GameEvent =
 
 export type Prompt =
     | { kind: "card"; options: GameCardId[]; playable: boolean[]; forced: boolean }
-    | { kind: "target"; options: number[]; card: GameCardId }
-    | { kind: "guess"; options: GameCardId[]; target: number };
+    | { kind: "target"; options: number[]; card: GameCardId; cancellable?: boolean }
+    | { kind: "guess"; options: GameCardId[]; target: number; cancellable?: boolean }; // cancellable: "Back" picks a card again
 
 export type ServerMessage =
     | (GameEvent & { table: TableView })
