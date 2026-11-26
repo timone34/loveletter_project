@@ -68,9 +68,8 @@ export default function Play() {
     });
   }, []);
 
-  const page = useRef<HTMLDivElement>(null);
   const felt = useRef<HTMLDivElement>(null);
-  const fullscreen = useFullscreen(page);
+  const fullscreen = useFullscreen();
 
   // ----- Seats ----- //
   // The bottom seat is yours; when watching (no seat of yours) it's seat 1.
@@ -122,8 +121,8 @@ export default function Play() {
   const caption = view !== null ? feed[view].caption : game.caption;
 
   return (
-    <div className={fullscreen.active ? "page page--fullscreen" : "page"} ref={page}>
-      {!fullscreen.active && <Header />}
+    <div className="page">
+      <Header />
 
       <main className={cheatSheet ? "play play--cheat" : "play"}>
         {cheatSheet && <CheatSheet table={table} onClose={toggleCheatSheet} />}
@@ -218,7 +217,7 @@ export default function Play() {
       {/* outside the felt: its "earlier in the game" filter would shift fixed-position ghosts */}
       <FlightLayer step={browse.motion} root={felt} />
 
-      {!fullscreen.active && <Footer />}
+      <Footer />
     </div>
   );
 }

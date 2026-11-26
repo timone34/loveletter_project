@@ -30,11 +30,13 @@ export function DeckPile({ count, burn }: Props) {
           />
         ))}
       </div>
-      <p className="deck-pile__count">
-        <strong>{count} cards left</strong>
-      </p>
-      {/* absolutely positioned, so showing it never moves the deck or the header */}
-      {burn && <p className="deck-pile__burn">Burned · {CARD_BY_ID[burn].name}</p>}
+      <div className="deck-pile__labels">
+        <p className="deck-pile__count">
+          <strong>{count} cards left</strong>
+        </p>
+        {/* to the left of the count, absolutely positioned: showing it never moves anything */}
+        {burn && <p className="deck-pile__burn">Burned · {CARD_BY_ID[burn].name}</p>}
+      </div>
     </div>
   );
 }
