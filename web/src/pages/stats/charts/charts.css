@@ -382,21 +382,23 @@
 
 /* ----- RateBars: a row's own reference tick (Guard accuracy: best from card counting) ----- */
 
-/* a dotted vertical line, a bit taller than the bar, drawn over it */
+/* a short solid tick, just taller than the bar, so neighbouring rows' ticks stay apart */
 .rate-bars__mark {
   position: absolute;
   z-index: 3;
-  top: -5px;
-  bottom: -5px;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
   margin-left: -1px;
-  border-left: 2px dotted var(--text);
+  background: var(--text);
 }
 
 .rate-bars__mark-key {
   display: inline-block;
+  width: 2px;
   height: 0.8rem;
   margin-right: 0.45rem;
-  border-left: 2px dotted var(--text);
+  background: var(--text);
 }
 
 /* ----- Card choices: an 8x8 grid ----- */
