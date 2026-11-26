@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from bots import available_bots
 from engine import Card, Game, Observer, Strategy, TurnHistory, GUESSABLE_TYPES
 from engine.view import redact_turn
+from lln.writer import generate_turn_line
 from runs import History, RunConfig
 
 app = FastAPI()
@@ -247,11 +248,13 @@ class TableObserver(Observer):
         self._emit("turn_start", turn=snapshot(turn))
 
     def on_turn_end(self, game, rnd, turn):
-        self._emit("turn_end", turn=snapshot(turn))
+        # the LLN of a turn only holds public facts (card, target, guess, outcome),
+        # so it's computed from the full turn and needs no redaction
+        self._emit("turn_end", turn=snapshot(turn), lln=generate_turn_line(turn))
 
     def on_turn_skipped(self, game, rnd, turn):
         self.active = turn.seat
-        self._emit("turn_skipped", turn=snapshot(turn))
+        self._emit("turn_skipped", turn=snapshot(turn), lln=generate_turn_line(turn))
 
     def on_showdown(self, game, rnd, showdown):
         self.active, self.showdown = None, True
@@ -412,6 +415,9 @@ class Connection:
             await self.send_status()
             if self.last_table is not None:
                 await self.send({"type": "table", "table": self.last_table})
+        elif kind == "speed":  # changed on the table; applies from the next message on
+            if msg.get("speed") in SPEEDS and self.session is not None:
+                self.session.config.speed = msg["speed"]
         elif kind == "choice":
             self.answer(msg.get("index"))
 

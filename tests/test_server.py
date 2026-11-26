@@ -180,3 +180,24 @@ def test_watch_needs_four_bots():
         ws.send_json({"type": "new_game", "config": {**WATCH, "players": WATCH["players"][:3]}})
         msg = ws.receive_json()
         assert msg["type"] == "error" and "four bots" in msg["message"]
+
+
+def test_turns_carry_their_lln_line():
+    """turn_end and turn_skipped carry the turn's long-form LLN line, e.g. '3.2. g1:H'."""
+    msgs = play_game(random.Random(4))
+    turns = [m for m in msgs if m["type"] in ("turn_end", "turn_skipped")]
+    assert turns
+    for m in turns:
+        prefix = f"{m['cycle']}.{m['seat'] + 1}. "
+        assert m["lln"].startswith(prefix)
+        assert (m["lln"] == prefix + "-") == (m["type"] == "turn_skipped")
+
+
+def test_speed_can_change_mid_game():
+    with TestClient(server.app).websocket_connect("/ws/play") as ws:
+        ws.receive_json()  # status
+        ws.send_json({"type": "new_game", "config": {"mode": "watch", "players": [{"bot": "RandomChoice"}] * 4}})
+        ws.send_json({"type": "speed", "speed": "fast"})
+        ws.send_json({"type": "speed", "speed": "warp"})  # ignored
+        while ws.receive_json()["type"] != "game_end":
+            pass
