@@ -11,7 +11,7 @@ from bots.bot_knowledge import PriestKnowledgeV2
 from bots.knowledge import ANY, Knowledge
 from engine import TurnHistory
 from engine.cards import Baron, Card, Countess, Guard, Handmaid, King, Priest, Prince, Princess
-from engine.history import Outcome
+from engine.history import GameHistory, Outcome, RoundHistory
 from engine.observer import Observer
 from stats import Tally, iter_games
 from stats.replay import walk
@@ -107,10 +107,10 @@ def test_skipped_turns_are_ignored():
 class Truth(Observer):
     """Hands the live round's RoundHistory to the checking bot at every turn start."""
     def __init__(self) -> None:
-        self.round = None
+        self.round: RoundHistory | None = None
 
-    def on_turn_start(self, game_history, round_history, turn_history) -> None:
-        self.round = round_history
+    def on_turn_start(self, game: GameHistory, rnd: RoundHistory, turn: TurnHistory) -> None:
+        self.round = rnd
 
 
 class CheckedKnowledge(PriestKnowledgeV2):
