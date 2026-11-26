@@ -266,7 +266,7 @@ These stats are important for observing which bot performs best.
 ### 2. Play stats
 What did the bot actually do?
 These stats are important for telling us what to improve.
-- Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted), with a tick for the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards; not a ceiling: Priest looks or King swaps can beat it)
+- Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted), with a tick for the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards)
 - Baron results: won, tied, protected, lost, and the share won by the card kept beside the Baron
 - Priest follow-up: after a Priest look, how often the bot used it on its next turn when it could (a Guard naming the seen card, or a winning Baron). Looks the seen player has since blurred (played that kind of card, or was hit by a Prince or King) are dropped
 - Card choices: for every pair of cards held, how often each was played, and how often the round was won after that choice

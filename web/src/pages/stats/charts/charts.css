@@ -380,24 +380,23 @@
   outline: none;
 }
 
-/* ----- RateBars: a row's own reference tick (Guard accuracy: best from counting) ----- */
+/* ----- RateBars: a row's own reference tick (Guard accuracy: best from card counting) ----- */
 
+/* a dotted vertical line, a bit taller than the bar, drawn over it */
 .rate-bars__mark {
   position: absolute;
   z-index: 3;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
+  top: -5px;
+  bottom: -5px;
   margin-left: -1px;
-  background: var(--text);
+  border-left: 2px dotted var(--text);
 }
 
 .rate-bars__mark-key {
   display: inline-block;
-  width: 2px;
   height: 0.8rem;
   margin-right: 0.45rem;
-  background: var(--text);
+  border-left: 2px dotted var(--text);
 }
 
 /* ----- Card choices: an 8x8 grid ----- */

@@ -207,7 +207,7 @@ export default function Results() {
                 <div className="stats__column">
                   <Card
                     title="Guard accuracy"
-                    note="Correct guesses out of guesses checked. Guards on a protected player don't count. The tick is the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards); Priest looks or King swaps can beat it."
+                    note="Correct guesses out of guesses checked. Guards on a protected player don't count. The tick is the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards)."
                   >
                     <RateBars
                       markLabel="Best from card counting"
