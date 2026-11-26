@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Header, Footer } from "../../components/Header";
+import { CARD_BY_ID } from "../../components/cardData";
 
 import { PlayerSeat } from "./components/PlayerSeat";
 import { DeckPile } from "./components/DeckPile";
@@ -106,8 +107,12 @@ export default function Play() {
       else if (key === "c") toggleCheatSheet();
       else if (key === "r" && status.connected) game.toggleReveal();
       else if (digit >= 1 && digit <= 9 && livePrompt) {
-        // 1, 2, ...: the cards in your hand, or the options in the panel
-        const i = digit - 1;
+        // 1, 2, ...: the cards in your hand or the targets in the panel;
+        // a Guard guess by the card's value (2 = Priest ... 8 = Princess)
+        const i = livePrompt.kind === "guess"
+          ? livePrompt.options.findIndex((id) => CARD_BY_ID[id].value === digit)
+          : digit - 1;
+        if (i < 0) return;
         if (i >= livePrompt.options.length) return;
         if (livePrompt.kind === "card" && !livePrompt.playable[i]) return;
         game.choose(i);

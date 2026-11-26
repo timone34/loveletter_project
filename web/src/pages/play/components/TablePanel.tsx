@@ -144,9 +144,9 @@ function PromptPanel({ prompt, table, onChoose, onCancel }: PromptProps) {
           <div className="panel__options">
             {prompt.options.map((id, i) => (
               <button key={id} type="button" className="panel__option" onClick={() => onChoose(i)}>
-                <kbd className="panel__key">{i + 1}</kbd>
+                {/* the key is the card's value: 2 = Priest ... 8 = Princess */}
+                <kbd className="panel__key">{CARD_BY_ID[id].value}</kbd>
                 {CARD_BY_ID[id].name}
-                <small>{CARD_BY_ID[id].value}</small>
               </button>
             ))}
           </div>
