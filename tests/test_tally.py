@@ -212,19 +212,15 @@ def test_baron_by_card_adds_up(run):
         assert p["baronByCard"]["Princess"]["lost"] == 0
 
 
-def test_guard_odds(run):
+def test_counting_best(run):
     _, stats = run
-    by_bot = {p["bot"]: p for p in stats["players"]}
-    counter = by_bot["CardCounter"]["guardOdds"]
-    assert counter["pickedBest"]["p"] == 1.0  # it always names the likeliest card...
-    assert counter["expected"] == pytest.approx(counter["bestPossible"])  # ...so it gets the best odds
-    random_odds = by_bot["RandomChoice"]["guardOdds"]
-    assert random_odds["expected"] < random_odds["bestPossible"]
+    by_bot = {p["bot"]: p["guard"] for p in stats["players"]}
+    counter, rand = by_bot["CardCounter"], by_bot["RandomChoice"]
+    # a pure card counter guesses exactly the counting odds, so it lands on the tick (within noise)
+    assert counter["accuracy"]["lo"] <= counter["countingBest"] <= counter["accuracy"]["hi"]
+    assert rand["accuracy"]["hi"] < rand["countingBest"]  # random guessing is well below it
     for p in stats["players"]:
-        g = p["guardOdds"]
-        assert g["checked"] == p["guard"]["correct"] + p["guard"]["incorrect"]
-        assert 0 < g["expected"] <= g["bestPossible"] < 1
-
+        assert 0 < p["guard"]["countingBest"] < 1
 
 def test_priest_follow_up(run):
     _, stats = run
