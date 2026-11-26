@@ -2,16 +2,15 @@ import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "reac
 import { motion, useReducedMotion } from "motion/react";
 import { Card } from "../../../components/Card";
 import type { FeedEntry } from "../useGame";
-import { planMotion, reversePlan, type Badge, type Flight, type MotionPlan } from "./plan";
+import { planMotion, type Badge, type Flight, type MotionPlan } from "./plan";
 import "./FlightLayer.css";
 
 // One event to animate: the newest one while live, or one step through the
-// log while browsing (reverse = stepping back, so the moves play backwards).
+// log while browsing.
 export type MotionStep = {
   key: number; // a new key = a new animation
   entry?: FeedEntry; // the event to animate; its `before` must be the table that was on screen
   plan?: MotionPlan | null; // or a ready-made plan (e.g. turning cards over for "reveal hands")
-  reverse: boolean;
   beat: number; // seconds per beat
 };
 
@@ -41,8 +40,7 @@ export function FlightLayer({ step, root, dim = false }: Props) {
   const reduced = useReducedMotion();
   const plan = useMemo(() => {
     if (!step || reduced) return null;
-    const forward = step.plan !== undefined ? step.plan : step.entry ? planMotion(step.entry) : null;
-    return step.reverse ? reversePlan(forward) : forward;
+    return step.plan !== undefined ? step.plan : step.entry ? planMotion(step.entry) : null;
   }, [step, reduced]);
 
   const [active, setActive] = useState<{ seq: number; ghosts: Ghost[]; pops: Pop[] }>({ seq: -1, ghosts: [], pops: [] });

@@ -54,21 +54,6 @@ export function planLength(plan: MotionPlan | null): number {
   return plan ? Math.max(0, ...plan.flights.map((f) => f.delay + f.duration)) : 0;
 }
 
-// The same moves played backwards, for stepping back through the log: every
-// card flies from where it ended up to where it came from, last move first.
-// No badges: they describe what happened, which is being undone.
-export function reversePlan(plan: MotionPlan | null): MotionPlan | null {
-  if (!plan) return null;
-  const end = planLength(plan);
-  const flights = plan.flights.map((f): Flight => {
-    const delay = end - f.delay - f.duration;
-    return f.kind === "peek"
-      ? { ...f, delay }
-      : { ...f, from: f.to, to: f.from, fromCard: f.toCard, toCard: f.fromCard, delay };
-  });
-  return flights.length ? { flights, badges: [] } : null;
-}
-
 // "Reveal hands" toggled: every card that changes between face down and face
 // up turns over where it lies, one after another.
 export function planFlip(before: TableView, after: TableView): MotionPlan | null {
