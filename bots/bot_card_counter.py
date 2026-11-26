@@ -4,9 +4,11 @@ import functools
 import itertools
 import random
 from collections import Counter
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from bots import NoPrincess
+from bots.knowledge import Knowledge
 from engine.cards import *
 from engine.deck import Deck
 from engine.strategy import Strategy
@@ -220,3 +222,103 @@ def _prefill_cache() -> None:
         for opponents in (1, 2, 3):
             _typed_odds(counts, (_ALL_TYPES,) * opponents)
     _prefilled = True
+
+@dataclass
+class Plan:
+    """A whole turn, decided at once in choose_card."""
+    card: Card
+    target: int | None = None  # seat, for targeted cards
+    guess: type[Card] | None = None  # for a Guard
+
+
+class CardCounterV3(FastCardCounterV2):
+    """FastCardCounterV2's decisions, restructured: the turn is planned in one go.
+
+    choose_card works out what the bot knows (`knowledge`, see bots/knowledge.py)
+    and the odds on every opponent's hand, then `plan_turn` picks the card, the
+    target and the guess together. The engine's later questions (target, guess)
+    just read the plan. Subclasses override plan_turn, and switch on more kinds of
+    knowledge with the class flags.
+
+    This step only uses the face-up cards, like V2, so it should win exactly as
+    often as FastCardCounterV2 (not the same games: the random calls come in a
+    different order).
+    """
+    private_knowledge = False  # my Priest looks, my King swaps
+    missed_guesses = False  # wrong Guard guesses rule a type out
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.id = "CardCounterV3"
+        self.name = "Card Counter Bot v3"
+        self.description = "Card Counter Bot v2, but it plans the whole turn at once from what it knows."
+        self.plan: Plan | None = None
+        self._knowledge: tuple[PlayerView, Knowledge] | None = None
+
+    # ----- what I know -----
+
+    def knowledge(self, view: PlayerView) -> Knowledge:
+        """Knowledge for this view, worked out once per turn."""
+        if self._knowledge is None or self._knowledge[0] is not view:
+            k = Knowledge.from_view(view, private=self.private_knowledge, missed_guesses=self.missed_guesses)
+            self._knowledge = (view, k)
+        return self._knowledge[1]
+
+    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
+        return {seat: set(types) for seat, types in self.knowledge(view).possible.items()}
+
+    # ----- the plan -----
+
+    def plan_turn(self, view: PlayerView, playable: list[Card]) -> Plan:
+        """V2's choices: a random card (never the Princess), then plan_for."""
+        card = random.choice([c for c in playable if not isinstance(c, Princess)] or playable)
+        return self.plan_for(view, card)
+
+    def plan_for(self, view: PlayerView, card: Card) -> Plan:
+        """V2's target and guess for a chosen card: a random target (not myself with
+        a Prince while I keep the Princess), and the likeliest card for a Guard."""
+        if not card.targeted:
+            return Plan(card)
+        others = opponents(view)
+        if isinstance(card, Prince):
+            keeps_princess = isinstance(kept(view, card), Princess)
+            target = random.choice(others or [view.seat]) if keeps_princess else random.choice([*others, view.seat])
+        else:
+            target = random.choice(others)
+        return Plan(card, target, self.best_guess(view, target) if isinstance(card, Guard) else None)
+
+    def best_guess(self, view: PlayerView, seat: int) -> type[Card]:
+        """The likeliest guessable card in `seat`'s hand (a random one of the ties)."""
+        odds = {t: p for t, p in self.hand_odds(view)[seat].items() if t is not Guard}
+        if not odds:
+            return random.choice(GUESSABLE_TYPES)
+        best = max(odds.values())
+        return random.choice([t for t, p in odds.items() if p == best])
+
+    # ----- the engine's questions -----
+
+    def choose_card(self, player: Player, playable: list[Card]) -> Card:
+        assert player.view is not None
+        self.plan = self.plan_turn(player.view, playable)
+        return self.plan.card
+
+    def choose_target(self, player: Player, card: Card, targets: list[Player]) -> Player:
+        assert self.plan is not None and self.plan.card is card
+        for target in targets:
+            if target.seat == self.plan.target:
+                return target
+        raise ValueError(f"{self.name} planned an illegal target: seat {self.plan.target}")
+
+    def guard_guess(self, player: Player, target: Player) -> Card:
+        assert self.plan is not None and self.plan.guess is not None
+        return self.plan.guess()
+
+
+def opponents(view: PlayerView) -> list[int]:
+    """Seats I could target, other than myself: everyone still in (protected ones too)."""
+    return [p.seat for p in view.players if p.seat != view.seat and not p.rejected]
+
+
+def kept(view: PlayerView, card: Card) -> Card:
+    """The card left in my hand if I play `card`."""
+    return next(c for c in view.hand if c is not card)

@@ -5,7 +5,7 @@ from engine import Strategy
 
 from .bot_random import RandomChoice
 from .bot_no_princess import NoPrincess, NoPrincessDumb
-from .bot_card_counter import CardCounter, CardCounterV2, FastCardCounterV2
+from .bot_card_counter import CardCounter, CardCounterV2, FastCardCounterV2, CardCounterV3
 from .bot_terminal import TerminalPlayer
 
 # The order here is the order bots are listed in (e.g. the webapp's picker).
@@ -16,6 +16,7 @@ __all__ = [
   "CardCounter",
   "CardCounterV2",
   "FastCardCounterV2",
+  "CardCounterV3",
   "TerminalPlayer",
 ]
 

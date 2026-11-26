@@ -39,7 +39,9 @@ Secondary goal: a **YouTube video** on Love Letter and the bot-building journey,
 
 ## Bots so far (the "ladder")
 
-Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses and Baron comparisons).
+Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses) → CardCounterV2 / FastCardCounterV2 (joint odds over all opponents) → CardCounterV3 (same choices, but plans the whole turn in `choose_card` from `bots/knowledge.py`; no change in win rate, as intended) → PriestKnowledge (Priest looks, for Guard guesses only) → PriestKnowledgeV2 (acts on its knowledge: sure kills first).
+
+New bots subclass CardCounterV3 and override `plan_turn`; kinds of knowledge are switched on with its class flags. `Knowledge` (`bots/knowledge.py`) is built from primitives (learn, exclude, forget, swap, out); `tests/test_knowledge.py` checks in real games that it never rules out a card someone really holds.
 
 Planned: an evaluation-function bot that scores game states and looks ahead, chess-bot style.
 

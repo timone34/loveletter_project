@@ -111,7 +111,11 @@ Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln
 | Random Bot | `RandomChoice` | Picks cards, targets and guesses at random. |
 | No Princess Bot (dumb) | `NoPrincessDumb` | Never plays the Princess; everything else random. |
 | No Princess Bot | `NoPrincess` | Never plays or discards the Princess voluntarily; everything else random. |
-| Card Counter Bot | `CardCounter` | Keeps track of which cards are still unseen and uses that to make its choices. |
+| Card Counter Bot | `CardCounter` | Keeps track of which cards are still unseen and guesses the likeliest one with a Guard. |
+| Card Counter Bot v2 | `CardCounterV2`, `FastCardCounterV2` | The same odds, worked out jointly over all opponents (Fast: the same, cached). |
+| Card Counter Bot v3 | `CardCounterV3` | V2's choices, but the whole turn (card, target, guess) is planned at once from what it knows (`bots/knowledge.py`). The base for the bots below. |
+| Priest Knowledge Bot | `PriestKnowledge` | Uses its Priest looks for its Guard guesses only. |
+| Priest Knowledge Bot v2 | `PriestKnowledgeV2` | Knows its Priest looks and King swaps and acts on them: a sure kill with a Guard or Baron first. |
 
 ### Writing your own bot
 
