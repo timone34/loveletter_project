@@ -24,7 +24,8 @@ const indexIn = (pos: Pos, f: FeedEntry[]) => (pos && pos.game === gameOf(f) && 
 export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | null) {
   const [cursor, setCursor] = useState<Pos>(null); // the event on the table; null = live
   const [target, setTarget] = useState<Pos>(null); // where it's headed (highlighted in the log)
-  const [step, setStep] = useState<MotionStep | null>(null); // the history animation playing
+  const [step, setStepMotion] = useState<MotionStep | null>(null); // the history animation playing
+  const [stepFlip, setStepFlip] = useState(0); // the newest reveal toggle when that step was set
   const [resumedAt, setResumedAt] = useState(0); // back to live at this seq: animate only newer events
 
   // the timer chain reads these, so it always sees the newest values
@@ -38,6 +39,12 @@ export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | nul
     feedRef.current = feed;
     flipRef.current = flip;
   }, [feed, flip]);
+
+  // a reveal toggled after this shows as cards turning over (see `motion` below)
+  const setStep = useCallback((m: MotionStep | null) => {
+    setStepMotion(m);
+    setStepFlip(flipRef.current?.seq ?? 0);
+  }, []);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const place = useCallback((index: number | null) => {
@@ -52,7 +59,7 @@ export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | nul
     place(to);
     // back to live: don't replay what happened meanwhile (an event, or a reveal toggled while browsing)
     if (to === null) setResumedAt(Math.max(feedRef.current[feedRef.current.length - 1]?.seq ?? 0, flipRef.current?.seq ?? 0));
-  }, [place]);
+  }, [place, setStep]);
 
   // the timer calls the newest walk through this ref (a callback can't name itself)
   const walkRef = useRef<(from: number, to: number | null, game: number) => void>(() => {});
@@ -72,7 +79,7 @@ export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | nul
     place(next);
     const seconds = Math.max(0.12, planLength(planMotion(entry)) * BROWSE_BEAT);
     timer.current = window.setTimeout(() => walkRef.current(next, to, game), seconds * 1000);
-  }, [place, settle]);
+  }, [place, settle, setStep]);
   useEffect(() => {
     walkRef.current = walk;
   }, [walk]);
@@ -115,7 +122,13 @@ export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | nul
   // live: animate each new event as it arrives (not the one we came back to),
   // or the cards turning over when "reveal hands" was the newest thing
   let motion: MotionStep | null = step;
-  if (live) {
+  if (!live) {
+    // reveal toggled while looking at an earlier turn: that table's cards turn over
+    const was = shown !== null && flip ? flip.beforeFeed[shown] : undefined;
+    if (flip && flip.seq > stepFlip && shown !== null && was && was.seq === feed[shown].seq) {
+      motion = { key: flip.seq, plan: planFlip(was.table, feed[shown].table), reverse: false, beat: BEAT[speed] };
+    }
+  } else {
     const newest = Math.max(latest?.seq ?? 0, flip?.seq ?? 0);
     if (newest <= resumedAt) motion = null;
     else if (flip && flip.seq === newest) motion = { key: flip.seq, plan: planFlip(flip.before, flip.after), reverse: false, beat: BEAT[speed] };

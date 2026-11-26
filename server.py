@@ -414,6 +414,7 @@ class Connection:
 
         self.prompt: dict | None = None  # the prompt the browser is answering
         self.last_table: dict | None = None  # unredacted, for resending on reveal
+        self.events: list[dict] = []  # this game's events, unredacted, resent on reveal for the log
 
     async def serve(self) -> None:
         try:
@@ -445,7 +446,8 @@ class Connection:
             self.reveal = bool(msg.get("on"))
             await self.send_status()
             if self.last_table is not None:
-                await self.send({"type": "table", "table": self.last_table})
+                # the table now, and every event so far (the log's snapshots), seen the new way
+                await self.send({"type": "table", "table": self.last_table, "history": list(self.events)})
         elif kind == "speed":  # changed on the table; applies from the next message on
             if msg.get("speed") in SPEEDS and self.session is not None:
                 self.session.config.speed = msg["speed"]
@@ -480,6 +482,7 @@ class Connection:
         if config.mode == "watch":
             self.reveal = config.reveal  # spectators choose this on the setup page
         self.session = Session(self.loop, config)
+        self.events = []
         self.running = True
         self.unpaused.set()
         self.pump_task = asyncio.create_task(self.pump(self.session))
@@ -505,6 +508,8 @@ class Connection:
                 self.last_table = msg.get("table", self.last_table)
                 if msg["type"] == "prompt":
                     self.prompt = msg
+                elif msg["type"] != "error":
+                    self.events.append(msg)
                 await self.send(msg)
 
                 if msg["type"] in ("game_end", "error"):
@@ -521,6 +526,8 @@ class Connection:
             pass  # the socket closed mid-send; serve() cleans up
 
     async def send(self, msg: dict) -> None:
+        if "history" in msg:  # each event in it is redacted like a message of its own
+            msg = {**msg, "history": [wire(h if self.reveal else redact(h)) for h in msg["history"]]}
         if not self.reveal:
             msg = redact(msg)
         async with self.send_lock:

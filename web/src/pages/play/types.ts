@@ -74,6 +74,6 @@ export type Prompt =
 export type ServerMessage =
     | (GameEvent & { table: TableView })
     | { type: "prompt"; prompt: Prompt; table: TableView }
-    | { type: "table"; table: TableView }
+    | { type: "table"; table: TableView; history?: (GameEvent & { table: TableView })[] } // history: every event so far, resent on reveal
     | { type: "status"; running: boolean; paused: boolean; reveal: boolean }
     | { type: "error"; message: string };

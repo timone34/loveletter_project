@@ -27,8 +27,26 @@ export type FeedEntry = {
 // turn_start) only move the table along.
 export const isLogged = (e: FeedEntry) => e.event.type !== "game_start" && e.event.type !== "turn_start";
 
-// "Reveal hands" was toggled: the table before and after, to turn the cards over.
-export type FlipEvent = { seq: number; before: TableView; after: TableView };
+// "Reveal hands" was toggled: the tables before and after (the live one, and
+// the log's snapshots in `beforeFeed`, by index), to turn the cards over.
+export type FlipEvent = { seq: number; before: TableView; after: TableView; beforeFeed: FeedEntry[] };
+
+type EventMessage = GameEvent & { table: TableView };
+
+function toEntry(msg: EventMessage, seq: number, before: TableView | null): FeedEntry {
+  const { table, ...event } = msg;
+  return { seq, event, table, before: event.type === "game_start" ? null : before, caption: describe(event, table) };
+}
+
+// The log again, with the server's resent events (same game, same order, now
+// seen with "reveal hands" on or off). Events that arrive after the resend
+// was made are kept as they are.
+function reseen(feed: FeedEntry[], history: EventMessage[]): FeedEntry[] {
+  if (!feed.length || history[0]?.type !== feed[0].event.type) return feed;
+  return feed.map((entry, i) =>
+    i < history.length ? toEntry(history[i], entry.seq, i > 0 ? history[i - 1].table : null) : entry,
+  );
+}
 
 export function useGame() {
   const [table, setTable] = useState<TableView | null>(null);
@@ -44,6 +62,11 @@ export function useGame() {
   const socket = useRef<WebSocket | null>(null);
   const lastTable = useRef<TableView | null>(null); // the `before` of the next event
   const seq = useRef(0);
+  const feedRef = useRef<FeedEntry[]>([]); // the feed as of the last message (the handler reads it)
+  const putFeed = useCallback((next: FeedEntry[]) => {
+    feedRef.current = next;
+    setFeed(next);
+  }, []);
 
   useEffect(() => {
     const scheme = window.location.protocol === "https:" ? "wss" : "ws";
@@ -70,11 +93,14 @@ export function useGame() {
           setError(msg.message);
           setPrompt(null);
           return;
-        case "table": // resent after toggling "reveal hands"
-          if (lastTable.current) setFlip({ seq: ++seq.current, before: lastTable.current, after: msg.table });
+        case "table": { // resent after toggling "reveal hands", with the log's events
+          const beforeFeed = feedRef.current;
+          if (msg.history) putFeed(reseen(beforeFeed, msg.history));
+          if (lastTable.current) setFlip({ seq: ++seq.current, before: lastTable.current, after: msg.table, beforeFeed });
           lastTable.current = msg.table;
           setTable(msg.table);
           return;
+        }
         case "prompt":
           lastTable.current = msg.table;
           setTable(msg.table);
@@ -83,17 +109,11 @@ export function useGame() {
       }
 
       // everything else is a game event
-      const { table: after, ...event } = msg;
-      const entry: FeedEntry = {
-        seq: ++seq.current,
-        event,
-        table: after,
-        before: event.type === "game_start" ? null : lastTable.current,
-        caption: describe(event, after),
-      };
-      lastTable.current = after;
-      setTable(after);
-      setFeed((f) => (event.type === "game_start" ? [entry] : [...f, entry]));
+      const entry = toEntry(msg, ++seq.current, lastTable.current);
+      const event = entry.event;
+      lastTable.current = entry.table;
+      setTable(entry.table);
+      putFeed(event.type === "game_start" ? [entry] : [...feedRef.current, entry]);
       if (event.type === "game_start") {
         setWinner(null);
         setError(null);
@@ -102,7 +122,7 @@ export function useGame() {
     };
 
     return () => ws.close();
-  }, [attempt]);
+  }, [attempt, putFeed]);
 
   const send = useCallback((msg: object) => {
     const ws = socket.current;
@@ -113,9 +133,9 @@ export function useGame() {
     setPrompt(null);
     setWinner(null);
     setError(null);
-    setFeed([]);
+    putFeed([]);
     send({ type: "new_game", config });
-  }, [send]);
+  }, [send, putFeed]);
 
   const togglePause = useCallback(
     () => send({ type: status.paused ? "resume" : "pause" }),
