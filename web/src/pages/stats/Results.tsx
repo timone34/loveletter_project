@@ -218,14 +218,14 @@ export default function Results() {
 
                   <Card
                     title="Guard guesses vs the odds"
-                    note="Odds from what the guesser could see: the deck minus their own cards and all discards. Right: how often it named the likeliest card."
+                    note="Odds from the face-up cards alone: the deck minus the guesser's own cards and all discards. The tick is the best a pure card counter can do; Priest looks or King swaps can beat it. Right: how often it named the likeliest card."
                   >
                     <GuardOdds rows={rows} />
                   </Card>
 
                   <Card
                     title="Priest follow-up"
-                    note="Chances to use a Priest look on the next turn (a Guard, or a Baron that wins, against a player still holding the seen card), and how often it was taken."
+                    note="Chances to use a Priest look on the next turn (a Guard, or a Baron that wins, against the seen player), and how often it was taken. Looks made unreliable since (the seen player played that kind of card, or was hit by a Prince or King) don't count."
                   >
                     <RateBars
                       rows={rows.map((r) => ({

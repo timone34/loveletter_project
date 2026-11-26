@@ -51,7 +51,7 @@ MIN_GAMES_FOR_SPEED = 20  # shorter runs are mostly start-up time: no use as an 
 
 # Bump when the saved stats change shape or meaning (a new or redefined stat in
 # stats/tally.py, a renamed field). 1 = the first version, which had no field.
-FORMAT = 4  # 4: performance (think time, game time, phases); 3: start card, guard odds, priest, baron by card, choices
+FORMAT = 5  # 5: priest follow-up only counts trustworthy looks, guard odds bestPossible -> countingBest; 4: performance (think time, game time, phases); 3: start card, guard odds, priest, baron by card, choices
 
 
 @functools.cache

@@ -217,13 +217,13 @@ def test_guard_odds(run):
     by_bot = {p["bot"]: p for p in stats["players"]}
     counter = by_bot["CardCounter"]["guardOdds"]
     assert counter["pickedBest"]["p"] == 1.0  # it always names the likeliest card...
-    assert counter["expected"] == pytest.approx(counter["bestPossible"])  # ...so it gets the best odds
+    assert counter["expected"] == pytest.approx(counter["countingBest"])  # ...so it gets the best odds
     random_odds = by_bot["RandomChoice"]["guardOdds"]
-    assert random_odds["expected"] < random_odds["bestPossible"]
+    assert random_odds["expected"] < random_odds["countingBest"]
     for p in stats["players"]:
         g = p["guardOdds"]
         assert g["checked"] == p["guard"]["correct"] + p["guard"]["incorrect"]
-        assert 0 < g["expected"] <= g["bestPossible"] < 1
+        assert 0 < g["expected"] <= g["countingBest"] < 1
 
 
 def test_priest_follow_up(run):

@@ -6,15 +6,17 @@ import { TipRow } from "./TipRow";
 // Guard guesses held against the odds the guesser could have known (see
 // stats/tally.py, "guard odds"). Per row, on one 0-max scale:
 //   bar   = expected accuracy: the average chance its guesses had (skill, no luck)
-//   tick  = best possible: always naming the likeliest card
+//   tick  = best from counting: always naming the likeliest card by the face-up
+//           cards alone. Not a ceiling: Priest looks or King swaps can beat it.
 //   dot   = actual accuracy (skill + luck)
-// The gap between bar and tick is what better guessing could still win.
+// For a pure card counter the bar sits on the tick; a dot well past the tick
+// means the bot knows more than the face-up cards.
 
 type Row = { label: string; color: string; line: Line };
 
 export function GuardOdds({ rows }: { rows: Row[] }) {
   const tip = useTooltip();
-  const values = rows.flatMap((r) => [r.line.guardOdds.bestPossible ?? 0, r.line.guard.accuracy?.hi ?? 0]);
+  const values = rows.flatMap((r) => [r.line.guardOdds.countingBest ?? 0, r.line.guard.accuracy?.hi ?? 0]);
   const max = Math.max(0.1, Math.ceil(Math.max(...values) * 10) / 10);
   const x = (v: number) => `${(v / max) * 100}%`;
   const ticks = Array.from({ length: Math.round(max / 0.1) + 1 }, (_, i) => i * 0.1);
@@ -23,7 +25,7 @@ export function GuardOdds({ rows }: { rows: Row[] }) {
     <div className="chart rate-bars">
       <div className="legend">
         <span className="legend__item"><span className="swatch" style={{ background: "var(--text-muted)" }} />Expected from its guesses</span>
-        <span className="legend__item"><span className="odds__tick-key" />Best possible</span>
+        <span className="legend__item"><span className="odds__tick-key" />Best from counting</span>
         <span className="legend__item"><span className="odds__dot-key" />Actual</span>
       </div>
 
@@ -34,7 +36,7 @@ export function GuardOdds({ rows }: { rows: Row[] }) {
           <>
             <div className="tip__title">{r.label} · {count(g.checked)} guesses checked</div>
             <TipRow color={r.color} value={pct(g.expected)} label="expected from its guesses" />
-            <TipRow value={pct(g.bestPossible)} label="best possible (likeliest card)" />
+            <TipRow value={pct(g.countingBest)} label="best from counting (likeliest by face-up cards)" />
             <TipRow value={pct(actual)} label="actual" />
             <div className="tip__note">Named the likeliest card {pct(g.pickedBest?.p)} of the time</div>
           </>
@@ -48,7 +50,7 @@ export function GuardOdds({ rows }: { rows: Row[] }) {
             <div className="rate-bars__track">
               {ticks.map((t) => <span key={t} className="rate-bars__grid" style={{ left: x(t) }} />)}
               {g.expected != null && <span className="rate-bars__bar" style={{ width: x(g.expected), background: r.color }} />}
-              {g.bestPossible != null && <span className="odds__tick" style={{ left: x(g.bestPossible) }} />}
+              {g.countingBest != null && <span className="odds__tick" style={{ left: x(g.countingBest) }} />}
               {actual != null && <span className="odds__dot" style={{ left: x(actual) }} />}
               <span
                 className="rate-bars__hit"

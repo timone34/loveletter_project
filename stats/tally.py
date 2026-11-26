@@ -40,14 +40,22 @@ starts it), whoever sat there.
                   cards and every face-up discard (what CardCounter counts).
                   Assuming the target's card is any of those unseen cards with
                   equal chance: `expected` is the average chance its guesses
-                  had, `bestPossible` the chance of always naming the likeliest
+                  had, `countingBest` the chance of always naming the likeliest
                   card, `pickedBest` how often it did. Expected is accuracy
-                  without the luck; beating bestPossible means it used private
-                  knowledge (a Priest look, a King swap).
+                  without the luck. countingBest is the best a pure card
+                  counter can do, not a ceiling: it ignores everything but the
+                  face-up cards (Priest looks, King swaps, missed Guard
+                  guesses), so a bot that uses those can beat it, and the
+                  equal-chance assumption is only exact when opponents keep
+                  cards at random.
   priest          after a Priest look, the player's next turn: a chance to use
                   it when they then hold a Guard (and the card seen isn't a
                   Guard) or a Baron with a higher card beside it, and the seen
-                  player is still in, unprotected and still holds that card.
+                  player is still in and unprotected. Only looks the player can
+                  still trust count: if the seen player has since played a card
+                  of the seen kind (maybe the seen card, maybe a duplicate), or
+                  been hit by a Prince or a King swap, the look is dropped even
+                  when they happen to hold the same kind again.
                   `taken` = they played it on that player (the Guard naming the
                   seen card), which then always knocks them out.
   baron by card   Baron outcomes split by the card kept beside it.
@@ -100,7 +108,7 @@ from time import perf_counter_ns
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from engine.cards import Baron, Guard, Priest, Prince, Princess, GUESSABLE_TYPES
+from engine.cards import Baron, Guard, King, Priest, Prince, Princess, GUESSABLE_TYPES
 from engine.deck import Deck
 from engine.history import Outcome
 
@@ -163,7 +171,7 @@ class Counts:
 
     guard_picked_best: int = 0  # checked guesses that named a likeliest card
     guard_expected: float = 0.0  # sum over checked guesses of the chance the guess had
-    guard_best_possible: float = 0.0  # sum of the chance of the likeliest card
+    guard_counting_best: float = 0.0  # sum of the chance of the likeliest card
 
     priest_looks: int = 0  # Priests that saw a card
     priest_chances: int = 0
@@ -234,7 +242,7 @@ class Counts:
                 "checked": checked,
                 "pickedBest": wilson(self.guard_picked_best, checked),
                 "expected": self.guard_expected / checked if checked else None,
-                "bestPossible": self.guard_best_possible / checked if checked else None,
+                "countingBest": self.guard_counting_best / checked if checked else None,
             },
             "priest": {
                 "looks": self.priest_looks,
@@ -351,7 +359,7 @@ def count_round(rh: RoundHistory, counts: list[Counts]) -> None:
                 best = max(pool[name] for name in GUESSABLE)
                 assert turn.guess is not None
                 me.guard_expected += pool[turn.guess.name] / total
-                me.guard_best_possible += best / total
+                me.guard_counting_best += best / total
                 me.guard_picked_best += pool[turn.guess.name] == best
             elif turn.outcome is Outcome.PROTECTED:
                 me.guard_protected += 1
@@ -367,6 +375,11 @@ def count_round(rh: RoundHistory, counts: list[Counts]) -> None:
             assert turn.target is not None
             me.priest_looks += 1
             priest_seen[turn.seat] = (turn.target, turn.seen)
+
+        # looks this turn makes untrustworthy, for everyone who's still waiting to use one
+        for seat, (looked_at, seen) in list(priest_seen.items()):
+            if blurs_look(turn, looked_at, seen):
+                del priest_seen[seat]
 
         for victim in turn.rejected:
             counts[victim].losses[loss_cause(turn, victim)] += 1
@@ -388,9 +401,11 @@ def count_priest_follow_up(
     me: Counts, turn: TurnHistory, hands: dict[int, Card | None], protected: set[int],
     looked_at: int, seen: Card,
 ) -> None:
-    """The turn after a Priest look: was there a chance to use it, and was it taken?"""
-    if type(hands[looked_at]) is not type(seen) or looked_at in protected:
-        return  # they're out, protected, or no longer hold the card that was seen
+    """The turn after a (still trustworthy) Priest look: was there a chance to use
+    it, and was it taken?"""
+    if hands[looked_at] is None or looked_at in protected:
+        return  # they're out or protected
+    assert type(hands[looked_at]) is type(seen)  # nothing has blurred the look, so they still hold it
     hand = (turn.held, turn.drawn)
     guard_chance = not isinstance(seen, Guard) and any(isinstance(c, Guard) for c in hand)
     baron_chance = any(
@@ -409,6 +424,17 @@ def count_priest_follow_up(
     if taken:
         me.priest_taken += 1
         assert looked_at in turn.rejected  # they still held the seen card, so it can't miss
+
+
+def blurs_look(turn: TurnHistory, looked_at: int, seen: Card) -> bool:
+    """Does `turn` stop a Priest look at `looked_at` (who held `seen`) being knowledge?
+    Playing a card of the seen kind (the looker can't tell which copy went), or a
+    Prince or King that moves the seen player's card."""
+    played = turn.played
+    if turn.seat == looked_at and (type(played) is type(seen) or isinstance(played, King)):
+        return True
+    hit = turn.target == looked_at and turn.outcome is not Outcome.PROTECTED
+    return hit and isinstance(played, (Prince, King))
 
 
 class Tally:
