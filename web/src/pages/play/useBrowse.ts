@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isLogged, type FeedEntry } from "./useGame";
+import { isLogged, type FeedEntry, type FlipEvent } from "./useGame";
 import type { MotionStep } from "./motion/FlightLayer";
-import { BROWSE_BEAT, BEAT, planLength, planMotion } from "./motion/plan";
+import { BROWSE_BEAT, BEAT, planFlip, planLength, planMotion } from "./motion/plan";
 import type { Speed } from "./config";
 
 // Further than this many events away, browsing jumps instead of animating
@@ -21,7 +21,7 @@ type Pos = { game: number; index: number } | null;
 const gameOf = (f: FeedEntry[]) => f[0]?.seq ?? 0;
 const indexIn = (pos: Pos, f: FeedEntry[]) => (pos && pos.game === gameOf(f) && pos.index < f.length ? pos.index : null);
 
-export function useBrowse(feed: FeedEntry[], speed: Speed) {
+export function useBrowse(feed: FeedEntry[], speed: Speed, flip: FlipEvent | null) {
   const [cursor, setCursor] = useState<Pos>(null); // the event on the table; null = live
   const [target, setTarget] = useState<Pos>(null); // where it's headed (highlighted in the log)
   const [step, setStep] = useState<MotionStep | null>(null); // the history animation playing
@@ -33,9 +33,11 @@ export function useBrowse(feed: FeedEntry[], speed: Speed) {
   const targetRef = useRef<Pos>(null);
   const timer = useRef<number | undefined>(undefined);
   const keys = useRef(1_000_000_000); // history keys never collide with live event seqs
+  const flipRef = useRef(flip);
   useEffect(() => {
     feedRef.current = feed;
-  }, [feed]);
+    flipRef.current = flip;
+  }, [feed, flip]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   const place = useCallback((index: number | null) => {
@@ -48,7 +50,8 @@ export function useBrowse(feed: FeedEntry[], speed: Speed) {
   const settle = useCallback((to: number | null) => {
     setStep(null);
     place(to);
-    if (to === null) setResumedAt(feedRef.current[feedRef.current.length - 1]?.seq ?? 0);
+    // back to live: don't replay what happened meanwhile (an event, or a reveal toggled while browsing)
+    if (to === null) setResumedAt(Math.max(feedRef.current[feedRef.current.length - 1]?.seq ?? 0, flipRef.current?.seq ?? 0));
   }, [place]);
 
   // the timer calls the newest walk through this ref (a callback can't name itself)
@@ -109,12 +112,15 @@ export function useBrowse(feed: FeedEntry[], speed: Speed) {
   }, [goTo]);
 
   const latest = feed[feed.length - 1];
-  // live: animate each new event as it arrives (not the one we came back to)
-  const motion: MotionStep | null = live
-    ? latest && latest.seq > resumedAt
-      ? { key: latest.seq, entry: latest, reverse: false, beat: BEAT[speed] }
-      : null
-    : step;
+  // live: animate each new event as it arrives (not the one we came back to),
+  // or the cards turning over when "reveal hands" was the newest thing
+  let motion: MotionStep | null = step;
+  if (live) {
+    const newest = Math.max(latest?.seq ?? 0, flip?.seq ?? 0);
+    if (newest <= resumedAt) motion = null;
+    else if (flip && flip.seq === newest) motion = { key: flip.seq, plan: planFlip(flip.before, flip.after), reverse: false, beat: BEAT[speed] };
+    else motion = latest ? { key: latest.seq, entry: latest, reverse: false, beat: BEAT[speed] } : null;
+  }
 
   return { shown, headed, live, motion, goTo, stepLog };
 }

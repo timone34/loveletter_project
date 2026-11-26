@@ -36,7 +36,7 @@ export function DeckPile({ count, inRound, burn, burnTaken }: Props) {
       </div>
 
       <div className="deck-pile">
-        <div className="deck-pile__stack deck-pile__stack--deck" style={box} data-slot="deck">
+        <div className="deck-pile__stack" style={box} data-slot="deck">
           {Array.from({ length: layers }, (_, i) => (
             <Card
               key={i}

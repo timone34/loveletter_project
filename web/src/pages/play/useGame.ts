@@ -27,10 +27,14 @@ export type FeedEntry = {
 // turn_start) only move the table along.
 export const isLogged = (e: FeedEntry) => e.event.type !== "game_start" && e.event.type !== "turn_start";
 
+// "Reveal hands" was toggled: the table before and after, to turn the cards over.
+export type FlipEvent = { seq: number; before: TableView; after: TableView };
+
 export function useGame() {
   const [table, setTable] = useState<TableView | null>(null);
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [feed, setFeed] = useState<FeedEntry[]>([]); // this game's events, oldest first
+  const [flip, setFlip] = useState<FlipEvent | null>(null);
   const [winner, setWinner] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<GameStatus>({
@@ -67,6 +71,7 @@ export function useGame() {
           setPrompt(null);
           return;
         case "table": // resent after toggling "reveal hands"
+          if (lastTable.current) setFlip({ seq: ++seq.current, before: lastTable.current, after: msg.table });
           lastTable.current = msg.table;
           setTable(msg.table);
           return;
@@ -142,7 +147,7 @@ export function useGame() {
   const latest = feed.length ? feed[feed.length - 1] : null;
 
   return {
-    table, prompt, feed, latest, winner, error, status,
+    table, prompt, feed, latest, flip, winner, error, status,
     caption: latest?.caption ?? "",
     newGame, togglePause, toggleReveal, setSpeed, choose, cancel, reconnect,
   };

@@ -43,7 +43,7 @@ export default function Play() {
   }, [status.connected, game, config]);
 
   // ----- Browsing the log (useBrowse.ts): which event is on the table, null = live ----- //
-  const browse = useBrowse(feed, speed);
+  const browse = useBrowse(feed, speed, game.flip);
   const view = browse.shown;
   const table = view !== null ? feed[view].table : game.table;
   const live = browse.live;

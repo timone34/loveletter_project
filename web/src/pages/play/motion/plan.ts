@@ -1,6 +1,6 @@
 import { cardName, type CardId } from "../../../components/cardData";
 import type { FeedEntry } from "../useGame";
-import type { PlayerView } from "../types";
+import type { PlayerView, TableView } from "../types";
 import type { Speed } from "../config";
 
 // ----- What an animation is made of ----- //
@@ -66,6 +66,21 @@ export function reversePlan(plan: MotionPlan | null): MotionPlan | null {
       ? { ...f, delay }
       : { ...f, from: f.to, to: f.from, fromCard: f.toCard, toCard: f.fromCard, delay };
   });
+  return flights.length ? { flights, badges: [] } : null;
+}
+
+// "Reveal hands" toggled: every card that changes between face down and face
+// up turns over where it lies, one after another.
+export function planFlip(before: TableView, after: TableView): MotionPlan | null {
+  const flights: Flight[] = [];
+  const turn = (slot: Slot, fromCard: CardId | null, toCard: CardId | null) => {
+    if ((fromCard === null) === (toCard === null)) return;
+    flights.push({ kind: "move", from: slot, to: slot, fromCard, toCard, delay: 0.3 * flights.length, duration: 1.2 });
+  };
+  for (const p of after.players) {
+    p.hand.forEach((card, i) => turn(hand(p.seat, i), before.players[p.seat]?.hand[i] ?? null, card));
+  }
+  if (after.round > 0 && !after.burnTaken) turn(BURN, before.burn ?? null, after.burn ?? null);
   return flights.length ? { flights, badges: [] } : null;
 }
 
