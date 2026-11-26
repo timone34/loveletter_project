@@ -1,0 +1,220 @@
+/* The action log (ActionLog.tsx), in the column right of the table. */
+
+.log {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  max-height: 100%;
+  padding: 1.15rem 1.1rem 0.75rem;
+  border: 1px solid var(--secondary);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: 0 12px 30px -26px rgb(var(--shadow) / 45%);
+}
+
+.log__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.log__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.log__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.log__live::before {
+  content: "";
+  width: 0.45rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--series-3);
+  animation: log-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes log-pulse {
+  50% { opacity: 0.3; }
+}
+
+.log__back {
+  padding: 0.2rem 0.7rem;
+  border: 1px solid var(--primary-fill);
+  border-radius: 999px;
+  background: var(--primary-fill);
+  color: var(--on-primary);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ----- Who's who ----- */
+
+.log__players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  margin: 0;
+  padding: 0 0 0.75rem;
+  border-bottom: 1px solid var(--secondary);
+  list-style: none;
+  font-size: 0.72rem;
+}
+
+.log__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: opacity 0.25s ease;
+}
+
+.log__player--out {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.log__dot {
+  flex: none;
+  width: 0.55rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* ----- Lines ----- */
+
+.log__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.4rem 0;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.log__empty {
+  padding: 0.75rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.log__round button {
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* two rows: [dot] [LLN, "Bob out"] / [  ] [the sentence] */
+.log__entry {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.55rem;
+  row-gap: 0.1rem;
+  width: 100%;
+  padding: 0.35rem 0.4rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+}
+
+.log__line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1rem;
+}
+
+.log__line:empty {
+  display: none;
+}
+
+.log__entry > .log__text {
+  grid-column: 2;
+}
+
+.log__entry:hover,
+.log__round button:hover {
+  background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+}
+
+.log__entry[aria-current="true"],
+.log__round button[aria-current="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.log__entry--skipped {
+  color: var(--text-muted);
+}
+
+.log__entry--result {
+  font-weight: 600;
+}
+
+.log__lln {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  color: var(--primary);
+}
+
+.log__text {
+  min-width: 0;
+}
+
+/* "Bob out", outlined in Bob's colour */
+.log__out {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border: 1.5px solid;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--neg);
+  white-space: nowrap;
+}
+
+.log__hint {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--secondary);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log__live::before { animation: none; }
+}

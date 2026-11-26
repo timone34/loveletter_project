@@ -24,8 +24,11 @@ import "./Setup.css";
 // them, and the settings for the chosen mode in a column on the right.
 // Clicking a seat makes it "active"; clicking a bot in the library seats it there.
 //
-// Arriving with ?mode=simulate (old /simulate links) picks that mode; arriving
-// with a run in the router state ("Edit & run" on a Stats page) starts from it.
+// Every visit starts from the defaults (DEFAULT_SETUP), except:
+// - from the table's "Table settings" button (router state { keep: true }):
+//   the settings of the last game, to change and start again;
+// - with a run in the router state ("Edit & run" on a Stats page): that run.
+// Arriving with ?mode=simulate (old /simulate links) picks that mode.
 
 const GAME_PRESETS = [100, 1000, 10_000, 100_000];
 
@@ -61,9 +64,9 @@ export default function Setup() {
   const speeds = useLineupSpeeds();
 
   const [draft, setDraft] = useState<SetupConfig>(() => {
-    const saved = loadSetup();
+    const saved = location.state?.keep ? loadSetup() : DEFAULT_SETUP;
     const run = location.state?.run as RunConfig | undefined;
-    if (run) return fromRun(run, saved);
+    if (run) return fromRun(run, loadSetup());
     const mode = new URLSearchParams(location.search).get("mode");
     return MODES.some((m) => m.value === mode) ? { ...saved, mode: mode as Mode } : saved;
   });

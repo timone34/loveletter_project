@@ -8,14 +8,15 @@ type Props = {
     width?: string;
     className?: string;
     style?: CSSProperties;
+    slot?: string; // data-slot: where it lies on the Play table, for the animations (pages/play/motion)
 }
 
-export function Card({ id, faceDown, width, className = "", style }: Props) {
+export function Card({ id, faceDown, width, className = "", style, slot }: Props) {
     const css = { ...(width ? { "--card-w": width } : {}), ...style } as CSSProperties;
 
     if (faceDown || !id) {
         return (
-            <div className={`card ${className}`} style={css}>
+            <div className={`card ${className}`} style={css} data-slot={slot}>
                 <div className="card__backface">
                     <span className="card__backtext">Love Letter</span>
                 </div>
@@ -27,7 +28,7 @@ export function Card({ id, faceDown, width, className = "", style }: Props) {
     const isLowercase = info.letter === info.letter.toLowerCase();
 
     return (
-        <div className={`card ${className}`} style={css}>
+        <div className={`card ${className}`} style={css} data-slot={slot}>
             <div className="card__face">
                 <div className="card__portrait">
                     <span className="card__value">{info.value}</span>

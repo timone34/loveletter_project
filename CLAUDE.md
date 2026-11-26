@@ -59,6 +59,9 @@ A chess-PGN-inspired notation for recording games, currently **LLN 1.5** (the wr
 The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch:
 
 - **Play**: you take a seat (the fourth bot sits out), then the table (`/play/table`), live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
+  - Table features: icon toolbar (lucide-react), full screen (F, the whole page like F11), on-table speed, reveal hands turns the cards over (`planFlip`), cheat sheet (C) with optional unseen counts, action log with each turn's LLN line (sent by the server) and history browsing (←/→, End = live; the game keeps running; animations only play forward: a step back or a far jump shows the line before the target, then replays the turn into it: `useBrowse.ts`), keyboard play (1-9; a Guard guess by card value), click-to-target, "Back" on target/guess prompts (the server's `Web_Strategy` asks card, target and guess all inside `choose_card`, so the card can still change), a round summary.
+  - The setup page starts from defaults on every visit, except via the table's "Table settings" button (router state `keep`) or a Stats page's "Edit & run".
+  - Animations (`web/src/pages/play/motion/`, using `motion`): `plan.ts` turns each event into card flights between `data-slot`s and badges (worked out from the event, since cards have no identity); `FlightLayer.tsx` flies ghost cards over the table and hides the destination until they land. Durations scale with speed and fit inside the server's `PACE`.
 - **Watch**: four bots play one game on the same table (`TableConfig.mode == "watch"`, no human seat, `youSeat` null).
 - **Simulate**: runs play in the background (`runs/`, one at a time) and land on their Stats page.
 - **History / Stats**: the simulation history (`/stats`, saved in `simulations/`) and one run's stats (`/stats/<id>`), filling in live while it plays. The stat definitions live in `stats/tally.py` (docstring); the charts are hand-written SVG/CSS in `web/src/pages/stats/charts/`. Changing what a saved stat means or how it's stored: bump `FORMAT` in `runs/history.py`, so older runs show as outdated (re-runnable from their seed) instead of with wrong numbers.
@@ -66,7 +69,7 @@ The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/
 
 Style: modern, slightly "vibe-coded" but in the owner's own coding style, JetBrains Mono, palette in `web/src/index.css` (light green is the favourite colour). A dark mode toggle is wanted.
 
-Ideas on the table: a Bots page (the ladder: each bot's results across runs, compare two runs), showing bots' reasoning while watching, accounts with online play and career stats, click-to-target on the Play page. Not a focus yet: a Stockfish-like engine (best moves, LLN lines, hit-chance percentages).
+Ideas on the table: a Bots page (the ladder: each bot's results across runs, compare two runs), showing bots' reasoning while watching, accounts with online play and career stats. Not a focus yet: a Stockfish-like engine (best moves, LLN lines, hit-chance percentages).
 
 ## Next steps under consideration
 
