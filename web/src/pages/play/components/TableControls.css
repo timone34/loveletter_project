@@ -1,0 +1,53 @@
+/* The toolbar above the table (TableControls.tsx). Builds on .btn from components/common.css. */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.1rem;
+}
+
+/* a round button holding only an icon */
+.btn--icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  aspect-ratio: 1;
+  padding: 0;
+}
+
+.btn--icon svg,
+.btn--icon-text svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.2;
+}
+
+/* text with an icon in front ("New game") */
+.btn--icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+}
+
+/* toggles and the chosen speed: filled while on */
+.btn--icon[data-on] {
+  border-color: var(--primary-fill);
+  background: var(--primary-fill);
+  color: var(--on-primary);
+}
+
+/* the three speeds share one pill */
+.controls__group {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--secondary);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.controls__group .btn--icon {
+  width: 1.75rem;
+  border-color: transparent;
+}
