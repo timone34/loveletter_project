@@ -219,7 +219,7 @@ export default function Play() {
       </main>
 
       {/* outside the felt: its "earlier in the game" filter would shift fixed-position ghosts */}
-      <FlightLayer step={browse.motion} root={felt} />
+      <FlightLayer step={browse.motion} root={felt} dim={!live} />
 
       <Footer />
     </div>

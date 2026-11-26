@@ -8,6 +8,13 @@
   pointer-events: none;
 }
 
+/* while browsing the log: the felt's dimmed look (--past-filter in Play.css).
+   The layer covers the whole viewport, so the filter (which makes it the
+   frame for its fixed children) doesn't move the ghosts. */
+.flights--past {
+  filter: var(--past-filter);
+}
+
 .flight {
   position: fixed;
   transform-origin: 0 0;

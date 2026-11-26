@@ -23,6 +23,7 @@ type Pop = Badge & { id: number; rect: DOMRect };
 type Props = {
   step: MotionStep | null; // null: nothing to animate
   root: RefObject<HTMLElement | null>; // the felt: where the data-slot cards are
+  dim?: boolean; // an earlier turn is shown: dim the ghosts like the felt
 };
 
 // Draws the animation of one event on top of the table (see plan.ts).
@@ -36,7 +37,7 @@ type Props = {
 //    end rectangle.
 // 3. motion animates each ghost; when one lands it's removed and the real
 //    card underneath shows again.
-export function FlightLayer({ step, root }: Props) {
+export function FlightLayer({ step, root, dim = false }: Props) {
   const reduced = useReducedMotion();
   const plan = useMemo(() => {
     if (!step || reduced) return null;
@@ -100,7 +101,7 @@ export function FlightLayer({ step, root }: Props) {
     <>
       {css && <style>{css}</style>}
       {current && (
-        <div className="flights" aria-hidden="true">
+        <div className={dim ? "flights flights--past" : "flights"} aria-hidden="true">
           {current.ghosts.map((g) => (
             <GhostCard key={g.id} ghost={g} beat={beat} onDone={() => land(g.id)} />
           ))}

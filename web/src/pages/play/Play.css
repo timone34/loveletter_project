@@ -168,8 +168,14 @@
 
 /* ----- Looking at an earlier turn (from the log) ----- */
 
+/* the dimmed look of an earlier turn; the animations (FlightLayer, outside
+   the felt) use the same variable, so ghosts and table always match */
+.page {
+  --past-filter: saturate(0.55);
+}
+
 .felt--past {
-  filter: saturate(0.55);
+  filter: var(--past-filter);
 }
 
 .felt__past {
