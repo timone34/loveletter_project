@@ -229,6 +229,7 @@ class TableObserver(Observer):
         self.session = session
         self.active: int | None = None
         self.showdown = False  # hands are face up from showdown until the next deal
+        self.burn_taken = False  # a Prince on an empty deck hands out the burned card (public)
 
     def table(self) -> dict:
         game = self.session.game
@@ -238,6 +239,7 @@ class TableObserver(Observer):
             "dealer": rnd.dealer if rnd else game.dealer,
             "deckCount": rnd.deck.cards_left if rnd else 0,
             "burn": card_id(getattr(rnd, "burn_card", None)),
+            "burnTaken": self.burn_taken,
             "winsNeeded": game.target_round_wins,
             "name": self.session.config.name,
             "visibility": self.session.config.visibility,
@@ -266,7 +268,7 @@ class TableObserver(Observer):
         self._emit("game_start", players=game.players, strategies=game.strategies)
 
     def on_round_start(self, game, rnd):
-        self.active, self.showdown = None, False
+        self.active, self.showdown, self.burn_taken = None, False, False
         self._emit("round_start", number=rnd.number, dealer=rnd.dealer)
 
     def on_turn_start(self, game, rnd, turn):
@@ -274,6 +276,9 @@ class TableObserver(Observer):
         self._emit("turn_start", turn=snapshot(turn))
 
     def on_turn_end(self, game, rnd, turn):
+        engine_round = self.session.game.current_round
+        if turn.redrawn is not None and turn.redrawn is getattr(engine_round, "burn_card", None):
+            self.burn_taken = True
         # the LLN of a turn only holds public facts (card, target, guess, outcome),
         # so it's computed from the full turn and needs no redaction
         self._emit("turn_end", turn=snapshot(turn), lln=generate_turn_line(turn))

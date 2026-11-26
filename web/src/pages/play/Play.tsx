@@ -141,7 +141,6 @@ export default function Play() {
             <div className="table__aside">
               {table && (
                 <div className="table__chips">
-                  <span className="chip">Dealer · {table.players[table.dealer].name}</span>
                   <span className="chip">First to {table.winsNeeded}</span>
                   {table.youSeat !== null && <span className="chip">{table.visibility === "public" ? "Public" : "Private"}</span>}
                   {config.deckSeed && <span className="chip">Seed · {config.deckSeed}</span>}
@@ -173,13 +172,17 @@ export default function Play() {
 
             <div className="opponents">
               {opponents.map((p) => (
-                <PlayerSeat key={p.seat} player={p} winsNeeded={winsNeeded} onTarget={onTarget(p.seat)} />
+                <PlayerSeat key={p.seat} player={p} winsNeeded={winsNeeded} dealer={p.seat === table?.dealer} onTarget={onTarget(p.seat)} />
               ))}
             </div>
 
             <div className="deck-area">
               <p className="deck-area__caption" aria-live="polite">{caption}</p>
-              {table ? <DeckPile count={table.deckCount} burn={table.burn ?? null} /> : <span />}
+              {table ? (
+                <DeckPile count={table.deckCount} inRound={table.round > 0} burn={table.burn ?? null} burnTaken={table.burnTaken ?? false} />
+              ) : (
+                <span />
+              )}
               <TablePanel
                 table={table}
                 prompt={livePrompt}
@@ -203,6 +206,7 @@ export default function Play() {
                 player={you}
                 winsNeeded={winsNeeded}
                 variant="you"
+                dealer={you.seat === table?.dealer}
                 onPickCard={cardPrompt ? game.choose : undefined}
                 pickable={cardPrompt?.playable}
                 onTarget={onTarget(you.seat)}

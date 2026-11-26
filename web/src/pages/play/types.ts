@@ -22,7 +22,8 @@ export type TableView = {
     visibility: "private" | "public";
     youSeat: number | null; // null when watching: nobody at the table is you
     players: PlayerView[]; // in seat order
-    burn?: CardId | null;
+    burn?: CardId | null; // null unless "reveal hands" is on
+    burnTaken?: boolean; // a Prince on an empty deck handed out the burned card
     showdown?: boolean;
 }
 

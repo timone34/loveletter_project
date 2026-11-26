@@ -237,3 +237,23 @@ def test_back_returns_to_picking_a_card():
             ws.send_json({"type": "choice", "index": rng.choice(legal)})
             last = p["kind"]
     assert backed["target"] == 3 and backed["guess"] >= 1
+
+
+def test_burn_taken_only_by_a_prince_on_an_empty_deck():
+    """burnTaken turns on exactly when a Prince's target draws the burned card (deck empty)."""
+    rng = random.Random(11)
+    flips = 0
+    for _ in range(12):
+        prev = None
+        for msg in play_game(rng, reveal=True):
+            table = msg.get("table")
+            if table is None:
+                continue
+            if msg["type"] == "round_start":
+                assert table["burnTaken"] is False
+            elif prev is not None and table["burnTaken"] and not prev["burnTaken"]:
+                flips += 1
+                assert msg["type"] == "turn_end" and msg["played"] == "prince"
+                assert prev["deckCount"] == 0 and msg["redrawn"] == table["burn"]
+            prev = table
+    assert flips > 0  # the case does come up

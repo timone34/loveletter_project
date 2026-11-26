@@ -138,6 +138,22 @@
   color: rgb(250 250 246 / 70%);
 }
 
+/* the dealer button: a small white token, as on a card table */
+.seat__dealer {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--on-primary);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 35%), inset 0 0 0 2px rgb(0 0 0 / 12%);
+  color: #2a2829; /* on the white token in both themes */
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 800;
+  cursor: help;
+}
+
 /* ----- Round wins ----- */
 
 .seat__wins {

@@ -15,6 +15,7 @@ type Props = {
   onPickCard?: (index: number) => void; // set while you're choosing a card
   pickable?: boolean[];
   onTarget?: () => void; // set while you're choosing a target and this seat is one
+  dealer?: boolean; // this player dealt the round: shows the dealer button
 };
 
 // Above this many round wins needed, hearts show as "♥ 2/7" instead of a row of hearts.
@@ -26,7 +27,7 @@ const SIZES = {
   you: { hand: "130px", discard: "100px" },
 };
 
-export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable, onTarget }: Props) {
+export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable, onTarget, dealer }: Props) {
   const size = SIZES[variant];
   const overlap = variant === "you" ? -0.05 : 0.6;
 
@@ -62,6 +63,9 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCar
         </span>
 
         <div className="seat__meta">
+          {dealer && (
+            <span className="seat__dealer" title="Dealer" role="img" aria-label="Dealer">D</span>
+          )}
           {/* status as small icons; hover for the word. "Rejected" is shown in the hand slot */}
           {player.active && (
             <span className="seat__status seat__status--active" title="Playing" role="img" aria-label="Playing" />

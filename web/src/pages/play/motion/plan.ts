@@ -19,6 +19,7 @@ import type { Speed } from "../config";
 //   "s2-h0"  seat 2, hand, first card
 //   "s2-d3"  seat 2, discard pile, fourth card
 //   "deck"   the top of the deck
+//   "burn"   the burned card, set aside next to the deck
 //
 // Times are in beats; FlightLayer turns them into seconds by the table speed.
 
@@ -71,6 +72,7 @@ export function reversePlan(plan: MotionPlan | null): MotionPlan | null {
 export const hand = (seat: number, i: number): Slot => `s${seat}-h${i}`;
 export const discard = (seat: number, i: number): Slot => `s${seat}-d${i}`;
 export const DECK: Slot = "deck";
+export const BURN: Slot = "burn";
 
 // What to animate for one event, comparing entry.before with entry.table.
 // Returns null when there is nothing to animate.
@@ -85,12 +87,13 @@ export function planMotion(entry: FeedEntry): MotionPlan | null {
 
   switch (event.type) {
     case "round_start": {
-      // the deal: one card each, starting left of the dealer
+      // the deal: one card set aside (burned), then one card each, starting left of the dealer
+      flights.push(move(DECK, BURN, null, after.burn ?? null, 0));
       const n = after.players.length;
       for (let k = 0; k < n; k++) {
         const seat = (event.dealer + 1 + k) % n;
         if (A(seat).hand.length === 0) continue;
-        flights.push(move(DECK, hand(seat, 0), null, A(seat).hand[0], 0.35 * k));
+        flights.push(move(DECK, hand(seat, 0), null, A(seat).hand[0], 0.35 * (k + 1)));
       }
       break;
     }
@@ -215,9 +218,11 @@ function planTurn(entry: FeedEntry, flights: Flight[], badges: Badge[]) {
         if (t !== s) slideKept();
         flights.push(move(from, discard(t, at), fromCard, event.discarded, 1));
         princed.add(t);
-        // and they draw a new one, unless the Princess was discarded
+        // and they draw a new one, unless the Princess was discarded:
+        // from the deck, or the burned card once the deck is empty
         if (targetAfter.hand.length > 0) {
-          flights.push(move(DECK, hand(t, 0), null, targetAfter.hand[0], 2));
+          const source = after.burnTaken && !before.burnTaken ? BURN : DECK;
+          flights.push(move(source, hand(t, 0), source === BURN ? before.burn ?? null : null, targetAfter.hand[0], 2));
         }
         break;
       }

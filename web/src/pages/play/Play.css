@@ -129,18 +129,6 @@
   place-items: center;
 }
 
-/* a faint ring etched into the felt behind the deck */
-.deck-area::before {
-  content: "";
-  position: absolute;
-  width: 210px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  border: 1.5px solid rgb(250 250 246 / 14%);
-  box-shadow: 0 1px 0 rgb(0 0 0 / 22%);
-  pointer-events: none;
-}
-
 .deck-area__caption {
   justify-self: end;
   max-width: 320px;

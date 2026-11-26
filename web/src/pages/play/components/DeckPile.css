@@ -1,3 +1,11 @@
+/* The middle of the table (DeckPile.tsx): the burned card, then the deck. */
+
+.deck-piles {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.75rem;
+}
+
 .deck-pile {
   position: relative;
   display: flex;
@@ -10,37 +18,58 @@
   position: relative;
 }
 
+/* a faint ring etched into the felt around the deck */
+.deck-pile__stack--deck::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 210px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px solid rgb(250 250 246 / 14%);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 22%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .deck-pile__card {
   position: absolute;
   top: calc(var(--i) * -2px);
   left: calc(var(--i) * -1px);
 }
 
-.deck-pile__count {
+/* set aside: a little crooked, a little dimmer than the deck */
+.deck-pile__burned {
+  transform: rotate(-5deg);
+  filter: brightness(0.92);
+}
+
+/* where the burned card was (before the first round, or after a Prince took it) */
+.deck-pile__empty {
+  width: 100%;
+  height: 100%;
+  border: 1.5px dashed rgb(250 250 246 / 22%);
+  border-radius: 10px;
+}
+
+.deck-pile__count,
+.deck-pile__label {
   padding: 0.25rem 0.8rem;
   border: 1px solid rgb(250 250 246 / 22%);
   border-radius: 999px;
   background: rgb(0 0 0 / 14%);
   font-size: 0.75rem;
+  white-space: nowrap;
   color: rgb(250 250 246 / 80%);
+}
+
+.deck-pile__label {
+  border-style: dashed;
+  background: none;
+  color: rgb(250 250 246 / 70%);
 }
 
 .deck-pile__count strong {
   color: var(--on-primary);
-}
-/* the count pill, with the burned card (when known) beside it on its left */
-.deck-pile__labels {
-  position: relative;
-}
-
-.deck-pile__burn {
-  position: absolute;
-  top: 0;
-  right: calc(100% + 0.5rem);
-  padding: 0.25rem 0.8rem;
-  border: 1px dashed rgb(250 250 246 / 22%);
-  border-radius: 999px;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  color: rgb(250 250 246 / 70%);
 }
