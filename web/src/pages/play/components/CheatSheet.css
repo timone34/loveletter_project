@@ -1,0 +1,123 @@
+/* The cheat sheet (CheatSheet.tsx): in the empty column left of the table. */
+
+.cheat {
+  align-self: start;
+  max-height: 100%;
+  overflow-y: auto;
+  margin-right: 2rem;
+  padding: 1.15rem 1.1rem;
+  border: 1px solid var(--secondary);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: 0 12px 30px -26px rgb(var(--shadow) / 45%);
+}
+
+.cheat__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cheat__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.04em;
+}
+
+.cheat__close {
+  padding: 0 0.3rem;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cheat__close:hover {
+  color: var(--text);
+}
+
+.cheat__legend {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4rem 0 0.5rem;
+  border-bottom: 1px solid var(--secondary);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cheat__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cheat__card {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--secondary) 60%, transparent);
+  transition: opacity 0.3s ease;
+}
+
+.cheat__card:last-child {
+  border-bottom: 0;
+}
+
+/* every copy accounted for: nobody can be holding one */
+.cheat__card--gone {
+  opacity: 0.4;
+}
+
+.cheat__value {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-primary);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.cheat__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.cheat__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cheat__name {
+  font-size: 0.8rem;
+}
+
+.cheat__count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.cheat__count b {
+  color: var(--text);
+}
+
+.cheat__text {
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}

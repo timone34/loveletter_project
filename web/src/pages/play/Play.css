@@ -54,14 +54,6 @@
   padding-left: 0;
 }
 
-/* ----- Controls ----- */
-
-.controls {
-  display: flex;
-  gap: 0.4rem;
-  padding-bottom: 0.1rem;
-}
-
 /* ----- Felt ----- */
 
 .felt {
@@ -143,35 +135,62 @@
 }
 
 
-/* ----- Action Log ----- */
+/* ----- Side columns: the cheat sheet (left, when open) and the action log (right) ----- */
 
-.log {
+.play > .cheat {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: end;
+  width: min(100%, 320px);
+}
+
+.play > .log {
   grid-column: 3;
+  grid-row: 1;
   margin-left: 2rem;         /* the gap, kept off the spacer column */
-  align-self: stretch;
+  /* as tall as the table, never taller: height 0 keeps a long log from
+     growing the row, min-height 100% then stretches it to the row (the table) */
+  height: 0;
+  min-height: 100%;
+}
+
+/* ----- Full screen (the F key / button): no header or footer, the table fills the screen ----- */
+
+.page--fullscreen {
+  height: 100vh;
   min-height: 0;
-  min-width: 0;
-  padding: 1.15rem 1.1rem;
-  border: 1px solid var(--secondary);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 82%, transparent);
-  box-shadow: 0 12px 30px -26px rgb(var(--shadow) / 45%);
-  overflow-y: auto;
+  overflow: hidden;
+  background: var(--background);
 }
 
-.log__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--secondary);
+.page--fullscreen .play {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
 }
 
-.log h2 {
-  margin: 0.2rem 0 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  line-height: 1.2;
-  letter-spacing: -0.04em;
+/* ----- Looking at an earlier turn (from the log) ----- */
+
+.felt--past {
+  filter: saturate(0.55);
+}
+
+.felt__past {
+  position: absolute;
+  top: 0.9rem;
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.9rem;
+  border: 1px solid rgb(250 250 246 / 40%);
+  border-radius: 999px;
+  background: rgb(20 22 14 / 70%);
+  color: var(--on-primary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.felt__past:hover {
+  background: rgb(20 22 14 / 90%);
 }

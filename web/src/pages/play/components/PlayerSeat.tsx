@@ -5,6 +5,7 @@ import { Shield } from "../../../components/Shield";
 import { initial } from "../../../components/initial";
 import type { PlayerView } from "../types";
 import { CardRow } from "./CardRow";
+import { seatColor } from "../seatColor";
 import "./PlayerSeat.css";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   variant?: "opponent" | "you";
   onPickCard?: (index: number) => void; // set while you're choosing a card
   pickable?: boolean[];
+  onTarget?: () => void; // set while you're choosing a target and this seat is one
 };
 
 // Above this many round wins needed, hearts show as "♥ 2/7" instead of a row of hearts.
@@ -24,7 +26,7 @@ const SIZES = {
   you: { hand: "130px", discard: "100px" },
 };
 
-export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable }: Props) {
+export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCard, pickable, onTarget }: Props) {
   const size = SIZES[variant];
   const overlap = variant === "you" ? -0.05 : 0.6;
 
@@ -34,12 +36,24 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCar
     `seat--${variant}`,
     player.active && "seat--active",
     player.rejected && "seat--rejected",
+    onTarget && "seat--targetable",
   ]
     .filter(Boolean)
     .join(" ");
   
   return (
-    <div className={classes}>
+    // data-seat: where badges like "Rejected" pop up (motion/FlightLayer.tsx).
+    // While targeting, the whole seat is a button (the panel's buttons work too).
+    <div
+      className={classes}
+      data-seat={player.seat}
+      style={{ "--seat-color": seatColor(player.seat) } as CSSProperties}
+      onClick={onTarget}
+      role={onTarget ? "button" : undefined}
+      tabIndex={onTarget ? 0 : undefined}
+      aria-label={onTarget ? `Target ${player.name}` : undefined}
+      onKeyDown={onTarget ? (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onTarget()) : undefined}
+    >
       <div className="seat__identity">
         <div className="seat__avatar" aria-hidden="true">{initial(player.name)}</div>
         <span className="seat__who">
@@ -89,6 +103,7 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCar
             width={size.hand}
             overlap={overlap}
             className="seat__hand"
+            slot={`s${player.seat}-h`}
             onPick={onPickCard}
             pickable={pickable}
           />
@@ -96,7 +111,7 @@ export function PlayerSeat({ player, winsNeeded, variant = "opponent", onPickCar
         <div className="seat__discards" style={{ "--hand-card-w": size.hand } as CSSProperties}>
           <p  className="seat__label">Discards · {discardTotal} Total</p>
           <div className="seat__pile">
-            <CardRow cards={player.discards} width={size.discard} overlap={0.6} fit />
+            <CardRow cards={player.discards} width={size.discard} overlap={0.6} fit slot={`s${player.seat}-d`} />
           </div>
         </div>
       </div>

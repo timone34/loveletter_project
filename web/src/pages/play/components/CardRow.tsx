@@ -11,15 +11,16 @@ type Props = {
   className?: string;
   onPick?: (index: number) => void; // makes the cards clickable
   pickable?: boolean[]; // per card; missing = pickable
+  slot?: string; // card i gets data-slot `${slot}${i}`, e.g. "s2-h" -> "s2-h0" (see motion/plan.ts)
 };
 
-export function CardRow({ cards, width, overlap = 0, fit = false, className = "", onPick, pickable }: Props) {
+export function CardRow({ cards, width, overlap = 0, fit = false, className = "", onPick, pickable, slot }: Props) {
   const style = { "--card-w": width, "--overlap": overlap } as CSSProperties;
 
   return (
     <div className={`card-row ${fit ? "card-row--fit" : ""} ${className}`} style={style}>
       {cards.map((id, i) => {
-        const card = <Card key={i} id={id ?? undefined} faceDown={id === null} width={width} />;
+        const card = <Card key={i} id={id ?? undefined} faceDown={id === null} width={width} slot={slot && `${slot}${i}`} />;
         if (fit) return <div key={i} className="card-row__slot">{card}</div>;
         if (!onPick) return card;
 

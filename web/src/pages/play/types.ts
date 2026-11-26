@@ -51,6 +51,7 @@ export type TurnEvent = {
     received: CardRef | null; // King: the card the player got in the swap
     rejected: number[];
     revealed: CardRef | null; // the card a rejected player had to show (null for a Princed Princess)
+    lln?: string; // turn_end and turn_skipped: the turn in long-form LLN, e.g. "3.2. g1:H"
 };
 
 // JSON turns the server's int dict keys into strings

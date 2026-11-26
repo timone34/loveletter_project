@@ -218,3 +218,72 @@
     animation: none;
   }
 }
+/* ----- Seat colour (seatColor.ts): a ring around the avatar, as in the log ----- */
+
+.seat__avatar {
+  box-shadow: 0 0 0 2px var(--seat-color);
+}
+
+/* ----- Click to target ----- */
+
+.seat--targetable {
+  cursor: pointer;
+  border-color: rgb(250 250 246 / 45%);
+  animation: seat-beckon 1.6s ease-in-out infinite;
+}
+
+.seat--targetable:hover,
+.seat--targetable:focus-visible {
+  outline: none;
+  border-color: var(--on-primary);
+  box-shadow:
+    inset 0 1px 0 rgb(250 250 246 / 14%),
+    0 0 0 4px rgb(250 250 246 / 18%),
+    0 0 44px -8px rgb(250 250 246 / 60%);
+  animation: none;
+}
+
+@keyframes seat-beckon {
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgb(250 250 246 / 10%),
+      0 0 0 4px rgb(250 250 246 / 12%);
+  }
+}
+
+/* ----- Hover to read: face-up cards grow (not your playable hand, it lifts) ----- */
+
+.seat .card-row > .card:has(.card__face),
+.seat .card-row__slot > .card:has(.card__face) {
+  transform-origin: 50% 0;
+  cursor: zoom-in;
+}
+
+.seat--you .card-row > .card:has(.card__face),
+.seat--you .card-row__slot > .card:has(.card__face) {
+  transform-origin: 50% 100%;
+}
+
+.seat .card-row > .card:has(.card__face):hover,
+.seat .card-row__slot > .card:has(.card__face):hover {
+  position: relative;
+  z-index: 5;
+  transform: scale(1.8);
+  box-shadow: 0 26px 40px -18px rgb(0 0 0 / 60%);
+}
+
+.seat--you .card-row > .card:has(.card__face):hover,
+.seat--you .card-row__slot > .card:has(.card__face):hover {
+  transform: translateY(-8px) scale(1.3);
+}
+
+.card-row__slot:hover {
+  position: relative;
+  z-index: 5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seat--targetable {
+    animation: none;
+  }
+}

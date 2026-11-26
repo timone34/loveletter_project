@@ -14,6 +14,7 @@ export function DeckPile({ count }: Props) {
       <div
         className="deck-pile__stack"
         style={{ width: CARD_W, aspectRatio: "7 / 12" }}
+        data-slot="deck" /* where drawn cards fly from (motion/plan.ts) */
       >
         {Array.from({ length: layers }, (_, i) => (
           <Card
