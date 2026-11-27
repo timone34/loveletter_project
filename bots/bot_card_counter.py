@@ -136,6 +136,9 @@ class FastCardCounterV2(CardCounterV2):
         self.debug = False
         self._prefill_cache()
 
+    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
+        return {seat: set(CARD_TYPES) for seat in opponent_seats(view)}
+
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
         seats = list(possible)
@@ -151,18 +154,12 @@ class FastCardCounterV2(CardCounterV2):
     @staticmethod
     @functools.lru_cache(maxsize=1 << 16)  # under @staticmethod: one cache for every instance, without self in the key
     def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[type[Card]], ...]) -> tuple[dict[type[Card], float], ...]:
-        """CardCounterV2.hand_odds, one dict per opponent (in the order of `options`).
-
-        counts:  how many of each card type are unseen, in CARD_TYPES order
-        options: per opponent, the card types they could be holding
-
-        Like CardCounterV2, it loops over every combination of cards the opponents
-        could hold, weighted by how many ways the unseen cards allow it. But only the
-        opponents we know something about are looped over ("known"). An opponent who
-        could hold anything just holds one of the cards left after the known opponents
-        took theirs, so their odds are those leftover cards, counted over all combinations.
-        """
+        """CardCounterV2.hand_odds, one dict per opponent (in the order of `options`)."""
+        # counts:  how many of each card type are unseen, in CARD_TYPES order
+        # options: per opponent, the card types they could be holding
         unseen_cards = Counter({card_type: count for card_type, count in zip(CARD_TYPES, counts)})
+
+        # only the opponents we know something about are looped over
         known = [i for i, types in enumerate(options) if types != ALL_TYPES]
         unknown = [i for i in range(len(options)) if i not in known]
 
@@ -170,6 +167,8 @@ class FastCardCounterV2(CardCounterV2):
         leftover_totals: Counter[type[Card]] = Counter()  # the cards left over, summed over all combinations
         total_weight = 0
 
+        # like CardCounterV2: every combination of cards the known opponents could hold,
+        # weighted by how many ways the unseen cards allow it
         for combination in itertools.product(*(sorted(options[i], key=lambda t: t.value) for i in known)):
             remaining = unseen_cards.copy()
             weight = 1
@@ -181,6 +180,7 @@ class FastCardCounterV2(CardCounterV2):
             total_weight += weight
             for i, card_type in zip(known, combination):
                 known_totals[i][card_type] += weight
+            # whatever the known opponents didn't take is what the unknown ones hold one of
             for card_type, count in remaining.items():
                 leftover_totals[card_type] += weight * count
 
@@ -193,6 +193,7 @@ class FastCardCounterV2(CardCounterV2):
             if i in known:
                 weights, total = known_totals[i], total_weight
             else:
+                # an unknown opponent holds a random one of the leftover cards
                 weights, total = leftover_totals, total_weight * cards_left
             # in CARD_TYPES order and without zeros, like before (the order decides ties in guard_guess)
             odds.append({card_type: weights[card_type] / total for card_type in CARD_TYPES if weights[card_type] > 0})
