@@ -120,10 +120,11 @@ class CardCounterV2(CardCounter):
         }
 
 
-class FastCardCounterV2(CardCounterV2):
+class FastCardCounterV2(CardCounter):
     """CardCounterV2 with the same odds. When every opponent is either unknown
     (all types possible) or known (one type), no loop is needed: the unknown
-    opponents just get CardCounter's count / number_unseen_cards."""
+    opponents just get CardCounter's count / number_unseen_cards. Only when
+    someone is narrowed down to 2-7 types does it use CardCounterV2's loop."""
 
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
@@ -131,12 +132,15 @@ class FastCardCounterV2(CardCounterV2):
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False
 
+    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
+        return {seat: set(CARD_TYPES) for seat in opponent_seats(view)}
+
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
 
-        # someone narrowed down to 2-7 types: CardCounterV2's loop
+        # someone narrowed down to 2-7 types: the loop
         if any(len(types) not in (1, len(CARD_TYPES)) for types in possible.values()):
-            return super().hand_odds(view)
+            return self.narrowed_hand_odds(view, possible)
 
         # a card we know someone holds is out of the pool for the others
         pool = unseen(view)
@@ -154,4 +158,32 @@ class FastCardCounterV2(CardCounterV2):
         return {
             seat: {next(iter(types)): 1.0} if len(types) == 1 else dict(odds)
             for seat, types in possible.items()
+        }
+
+    def narrowed_hand_odds(self, view: PlayerView, possible: dict[int, set[type[Card]]]) -> dict[int, dict[type[Card], float]]:
+        """CardCounterV2.hand_odds: every combination of cards the opponents could
+        hold, weighted by how many ways the unseen cards allow it."""
+        seats = list(possible)
+        unseen_cards = unseen(view)
+
+        totals: dict[int, Counter[type[Card]]] = {s: Counter() for s in seats}
+        total_weight = 0
+
+        for combination in itertools.product(*(sorted(possible[s], key=lambda t: t.value) for s in seats)):
+            remaining = unseen_cards.copy()
+            weight = 1
+            for card_type in combination:
+                weight *= max(remaining[card_type], 0)
+                remaining[card_type] -= 1
+            if weight == 0:
+                continue
+            total_weight += weight
+            for seat, card_type in zip(seats, combination):
+                totals[seat][card_type] += weight
+
+        if total_weight == 0:
+            return {seat: {} for seat in seats}
+        return {
+            seat: {card_type: w / total_weight for card_type, w in totals[seat].items()}
+            for seat in seats
         }

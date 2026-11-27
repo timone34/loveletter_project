@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from bots import CardCounterV2, FastCardCounterV2, RandomChoice
+from engine.cards import Baron
 from bots.bot_knowledge import PriestKnowledge
 from stats import iter_games
 
@@ -38,3 +39,30 @@ def test_fast_odds_are_card_counter_v2_odds():
     for _ in iter_games(100, lineup, seed="odds"):
         pass
     assert bot.checks > 500
+
+
+class Narrowed(FastCardCounterV2):
+    """Narrows every opponent to 'anything but a Baron', so the loop is used."""
+    def possible_cards(self, view):
+        return {seat: types - {Baron} for seat, types in super().possible_cards(view).items()}
+
+
+def test_narrowed_hand_odds_is_card_counter_v2_loop():
+    """FastCardCounterV2's copy of the loop gives CardCounterV2's odds."""
+    bot, slow = Narrowed(), CardCounterV2()
+    checked = 0
+
+    class Check(Narrowed):
+        def choose_card(self, player, playable):
+            nonlocal checked
+            view = player.view
+            assert view is not None
+            possible = self.possible_cards(view)
+            slow.possible_cards = lambda view: possible
+            assert self.hand_odds(view) == slow.hand_odds(view)
+            checked += 1
+            return super().choose_card(player, playable)
+
+    for _ in iter_games(30, {"Ann": Check(), "Ben": bot, "Cat": RandomChoice(), "Dan": RandomChoice()}, seed="narrowed"):
+        pass
+    assert checked > 100
