@@ -145,7 +145,7 @@ def test_bot_list():
     assert all(b["name"] and b["description"] and b["family"] for b in bots)
     by_id = {b["id"]: b for b in bots}
     assert by_id["FastCardCounterV2"]["family"] == by_id["CardCounter"]["family"] == "Card Counter"
-    assert by_id["CardCounterV2"]["listed"] is False and by_id["FastCardCounterV2"]["listed"] is True
+    assert all(b["listed"] for b in bots)  # listed = False hides a bot; none does for now
 
 
 def test_config_is_applied():

@@ -86,7 +86,6 @@ class CardCounterV2(CardCounter):
     def __init__(self) -> None:
         self.id = "CardCounterV2"
         self.family, self.version = "Card Counter", "v2 (slow)"
-        self.listed = False  # plays the same as FastCardCounterV2; kept for the ladder
         self.name = "Card Counter Bot v2"
         self.description = "It still chooses the most likely card when guessing with the Guard, just in a different way."
         self.debug = False
