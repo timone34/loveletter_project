@@ -15,6 +15,7 @@ from .cards import (
     Priest,
     Prince,
     Princess,
+    ALL_TYPES,
     CARD_TYPES,
     GUESSABLE_TYPES,
 )
@@ -27,7 +28,7 @@ from .strategy import Strategy
 from .view import PlayerView, PublicPlayer, view_for
 
 __all__ = [
-    "Baron", "Card", "Countess", "Guard", "Handmaid", "King", "Priest", "Prince", "Princess", "CARD_TYPES", "GUESSABLE_TYPES",
+    "Baron", "Card", "Countess", "Guard", "Handmaid", "King", "Priest", "Prince", "Princess", "ALL_TYPES", "CARD_TYPES", "GUESSABLE_TYPES",
     "Deck",
     "Game", "Round", "Turn",
     "GameHistory", "Outcome", "RoundHistory", "ShowdownHistory", "TurnHistory",

@@ -3,12 +3,12 @@
     knowledge = Knowledge.from_view(view, private=True)
     knowledge.possible[seat]  # the card types that seat could be holding
 
-Every opponent still in starts at ANY (could be holding anything). The round's
+Every opponent still in starts at ALL_TYPES (could be holding anything). The round's
 log is replayed turn by turn, and each turn is turned into a few primitives:
 
     learn(seat, types)  they hold one of these (replaces what was known)
     exclude(seat, t)    they don't hold this type
-    forget(seat)        what was known is no longer reliable: back to ANY
+    forget(seat)        what was known is no longer reliable: back to ALL_TYPES
     swap(a, b)          a King: the info on a is now on b, and the other way round
     out(seat)           knocked out, no hand to know about
 
@@ -30,14 +30,12 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
-from engine.cards import CARD_TYPES, Card, Guard, King, Priest, Prince
+from engine.cards import ALL_TYPES, Card, Guard, King, Priest, Prince
 from engine.history import Outcome
 
 if TYPE_CHECKING:
     from engine.history import TurnHistory
     from engine.view import PlayerView
-
-ANY: frozenset[type[Card]] = frozenset(CARD_TYPES)
 
 
 class Knowledge:
@@ -45,7 +43,7 @@ class Knowledge:
         self.viewer = viewer
         self.private = private
         self.missed_guesses = missed_guesses
-        self.possible: dict[int, frozenset[type[Card]]] = {s: ANY for s in seats if s != viewer}
+        self.possible: dict[int, frozenset[type[Card]]] = {s: ALL_TYPES for s in seats if s != viewer}
 
     @classmethod
     def from_view(cls, view: PlayerView, *, private: bool = False, missed_guesses: bool = False) -> Knowledge:
@@ -67,10 +65,10 @@ class Knowledge:
 
     def forget(self, seat: int) -> None:
         if seat in self.possible:
-            self.possible[seat] = ANY
+            self.possible[seat] = ALL_TYPES
 
     def swap(self, a: int, b: int) -> None:
-        info_a, info_b = self.possible.get(a, ANY), self.possible.get(b, ANY)
+        info_a, info_b = self.possible.get(a, ALL_TYPES), self.possible.get(b, ALL_TYPES)
         if a in self.possible:
             self.possible[a] = info_b
         if b in self.possible:

@@ -144,6 +144,9 @@ class Princess(Card):
 # same every run (sets of classes iterate in memory-address order).
 CARD_TYPES: list[type[Card]] = [Guard, Priest, Baron, Handmaid, Prince, King, Countess, Princess]
 GUESSABLE_TYPES: list[type[Card]] = [t for t in CARD_TYPES if t is not Guard]  # a Guard can't guess Guard
+# The same types as a frozenset: hashable (usable as a cache key) and quick to compare,
+# e.g. "this player could be holding anything".
+ALL_TYPES: frozenset[type[Card]] = frozenset(CARD_TYPES)
 
 
 def all_cards() -> list[Card]:
