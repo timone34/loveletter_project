@@ -125,7 +125,7 @@ class FastCardCounterV2(CardCounterV2):
     """CardCounterV2 with the exact same odds, computed much faster."""
 
     # Two things make it fast:
-    # 1. Opponents we know nothing about aren't looped over (see _joint_odds).
+    # 1. Opponents whose hand we haven't narrowed down aren't looped over (see _joint_odds).
     # 2. The odds only depend on the unseen counts and what we know about each
     #    opponent, so each situation is computed once and then looked up (lru_cache).
     
@@ -135,9 +135,6 @@ class FastCardCounterV2(CardCounterV2):
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False
         self._prefill_cache()
-
-    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
-        return {seat: set(CARD_TYPES) for seat in opponent_seats(view)}
 
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
@@ -161,22 +158,24 @@ class FastCardCounterV2(CardCounterV2):
 
         unseen_cards = Counter({card_type: count for card_type, count in zip(CARD_TYPES, counts)})
 
-        # only the opponents we know something about are looped over
-        known = [i for i, types in enumerate(options) if types != ALL_TYPES]
+        # the opponents whose hand we've narrowed down (fewer options than ALL_TYPES);
+        # with only Priest looks, each of them has exactly one option
+        narrowed = [i for i, types in enumerate(options) if types != ALL_TYPES]
 
-        # the unknown opponents share the cards the known ones didn't take
-        cards_left = sum(counts) - len(known)
-        if cards_left < len(options) - len(known):
+        # the other opponents share the cards the narrowed ones didn't take
+        cards_left = sum(counts) - len(narrowed)
+        if cards_left < len(options) - len(narrowed):
             return tuple({} for _ in options)
 
-        known_totals: dict[int, Counter[type[Card]]] = {i: Counter() for i in known}
+        narrowed_totals: dict[int, Counter[type[Card]]] = {i: Counter() for i in narrowed}
         leftover_totals: Counter[type[Card]] = Counter()  # the cards left over, summed over all combinations
         total_weight = 0
 
-        # like CardCounterV2: every combination of cards the known opponents could hold,
-        # weighted by how many ways the unseen cards allow it (types in CARD_TYPES order,
-        # so the floats add up the same way every run)
-        for combination in itertools.product(*([t for t in CARD_TYPES if t in options[i]] for i in known)):
+        # like CardCounterV2, but only over the narrowed-down opponents (just one combination
+        # with Priest looks): every combination of cards they could hold, weighted by how many
+        # ways the unseen cards allow it. The others aren't looped over: they share what's left.
+        # (Types in CARD_TYPES order, so the floats add up the same way every run.)
+        for combination in itertools.product(*([t for t in CARD_TYPES if t in options[i]] for i in narrowed)):
             remaining = unseen_cards.copy()
             weight = 1
             for card_type in combination:
@@ -185,9 +184,9 @@ class FastCardCounterV2(CardCounterV2):
             if weight == 0:
                 continue
             total_weight += weight
-            for i, card_type in zip(known, combination):
-                known_totals[i][card_type] += weight
-            # whatever the known opponents didn't take is what the unknown ones hold one of
+            for i, card_type in zip(narrowed, combination):
+                narrowed_totals[i][card_type] += weight
+            # whatever the narrowed opponents didn't take is what the others hold one of
             for card_type, count in remaining.items():
                 leftover_totals[card_type] += weight * count
 
@@ -198,9 +197,9 @@ class FastCardCounterV2(CardCounterV2):
             # in CARD_TYPES order and without zeros (the order decides ties in guard_guess)
             return {card_type: weights[card_type] / total for card_type in CARD_TYPES if weights[card_type] > 0}
 
-        # an unknown opponent holds a random one of the cards_left leftover cards
+        # every other opponent holds a random one of the cards_left leftover cards
         leftover_row = row(leftover_totals, total_weight * cards_left)
-        return tuple(row(known_totals[i], total_weight) if i in known else leftover_row for i in range(len(options)))
+        return tuple(row(narrowed_totals[i], total_weight) if i in narrowed else leftover_row for i in range(len(options)))
 
     @staticmethod
     def _prefill_cache() -> None:
