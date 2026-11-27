@@ -29,6 +29,7 @@ def unseen(view: PlayerView) -> Counter[type[Card]]:
 def opponent_seats(view: PlayerView) -> list[int]:
     return [p.seat for p in view.players if p.seat != view.seat and not p.rejected]
 
+
 class CardCounter(NoPrincess):
     def __init__(self) -> None:
         self.id = "CardCounter"
@@ -121,7 +122,7 @@ class CardCounterV2(CardCounter):
 
 
 class FastCardCounterV2(CardCounter):
-    """CardCounterV2 with the same odds. When every opponent is either unknown
+    """Faster CardCounterV2 with the same odds. When every opponent is either unknown
     (all types possible) or known (one type), no loop is needed: the unknown
     opponents just get CardCounter's count / number_unseen_cards. Only when
     someone is narrowed down to 2-7 types does it use CardCounterV2's loop."""
