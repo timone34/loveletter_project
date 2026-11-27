@@ -113,11 +113,10 @@ Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln
 | No Princess Bot | `NoPrincess` | Never plays or discards the Princess voluntarily; everything else random. |
 | Card Counter Bot | `CardCounter` | Keeps track of which cards are still unseen and guesses the likeliest one with a Guard. |
 | Card Counter Bot v2 | `CardCounterV2`, `FastCardCounterV2` | The same odds, worked out jointly over all opponents (Fast: the exact same odds, much faster). |
-| Priest Knowledge Bot | `PriestKnowledge` | Uses its Priest looks for its Guard guesses only. |
 
 ### Writing your own bot
 
-Subclass `Strategy` and implement the decision hooks. Besides `id`, `name` and `description`, a bot can set `family` and `version` (the setup page shows one card per family with a version dropdown) and `listed = False` (kept in the code, hidden from the library). During a turn, `player.view` holds a `PlayerView` with your hand, every player's public state (discards, protection, rejection), the number of cards left in the deck and a redacted log of the round so far.
+Subclass `Strategy` and implement the decision hooks, or subclass `PlanningStrategy` and write only `decide(view) -> Action` (card, target and guess in one go; `bots/planning.py` has `legal_actions(view)`). Besides `id`, `name` and `description`, a bot can set `family` and `version` (the setup page shows one card per family with a version dropdown) and `listed = False` (kept in the code, hidden from the library). During a turn, `player.view` holds a `PlayerView` with your hand, every player's public state (discards, protection, rejection), the number of cards left in the deck and a redacted log of the round so far.
 
 ```python
 from engine.cards import *

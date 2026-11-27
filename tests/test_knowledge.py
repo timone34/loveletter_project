@@ -7,7 +7,6 @@ from __future__ import annotations
 import pytest
 
 from bots import FastCardCounterV2, RandomChoice
-from bots.bot_knowledge import PriestKnowledge
 from bots.knowledge import Knowledge
 from engine import TurnHistory
 from engine.cards import ALL_TYPES, Baron, Card, Countess, Guard, Handmaid, King, Priest, Prince, Princess
@@ -142,7 +141,7 @@ class CheckedKnowledge(FastCardCounterV2):
 def test_never_rules_out_the_real_card():
     truth = Truth()
     bot = CheckedKnowledge(truth)
-    lineup = {"Ann": bot, "Ben": PriestKnowledge(), "Cat": RandomChoice(), "Dan": CheckedKnowledge(truth)}
+    lineup = {"Ann": bot, "Ben": FastCardCounterV2(), "Cat": RandomChoice(), "Dan": CheckedKnowledge(truth)}
     for _ in iter_games(300, lineup, obs=truth, seed="knowledge"):
         pass
     assert bot.checks > 1000

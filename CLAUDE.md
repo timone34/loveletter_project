@@ -39,9 +39,9 @@ Secondary goal: a **YouTube video** on Love Letter and the bot-building journey,
 
 ## Bots so far (the "ladder")
 
-Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses) → CardCounterV2 / FastCardCounterV2 (joint odds over all opponents) → PriestKnowledge (Priest looks, for Guard guesses only; +1 point win rate, within noise).
+Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses) → CardCounterV2 / FastCardCounterV2 (joint odds over all opponents).
 
-In progress: the owner rewrites the turn flow so a bot plans card, target and guess together from what it knows (acting on Priest knowledge was +5 points of win rate in a removed prototype, PriestKnowledgeV2: commit bcd5c72). `bots/knowledge.py` (`Knowledge`: learn, exclude, forget, swap, out) is available for that but not used by a bot yet; `tests/test_knowledge.py` checks in real games that it never rules out a card someone really holds.
+In progress: the owner rewrites the turn flow so a bot plans card, target and guess together from what it knows (acting on Priest knowledge was +5 points of win rate in a removed prototype: commit bcd5c72). `engine/strategy.py` has `Action` and `PlanningStrategy` (a bot writes only `decide(view) -> Action`; the engine's three questions are answered from that plan), `bots/planning.py` has `legal_actions(view)`. Planned shape of a bot: legal actions → filters (hard rules) → scores (odds, later lookahead) → best, random tie-break; older ladder bots keep choosing card, then target, then guess so their win rates stay comparable. `bots/knowledge.py` (`Knowledge`: learn, exclude, forget, swap, out) is available for that but not used by a bot yet; `tests/test_knowledge.py` checks in real games that it never rules out a card someone really holds.
 
 Planned: an evaluation-function bot that scores game states and looks ahead, chess-bot style.
 

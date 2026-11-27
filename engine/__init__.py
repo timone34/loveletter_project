@@ -24,7 +24,7 @@ from .game import Game, Round, Turn
 from .history import GameHistory, Outcome, RoundHistory, ShowdownHistory, TurnHistory
 from .observer import Observer, Observers
 from .player import Player
-from .strategy import Strategy
+from .strategy import Action, PlanningStrategy, Strategy
 from .view import PlayerView, PublicPlayer, view_for
 
 __all__ = [
@@ -34,6 +34,6 @@ __all__ = [
     "GameHistory", "Outcome", "RoundHistory", "ShowdownHistory", "TurnHistory",
     "Observer", "Observers",
     "Player",
-    "Strategy",
+    "Action", "PlanningStrategy", "Strategy",
     "PlayerView", "PublicPlayer", "view_for",
 ]

@@ -5,13 +5,19 @@ import pytest
 
 from bots import CardCounterV2, FastCardCounterV2, RandomChoice
 from engine.cards import Baron
-from bots.bot_knowledge import PriestKnowledge
+from bots.knowledge import Knowledge
 from stats import iter_games
 
 
-class CheckedOdds(PriestKnowledge):
-    """Plays like PriestKnowledge (so some hands are narrowed down), and compares
-    its fast odds with CardCounterV2's slow ones every turn."""
+class Knowing(FastCardCounterV2):  # Knowledge switched on, so some hands are narrowed down
+    def possible_cards(self, view):
+        knowledge = Knowledge.from_view(view, private=True, missed_guesses=True)
+        return {seat: set(types) for seat, types in knowledge.possible.items()}
+
+
+class CheckedOdds(Knowing):
+    """Plays like Knowing, and compares its fast odds with CardCounterV2's slow
+    ones every turn."""
     def __init__(self) -> None:
         super().__init__()
         self.id = "CheckedOdds"

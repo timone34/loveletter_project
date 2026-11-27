@@ -124,11 +124,6 @@ class CardCounterV2(CardCounter):
 
 
 class FastCardCounterV2(CardCounter):
-    """Faster CardCounterV2 with the same odds. While nobody's hand is narrowed
-    down (all types possible for everyone), no loop is needed: every opponent
-    just gets CardCounter's count / number_unseen_cards. As soon as a subclass
-    narrows someone down in possible_cards, it uses CardCounterV2's loop."""
-
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
         self.family, self.version = "Card Counter", "v2"
