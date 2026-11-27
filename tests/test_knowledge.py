@@ -1,4 +1,4 @@
-"""bots.knowledge: what a bot knows about the other hands, and the bots planning with it.
+"""bots.knowledge: what a bot knows about the other hands.
 
 The unit tests feed small handmade logs; test_never_rules_out_the_real_card plays
 real games and checks the knowledge against the hands everyone really held."""
@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import pytest
 
-from bots import CardCounterV3, FastCardCounterV2, RandomChoice
-from bots.bot_knowledge import PriestKnowledgeV2
+from bots import FastCardCounterV2, RandomChoice
+from bots.bot_knowledge import PriestKnowledge
 from bots.knowledge import ANY, Knowledge
 from engine import TurnHistory
 from engine.cards import Baron, Card, Countess, Guard, Handmaid, King, Priest, Prince, Princess
 from engine.history import GameHistory, Outcome, RoundHistory
 from engine.observer import Observer
-from stats import Tally, iter_games
+from stats import iter_games
 from stats.replay import walk
 
 ME = 0
@@ -113,10 +113,8 @@ class Truth(Observer):
         self.round = rnd
 
 
-class CheckedKnowledge(PriestKnowledgeV2):
-    """PriestKnowledgeV2 with every kind of knowledge on, checking it each turn."""
-    missed_guesses = True
-
+class CheckedKnowledge(FastCardCounterV2):
+    """Plays like FastCardCounterV2, and checks Knowledge (everything switched on) every turn."""
     def __init__(self, truth: Truth) -> None:
         super().__init__()
         self.id = "CheckedKnowledge"
@@ -131,12 +129,11 @@ class CheckedKnowledge(PriestKnowledgeV2):
         hands = dict(rh.starting_hands)
         for _, table in walk(rh):  # the table after the last finished turn
             hands = table.hands
-        odds = self.hand_odds(view)
-        for seat, types in self.knowledge(view).possible.items():
+        knowledge = Knowledge.from_view(view, private=True, missed_guesses=True)
+        for seat, types in knowledge.possible.items():
             real = hands[seat]
             assert real is not None, "knowledge about a player who's out"
             assert type(real) in types, f"ruled out the {real.name} seat {seat} holds"
-            assert odds[seat].get(type(real), 0) > 0
             self.checks += 1
             self.narrowed += types != ANY
         return super().choose_card(player, playable)
@@ -145,28 +142,9 @@ class CheckedKnowledge(PriestKnowledgeV2):
 def test_never_rules_out_the_real_card():
     truth = Truth()
     bot = CheckedKnowledge(truth)
-    lineup = {"Ann": bot, "Ben": PriestKnowledgeV2(), "Cat": RandomChoice(), "Dan": FastCardCounterV2()}
+    lineup = {"Ann": bot, "Ben": PriestKnowledge(), "Cat": RandomChoice(), "Dan": CheckedKnowledge(truth)}
     for _ in iter_games(300, lineup, obs=truth, seed="knowledge"):
         pass
     assert bot.checks > 1000
     assert bot.narrowed > 100  # the rules really were exercised
 
-
-def test_v3_is_v2_in_a_new_shape():
-    """Same information and the same choices: as many wins as FastCardCounterV2."""
-    lineup = {"A": CardCounterV3(), "B": FastCardCounterV2(), "C": CardCounterV3(), "D": FastCardCounterV2()}
-    tally = Tally()
-    for gh in iter_games(1000, lineup, seed="v3"):
-        tally.add(gh)
-    bots = {b["bot"]: b for b in tally.to_json()["bots"]}
-    v3, v2 = bots["CardCounterV3"]["gameWinRate"], bots["FastCardCounterV2"]["gameWinRate"]
-    assert v3["lo"] < v2["p"] < v3["hi"]
-
-
-def test_priest_knowledge_v2_uses_its_looks():
-    lineup = {"P": PriestKnowledgeV2(), "C": FastCardCounterV2(), "R": RandomChoice(), "S": RandomChoice()}
-    tally = Tally()
-    for gh in iter_games(500, lineup, seed="priest"):
-        tally.add(gh)
-    priest = next(p for p in tally.to_json()["players"] if p["name"] == "P")["priest"]
-    assert priest["takenRate"]["p"] > 0.95

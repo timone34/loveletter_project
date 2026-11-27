@@ -4,11 +4,9 @@ import functools
 import itertools
 import random
 from collections import Counter
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from bots import NoPrincess
-from bots.knowledge import Knowledge
 from engine.cards import *
 from engine.deck import Deck
 from engine.strategy import Strategy
@@ -123,202 +121,92 @@ class CardCounterV2(CardCounter):
         }
 
 
+ALL_TYPES = frozenset(CARD_TYPES)
+
 class FastCardCounterV2(CardCounterV2):
-    """CardCounterV2 with the same odds, computed faster. Ties come in card-value order."""
+    """CardCounterV2 with the exact same odds, computed much faster.
+
+    Two things make it fast:
+    1. Opponents we know nothing about aren't looped over (see joint_odds).
+    2. The odds only depend on the unseen counts and what we know about each
+       opponent, so each situation is computed once and then looked up (lru_cache).
+    """
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
         self.name = "Fast Card Counter Bot v2"
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False
-        _prefill_cache()
+        prefill_cache()
 
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
-        options = tuple(
-            _ALL_TYPES if len(types) == len(CARD_TYPES) else frozenset(_INDEX[t] for t in types)
-            for types in possible.values()
-        )
-        rows = _typed_odds(_unseen_counts(view), options)
-        return {seat: dict(row) for seat, row in zip(possible, rows)}  # copies: the cached rows stay untouched
+        seats = list(possible)
+        unseen_cards = unseen(view)
 
+        # tuples and frozensets, so the situation can be a key in the cache
+        counts = tuple(max(unseen_cards[card_type], 0) for card_type in CARD_TYPES)
+        options = tuple(frozenset(possible[seat]) for seat in seats)
 
-_INDEX: dict[type[Card], int] = {t: i for i, t in enumerate(CARD_TYPES)}
-_ALL_TYPES = frozenset(range(len(CARD_TYPES)))
-_FULL_COUNTS = [FULL[t] for t in CARD_TYPES]
+        odds = joint_odds(counts, options)
+        return {seat: dict(odds[i]) for i, seat in enumerate(seats)}  # copies, so the cached dicts stay untouched
 
-def _unseen_counts(view: PlayerView) -> tuple[int, ...]:
-    """unseen(view) as a tuple in CARD_TYPES order, without building a Counter."""
-    counts = _FULL_COUNTS.copy()
-    for card in view.hand:
-        counts[_INDEX[type(card)]] -= 1
-    for player in view.players:
-        for card in player.discards:
-            counts[_INDEX[type(card)]] -= 1
-    return tuple(c if c > 0 else 0 for c in counts)
 
 @functools.lru_cache(maxsize=1 << 16)
-def _typed_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[dict[type[Card], float], ...]:
-    """_joint_odds as {card type: probability} per opponent, zeros left out. Cached."""
-    return tuple(
-        {CARD_TYPES[i]: p for i, p in enumerate(row) if p > 0}
-        for row in _joint_odds(counts, options)
-    )
+def joint_odds(counts: tuple[int, ...], options: tuple[frozenset[type[Card]], ...]) -> tuple[dict[type[Card], float], ...]:
+    """CardCounterV2.hand_odds, one dict per opponent (in the order of `options`).
 
-def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[tuple[float, ...], ...]:
-    """Same odds as CardCounterV2.hand_odds, one row per opponent, columns in CARD_TYPES order.
+    counts:  how many of each card type are unseen, in CARD_TYPES order
+    options: per opponent, the card types they could be holding
 
-    Opponents who can hold any type are left out of the enumeration (they only add a constant
-    factor); their odds are the expected leftover counts divided by the cards left.
+    Like CardCounterV2, it loops over every combination of cards the opponents
+    could hold, weighted by how many ways the unseen cards allow it. But only the
+    opponents we know something about are looped over ("known"). An opponent who
+    could hold anything just holds one of the cards left after the known opponents
+    took theirs, so their odds are those leftover cards, counted over all combinations.
     """
-    n = len(counts)
-    constrained = [k for k, opts in enumerate(options) if not opts >= _ALL_TYPES]
-    branches = [sorted(options[k]) for k in constrained]
-    remaining = list(counts)
-    picked = [0] * len(constrained)
-    seat_weight = [[0] * n for _ in options]
-    leftover_weight = [0] * n
-    total = 0
+    unseen_cards = Counter({card_type: count for card_type, count in zip(CARD_TYPES, counts)})
+    known = [i for i, types in enumerate(options) if types != ALL_TYPES]
+    unknown = [i for i in range(len(options)) if i not in known]
 
-    def visit(depth: int, weight: int) -> None:
-        nonlocal total
-        if depth == len(constrained):
-            total += weight
-            for k, i in zip(constrained, picked):
-                seat_weight[k][i] += weight
-            for i in range(n):
-                leftover_weight[i] += weight * remaining[i]
-            return
-        for i in branches[depth]:
-            c = remaining[i]
-            if c <= 0:
-                continue
-            remaining[i] = c - 1
-            picked[depth] = i
-            visit(depth + 1, weight * c)
-            remaining[i] = c
+    known_totals: dict[int, Counter[type[Card]]] = {i: Counter() for i in known}
+    leftover_totals: Counter[type[Card]] = Counter()  # the cards left over, summed over all combinations
+    total_weight = 0
 
-    visit(0, 1)
-    cards_left = sum(counts) - len(constrained)
-    if total == 0 or cards_left < len(options) - len(constrained):
-        return tuple((0.0,) * n for _ in options)
+    for combination in itertools.product(*(sorted(options[i], key=lambda t: t.value) for i in known)):
+        remaining = unseen_cards.copy()
+        weight = 1
+        for card_type in combination:
+            weight *= max(remaining[card_type], 0)
+            remaining[card_type] -= 1
+        if weight == 0:
+            continue
+        total_weight += weight
+        for i, card_type in zip(known, combination):
+            known_totals[i][card_type] += weight
+        for card_type, count in remaining.items():
+            leftover_totals[card_type] += weight * count
 
-    rows: list[tuple[float, ...]] = []
-    for k in range(len(options)):
-        if k in constrained:
-            rows.append(tuple(w / total for w in seat_weight[k]))
+    cards_left = sum(counts) - len(known)  # the same for every combination
+    if total_weight == 0 or cards_left < len(unknown):
+        return tuple({} for _ in options)
+
+    odds: list[dict[type[Card], float]] = []
+    for i in range(len(options)):
+        if i in known:
+            weights, total = known_totals[i], total_weight
         else:
-            rows.append(tuple(w / (total * cards_left) for w in leftover_weight))
-    return tuple(rows)
+            weights, total = leftover_totals, total_weight * cards_left
+        # in CARD_TYPES order and without zeros, like before (the order decides ties in guard_guess)
+        odds.append({card_type: weights[card_type] / total for card_type in CARD_TYPES if weights[card_type] > 0})
+    return tuple(odds)
 
 
-_prefilled = False
-
-def _prefill_cache() -> None:
-    """Fill the cache for every unconstrained case (~12k entries, ~60 ms), once per process."""
-    global _prefilled
-    if _prefilled:
+def prefill_cache() -> None:
+    """Fill the cache for every situation where we know nothing about anyone
+    (~12k situations, ~0.1 s), so the first games aren't slower than the rest.
+    Only done once per process."""
+    if joint_odds.cache_info().currsize > 0:
         return
-    for counts in itertools.product(*(range(FULL[t] + 1) for t in CARD_TYPES)):
+    for counts in itertools.product(*(range(FULL[card_type] + 1) for card_type in CARD_TYPES)):
         for opponents in (1, 2, 3):
-            _typed_odds(counts, (_ALL_TYPES,) * opponents)
-    _prefilled = True
-
-@dataclass
-class Plan:
-    """A whole turn, decided at once in choose_card."""
-    card: Card
-    target: int | None = None  # seat, for targeted cards
-    guess: type[Card] | None = None  # for a Guard
-
-
-class CardCounterV3(FastCardCounterV2):
-    """FastCardCounterV2's decisions, restructured: the turn is planned in one go.
-
-    choose_card works out what the bot knows (`knowledge`, see bots/knowledge.py)
-    and the odds on every opponent's hand, then `plan_turn` picks the card, the
-    target and the guess together. The engine's later questions (target, guess)
-    just read the plan. Subclasses override plan_turn, and switch on more kinds of
-    knowledge with the class flags.
-
-    This step only uses the face-up cards, like V2, so it should win exactly as
-    often as FastCardCounterV2 (not the same games: the random calls come in a
-    different order).
-    """
-    private_knowledge = False  # my Priest looks, my King swaps
-    missed_guesses = False  # wrong Guard guesses rule a type out
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.id = "CardCounterV3"
-        self.name = "Card Counter Bot v3"
-        self.description = "Card Counter Bot v2, but it plans the whole turn at once from what it knows."
-        self.plan: Plan | None = None
-        self._knowledge: tuple[PlayerView, Knowledge] | None = None
-
-    # ----- what I know -----
-
-    def knowledge(self, view: PlayerView) -> Knowledge:
-        """Knowledge for this view, worked out once per turn."""
-        if self._knowledge is None or self._knowledge[0] is not view:
-            k = Knowledge.from_view(view, private=self.private_knowledge, missed_guesses=self.missed_guesses)
-            self._knowledge = (view, k)
-        return self._knowledge[1]
-
-    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
-        return {seat: set(types) for seat, types in self.knowledge(view).possible.items()}
-
-    # ----- the plan -----
-
-    def plan_turn(self, view: PlayerView, playable: list[Card]) -> Plan:
-        """V2's choices: a random card (never the Princess), then plan_for."""
-        card = random.choice([c for c in playable if not isinstance(c, Princess)] or playable)
-        return self.plan_for(view, card)
-
-    def plan_for(self, view: PlayerView, card: Card) -> Plan:
-        """V2's target and guess for a chosen card: a random target (not myself with
-        a Prince while I keep the Princess), and the likeliest card for a Guard."""
-        if not card.targeted:
-            return Plan(card)
-        others = opponents(view)
-        if isinstance(card, Prince):
-            keeps_princess = isinstance(kept(view, card), Princess)
-            target = random.choice(others or [view.seat]) if keeps_princess else random.choice([*others, view.seat])
-        else:
-            target = random.choice(others)
-        return Plan(card, target, self.best_guess(view, target) if isinstance(card, Guard) else None)
-
-    def best_guess(self, view: PlayerView, seat: int) -> type[Card]:
-        """The likeliest guessable card in `seat`'s hand (a random one of the ties)."""
-        odds = {t: p for t, p in self.hand_odds(view)[seat].items() if t is not Guard}
-        if not odds:
-            return random.choice(GUESSABLE_TYPES)
-        best = max(odds.values())
-        return random.choice([t for t, p in odds.items() if p == best])
-
-    # ----- the engine's questions -----
-
-    def choose_card(self, player: Player, playable: list[Card]) -> Card:
-        assert player.view is not None
-        self.plan = self.plan_turn(player.view, playable)
-        return self.plan.card
-
-    def choose_target(self, player: Player, card: Card, targets: list[Player]) -> Player:
-        assert self.plan is not None and self.plan.card is card
-        for target in targets:
-            if target.seat == self.plan.target:
-                return target
-        raise ValueError(f"{self.name} planned an illegal target: seat {self.plan.target}")
-
-    def guard_guess(self, player: Player, target: Player) -> Card:
-        assert self.plan is not None and self.plan.guess is not None
-        return self.plan.guess()
-
-
-def opponents(view: PlayerView) -> list[int]:
-    """Seats I could target, other than myself: everyone still in (protected ones too)."""
-    return [p.seat for p in view.players if p.seat != view.seat and not p.rejected]
-
-
-def kept(view: PlayerView, card: Card) -> Card:
-    """The card left in my hand if I play `card`."""
-    return next(c for c in view.hand if c is not card)
+            joint_odds(counts, (ALL_TYPES,) * opponents)
