@@ -36,7 +36,7 @@ export type Line = {
   rounds: number;
   roundWins: number;
   roundWinRate: Rate;
-  guard: { played: number; correct: number; incorrect: number; protected: number; accuracy: Rate };
+  guard: { played: number; correct: number; incorrect: number; protected: number; accuracy: Rate; countingBest: number | null };
   baron: { played: number; won: number; lost: number; tied: number; protected: number };
   losses: Record<Cause, number>; // how each lost round was lost
   // the definitions of these are in stats/tally.py's docstring
