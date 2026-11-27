@@ -12,7 +12,6 @@ import { ConvergenceChart } from "./charts/ConvergenceChart";
 import { Histogram } from "./charts/Histogram";
 import { BaronBars } from "./charts/BaronBars";
 import { LossTable } from "./charts/LossTable";
-import { GuardOdds } from "./charts/GuardOdds";
 import { CardChoices } from "./charts/CardChoices";
 import { BaronByCardTable, StartCardTable } from "./charts/CardTables";
 import { PerformanceSection } from "./Performance";
@@ -206,26 +205,25 @@ export default function Results() {
               <SectionTitle n={2} title="Play" note="What did the bot actually do?" />
               <div className="stats__columns">
                 <div className="stats__column">
-                  <Card title="Guard accuracy" note="Correct guesses out of guesses checked. Guards on a protected player don't count.">
+                  <Card
+                    title="Guard accuracy"
+                    note="Correct guesses out of guesses checked. Guards on a protected player don't count. The tick is the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards)."
+                  >
                     <RateBars
+                      markLabel="Best from card counting"
                       rows={rows.map((r) => ({
                         ...r,
                         rate: r.line.guard.accuracy,
+                        mark: r.line.guard.countingBest,
                         detail: `${count(r.line.guard.correct)} of ${count(r.line.guard.correct + r.line.guard.incorrect)} guesses right · ${count(r.line.guard.protected)} on a protected player`,
                       }))}
                     />
                   </Card>
 
-                  <Card
-                    title="Guard guesses vs the odds"
-                    note="Odds from what the guesser could see: the deck minus their own cards and all discards. Right: how often it named the likeliest card."
-                  >
-                    <GuardOdds rows={rows} />
-                  </Card>
 
                   <Card
                     title="Priest follow-up"
-                    note="Chances to use a Priest look on the next turn (a Guard, or a Baron that wins, against a player still holding the seen card), and how often it was taken."
+                    note="Chances to use a Priest look on the next turn (a Guard, or a Baron that wins, against the seen player), and how often it was taken. Looks made unreliable since (the seen player played that kind of card, or was hit by a Prince or King) don't count."
                   >
                     <RateBars
                       rows={rows.map((r) => ({

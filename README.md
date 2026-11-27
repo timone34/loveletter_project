@@ -111,11 +111,13 @@ Runs are saved in `simulations/` (one JSON file per run, plus a compressed `.lln
 | Random Bot | `RandomChoice` | Picks cards, targets and guesses at random. |
 | No Princess Bot (dumb) | `NoPrincessDumb` | Never plays the Princess; everything else random. |
 | No Princess Bot | `NoPrincess` | Never plays or discards the Princess voluntarily; everything else random. |
-| Card Counter Bot | `CardCounter` | Keeps track of which cards are still unseen and uses that to make its choices. |
+| Card Counter Bot | `CardCounter` | Keeps track of which cards are still unseen and guesses the likeliest one with a Guard. |
+| Card Counter Bot v2 | `CardCounterV2`, `FastCardCounterV2` | The same odds, worked out jointly over all opponents (Fast: the exact same odds, much faster). |
+| Priest Knowledge Bot | `PriestKnowledge` | Uses its Priest looks for its Guard guesses only. |
 
 ### Writing your own bot
 
-Subclass `Strategy` and implement the decision hooks. During a turn, `player.view` holds a `PlayerView` with your hand, every player's public state (discards, protection, rejection), the number of cards left in the deck and a redacted log of the round so far.
+Subclass `Strategy` and implement the decision hooks. Besides `id`, `name` and `description`, a bot can set `family` and `version` (the setup page shows one card per family with a version dropdown) and `listed = False` (kept in the code, hidden from the library). During a turn, `player.view` holds a `PlayerView` with your hand, every player's public state (discards, protection, rejection), the number of cards left in the deck and a redacted log of the round so far.
 
 ```python
 from engine.cards import *
@@ -266,10 +268,9 @@ These stats are important for observing which bot performs best.
 ### 2. Play stats
 What did the bot actually do?
 These stats are important for telling us what to improve.
-- Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted)
+- Guard accuracy (%): correct guesses out of guesses checked (a Guard on a protected player checks nothing and isn't counted), with a tick for the best a pure card counter could do on the same guesses (always naming the likeliest card by the face-up cards)
 - Baron results: won, tied, protected, lost, and the share won by the card kept beside the Baron
-- Guard guesses vs the odds: how often it named the likeliest card given what it could see (the deck minus its own cards and all discards), the accuracy its guesses should have had without luck, and the best possible
-- Priest follow-up: after a Priest look, how often the bot used it on its next turn when it could (a Guard naming the seen card, or a winning Baron)
+- Priest follow-up: after a Priest look, how often the bot used it on its next turn when it could (a Guard naming the seen card, or a winning Baron). Looks the seen player has since blurred (played that kind of card, or was hit by a Prince or King) are dropped
 - Card choices: for every pair of cards held, how often each was played, and how often the round was won after that choice
 
 ### 3. Context

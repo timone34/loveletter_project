@@ -142,7 +142,10 @@ def test_bot_list():
     ids = [b["id"] for b in bots]
     assert {"RandomChoice", "NoPrincess", "CardCounter"} <= set(ids)
     assert "TerminalPlayer" not in ids  # needs a human at the terminal
-    assert all(b["name"] and b["description"] for b in bots)
+    assert all(b["name"] and b["description"] and b["family"] for b in bots)
+    by_id = {b["id"]: b for b in bots}
+    assert by_id["FastCardCounterV2"]["family"] == by_id["CardCounter"]["family"] == "Card Counter"
+    assert all(b["listed"] for b in bots)  # listed = False hides a bot; none does for now
 
 
 def test_config_is_applied():

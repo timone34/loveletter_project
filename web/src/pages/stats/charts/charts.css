@@ -380,9 +380,10 @@
   outline: none;
 }
 
-/* ----- Guard odds: bar = expected, tick = best possible, dot = actual ----- */
+/* ----- RateBars: a row's own reference tick (Guard accuracy: best from card counting) ----- */
 
-.odds__tick {
+/* a short solid tick, just taller than the bar, so neighbouring rows' ticks stay apart */
+.rate-bars__mark {
   position: absolute;
   z-index: 3;
   top: -3px;
@@ -392,39 +393,12 @@
   background: var(--text);
 }
 
-.odds__dot {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--text);
-}
-
-.odds__tick-key {
+.rate-bars__mark-key {
   display: inline-block;
   width: 2px;
   height: 0.8rem;
   margin-right: 0.45rem;
   background: var(--text);
-}
-
-.odds__dot-key {
-  display: inline-block;
-  width: 0.6rem;
-  height: 0.6rem;
-  margin-right: 0.45rem;
-  border-radius: 50%;
-  background: var(--text);
-}
-
-.rate-bars__tick-note {
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  text-align: right;
 }
 
 /* ----- Card choices: an 8x8 grid ----- */

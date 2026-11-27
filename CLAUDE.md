@@ -39,7 +39,9 @@ Secondary goal: a **YouTube video** on Love Letter and the bot-building journey,
 
 ## Bots so far (the "ladder")
 
-Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses and Baron comparisons).
+Random → NoPrincessDumb (never plays the Princess voluntarily) → NoPrincess (also never Princes itself while holding the Princess; no visible improvement over NoPrincessDumb in 10,000 games) → CardCounter (tracks cards out of play for Guard guesses) → CardCounterV2 / FastCardCounterV2 (joint odds over all opponents) → PriestKnowledge (Priest looks, for Guard guesses only; +1 point win rate, within noise).
+
+In progress: the owner rewrites the turn flow so a bot plans card, target and guess together from what it knows (acting on Priest knowledge was +5 points of win rate in a removed prototype, PriestKnowledgeV2: commit bcd5c72). `bots/knowledge.py` (`Knowledge`: learn, exclude, forget, swap, out) is available for that but not used by a bot yet; `tests/test_knowledge.py` checks in real games that it never rules out a card someone really holds.
 
 Planned: an evaluation-function bot that scores game states and looks ahead, chess-bot style.
 
@@ -56,7 +58,7 @@ A chess-PGN-inspired notation for recording games, currently **LLN 1.5** (the wr
 
 ## Webapp
 
-The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch:
+The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch. The bot library shows one card per bot family (`family`, `version`, `listed` on each bot, sent by `/api/bots`) with a version dropdown:
 
 - **Play**: you take a seat (the fourth bot sits out), then the table (`/play/table`), live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
   - Table features: icon toolbar (lucide-react), full screen (F, the whole page like F11), on-table speed, reveal hands turns the cards over (`planFlip`), cheat sheet (C) with optional unseen counts, action log with each turn's LLN line (sent by the server) and history browsing (←/→, End = live; the game keeps running; animations only play forward: a step back or a far jump shows the line before the target, then replays the turn into it: `useBrowse.ts`), keyboard play (1-9; a Guard guess by card value), click-to-target, "Back" on target/guess prompts (the server's `Web_Strategy` asks card, target and guess all inside `choose_card`, so the card can still change), a round summary.

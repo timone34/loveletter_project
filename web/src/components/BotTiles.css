@@ -205,6 +205,8 @@
   gap: 1rem;
 }
 
+/* a family card: .bot__pick (head + description) seats the shown version,
+   .bot__foot holds the seat badges and the version dropdown */
 .bot {
   display: flex;
   flex-direction: column;
@@ -215,7 +217,6 @@
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface) 60%, transparent);
   text-align: left;
-  cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -226,11 +227,25 @@
   box-shadow: 0 14px 26px -22px rgb(var(--shadow) / 55%);
 }
 
-/* the bot in the seat you're choosing for */
-.bot[aria-pressed="true"] {
+/* the family of the bot in the seat you're choosing for */
+.bot--selected {
   border-color: var(--primary);
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.bot__pick {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .bot__head {
@@ -257,10 +272,46 @@
   color: var(--text-muted);
 }
 
+.bot__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
 .bot__seats {
   display: flex;
   gap: 0.35rem;
-  margin-top: auto;
+}
+
+.bot__version {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--secondary);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.bot__version:hover {
+  border-color: var(--accent);
+}
+
+.bot__version:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* a family with one version: just the label */
+.bot__version--single {
+  border-color: transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: default;
 }
 
 .bot__seat {

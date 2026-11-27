@@ -1,4 +1,4 @@
-import type { BotInfo } from "../pages/play/useBots";
+import type { BotFamily, BotInfo } from "../pages/play/useBots";
 import { initial } from "./initial";
 import "./BotTiles.css";
 
@@ -90,22 +90,44 @@ export function BotTile({ seat, opponent, bot, active, onActivate, onName }: {
   );
 }
 
-export function LibraryTile({ bot, selected, seatedAt, onPick }: {
-  bot: BotInfo;
+// One card per bot family. `shown` is the version on the card: clicking the
+// card seats it, the dropdown switches it (versions = the ones to offer).
+export function LibraryTile({ family, shown, versions, selected, seatedAt, onPick, onVersion }: {
+  family: BotFamily;
+  shown: BotInfo;
+  versions: BotInfo[];
   selected: boolean;
   seatedAt: number[];
   onPick: () => void;
+  onVersion: (id: string) => void;
 }) {
   return (
-    <button type="button" className="bot" aria-pressed={selected} onClick={onPick}>
-      <span className="bot__head">
-        <strong className="bot__name">{bot.name}</strong>
-        <code className="bot__id">{bot.id}</code>
+    // a div, not a button: a <select> can't sit inside a <button>
+    <div className={`bot ${selected ? "bot--selected" : ""}`}>
+      <button type="button" className="bot__pick" aria-pressed={selected} onClick={onPick}>
+        <span className="bot__head">
+          <strong className="bot__name">{family.family}</strong>
+          <code className="bot__id">{shown.id}</code>
+        </span>
+        <span className="bot__desc">{shown.description}</span>
+      </button>
+      <span className="bot__foot">
+        <span className="bot__seats">
+          {seatedAt.map((s) => <span key={s} className="bot__seat">Seat {s}</span>)}
+        </span>
+        {versions.length > 1 ? (
+          <select
+            className="bot__version"
+            value={shown.id}
+            aria-label={`${family.family} version`}
+            onChange={(e) => onVersion(e.target.value)}
+          >
+            {versions.map((v) => <option key={v.id} value={v.id}>{v.version}</option>)}
+          </select>
+        ) : (
+          shown.version && <span className="bot__version bot__version--single">{shown.version}</span>
+        )}
       </span>
-      <span className="bot__desc">{bot.description}</span>
-      <span className="bot__seats">
-        {seatedAt.map((s) => <span key={s} className="bot__seat">Seat {s}</span>)}
-      </span>
-    </button>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import functools
 import itertools
 import random
 from collections import Counter
@@ -30,9 +29,11 @@ def unseen(view: PlayerView) -> Counter[type[Card]]:
 def opponent_seats(view: PlayerView) -> list[int]:
     return [p.seat for p in view.players if p.seat != view.seat and not p.rejected]
 
+
 class CardCounter(NoPrincess):
     def __init__(self) -> None:
         self.id = "CardCounter"
+        self.family, self.version = "Card Counter", "v1"
         self.name = "Card Counter Bot"
         self.description = "This bot keeps track of how many cards are still unknown to it."
         self.debug = False
@@ -84,6 +85,7 @@ class CardCounter(NoPrincess):
 class CardCounterV2(CardCounter):
     def __init__(self) -> None:
         self.id = "CardCounterV2"
+        self.family, self.version = "Card Counter", "v2 (slow)"
         self.name = "Card Counter Bot v2"
         self.description = "It still chooses the most likely card when guessing with the Guard, just in a different way."
         self.debug = False
@@ -121,102 +123,63 @@ class CardCounterV2(CardCounter):
         }
 
 
-class FastCardCounterV2(CardCounterV2):
-    """CardCounterV2 with the same odds, computed faster. Ties come in card-value order."""
+class FastCardCounterV2(CardCounter):
+    """Faster CardCounterV2 with the same odds. While nobody's hand is narrowed
+    down (all types possible for everyone), no loop is needed: every opponent
+    just gets CardCounter's count / number_unseen_cards. As soon as a subclass
+    narrows someone down in possible_cards, it uses CardCounterV2's loop."""
+
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
+        self.family, self.version = "Card Counter", "v2"
         self.name = "Fast Card Counter Bot v2"
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False
-        _prefill_cache()
+
+    def possible_cards(self, view: PlayerView) -> dict[int, set[type[Card]]]:
+        return {seat: set(CARD_TYPES) for seat in opponent_seats(view)}
 
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
-        options = tuple(
-            _ALL_TYPES if len(types) == len(CARD_TYPES) else frozenset(_INDEX[t] for t in types)
-            for types in possible.values()
-        )
-        rows = _typed_odds(_unseen_counts(view), options)
-        return {seat: dict(row) for seat, row in zip(possible, rows)}  # copies: the cached rows stay untouched
 
+        # someone's hand narrowed down (by a subclass that knows more): the loop
+        if any(len(types) != len(CARD_TYPES) for types in possible.values()):
+            return self.narrowed_hand_odds(view, possible)
 
-_INDEX: dict[type[Card], int] = {t: i for i, t in enumerate(CARD_TYPES)}
-_ALL_TYPES = frozenset(range(len(CARD_TYPES)))
-_FULL_COUNTS = [FULL[t] for t in CARD_TYPES]
+        # nobody narrowed down: everyone holds a random one of the unseen cards
+        unseen_cards = unseen(view)
+        number_unseen_cards = sum(unseen_cards.values())
+        odds = {
+            card_type: unseen_cards[card_type] / number_unseen_cards
+            for card_type in CARD_TYPES if unseen_cards[card_type] > 0
+        }
+        return {seat: dict(odds) for seat in possible}
 
-def _unseen_counts(view: PlayerView) -> tuple[int, ...]:
-    """unseen(view) as a tuple in CARD_TYPES order, without building a Counter."""
-    counts = _FULL_COUNTS.copy()
-    for card in view.hand:
-        counts[_INDEX[type(card)]] -= 1
-    for player in view.players:
-        for card in player.discards:
-            counts[_INDEX[type(card)]] -= 1
-    return tuple(c if c > 0 else 0 for c in counts)
+    def narrowed_hand_odds(self, view: PlayerView, possible: dict[int, set[type[Card]]]) -> dict[int, dict[type[Card], float]]:
+        """CardCounterV2.hand_odds: every combination of cards the opponents could
+        hold, weighted by how many ways the unseen cards allow it."""
+        seats = list(possible)
+        unseen_cards = unseen(view)
 
-@functools.lru_cache(maxsize=1 << 16)
-def _typed_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[dict[type[Card], float], ...]:
-    """_joint_odds as {card type: probability} per opponent, zeros left out. Cached."""
-    return tuple(
-        {CARD_TYPES[i]: p for i, p in enumerate(row) if p > 0}
-        for row in _joint_odds(counts, options)
-    )
+        totals: dict[int, Counter[type[Card]]] = {s: Counter() for s in seats}
+        total_weight = 0
 
-def _joint_odds(counts: tuple[int, ...], options: tuple[frozenset[int], ...]) -> tuple[tuple[float, ...], ...]:
-    """Same odds as CardCounterV2.hand_odds, one row per opponent, columns in CARD_TYPES order.
-
-    Opponents who can hold any type are left out of the enumeration (they only add a constant
-    factor); their odds are the expected leftover counts divided by the cards left.
-    """
-    n = len(counts)
-    constrained = [k for k, opts in enumerate(options) if not opts >= _ALL_TYPES]
-    branches = [sorted(options[k]) for k in constrained]
-    remaining = list(counts)
-    picked = [0] * len(constrained)
-    seat_weight = [[0] * n for _ in options]
-    leftover_weight = [0] * n
-    total = 0
-
-    def visit(depth: int, weight: int) -> None:
-        nonlocal total
-        if depth == len(constrained):
-            total += weight
-            for k, i in zip(constrained, picked):
-                seat_weight[k][i] += weight
-            for i in range(n):
-                leftover_weight[i] += weight * remaining[i]
-            return
-        for i in branches[depth]:
-            c = remaining[i]
-            if c <= 0:
+        for combination in itertools.product(*(sorted(possible[s], key=lambda t: t.value) for s in seats)):
+            remaining = unseen_cards.copy()
+            weight = 1
+            for card_type in combination:
+                weight *= max(remaining[card_type], 0)
+                remaining[card_type] -= 1
+            if weight == 0:
                 continue
-            remaining[i] = c - 1
-            picked[depth] = i
-            visit(depth + 1, weight * c)
-            remaining[i] = c
+            total_weight += weight
+            for seat, card_type in zip(seats, combination):
+                totals[seat][card_type] += weight
 
-    visit(0, 1)
-    cards_left = sum(counts) - len(constrained)
-    if total == 0 or cards_left < len(options) - len(constrained):
-        return tuple((0.0,) * n for _ in options)
-
-    rows: list[tuple[float, ...]] = []
-    for k in range(len(options)):
-        if k in constrained:
-            rows.append(tuple(w / total for w in seat_weight[k]))
-        else:
-            rows.append(tuple(w / (total * cards_left) for w in leftover_weight))
-    return tuple(rows)
-
-
-_prefilled = False
-
-def _prefill_cache() -> None:
-    """Fill the cache for every unconstrained case (~12k entries, ~60 ms), once per process."""
-    global _prefilled
-    if _prefilled:
-        return
-    for counts in itertools.product(*(range(FULL[t] + 1) for t in CARD_TYPES)):
-        for opponents in (1, 2, 3):
-            _typed_odds(counts, (_ALL_TYPES,) * opponents)
-    _prefilled = True
+        if total_weight == 0:
+            return {seat: {} for seat in seats}
+        # in CARD_TYPES order, like hand_odds (the order decides ties in guard_guess)
+        return {
+            seat: {card_type: totals[seat][card_type] / total_weight for card_type in CARD_TYPES if totals[seat][card_type] > 0}
+            for seat in seats
+        }
