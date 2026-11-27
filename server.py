@@ -547,7 +547,20 @@ class Connection:
 def list_bots() -> list[dict]:
     """The bots the setup page can seat at the table."""
     bots = [cls() for cls in available_bots().values()]
-    return [{"id": b.id, "name": b.name, "description": b.description} for b in bots]
+    return [
+        {
+            "id": b.id,
+            "name": b.name,
+            "description": b.description,
+            # the setup page groups bots into families with a version dropdown;
+            # a bot without them is its own family, and unlisted bots are hidden
+            # from the library (still valid in a lineup, e.g. an old run's)
+            "family": getattr(b, "family", b.name),
+            "version": getattr(b, "version", ""),
+            "listed": getattr(b, "listed", True),
+        }
+        for b in bots
+    ]
 
 
 @app.websocket("/ws/play")

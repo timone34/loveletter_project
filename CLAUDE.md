@@ -58,7 +58,7 @@ A chess-PGN-inspired notation for recording games, currently **LLN 1.5** (the wr
 
 ## Webapp
 
-The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch:
+The main workspace. Everything starts on one setup page (`/new`, `web/src/pages/setup/`): a lineup of four bots plus a mode switch. The bot library shows one card per bot family (`family`, `version`, `listed` on each bot, sent by `/api/bots`) with a version dropdown:
 
 - **Play**: you take a seat (the fourth bot sits out), then the table (`/play/table`), live against own bots via the WebSocket. Designed for the owner's desktop in fullscreen (no scaling-based layout). Cards are uniform in design, only the LLN letter differs.
   - Table features: icon toolbar (lucide-react), full screen (F, the whole page like F11), on-table speed, reveal hands turns the cards over (`planFlip`), cheat sheet (C) with optional unseen counts, action log with each turn's LLN line (sent by the server) and history browsing (←/→, End = live; the game keeps running; animations only play forward: a step back or a far jump shows the line before the target, then replays the turn into it: `useBrowse.ts`), keyboard play (1-9; a Guard guess by card value), click-to-target, "Back" on target/guess prompts (the server's `Web_Strategy` asks card, target and guess all inside `choose_card`, so the card can still change), a round summary.

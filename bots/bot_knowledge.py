@@ -8,6 +8,7 @@ class PriestKnowledge(FastCardCounterV2):
     def __init__(self) -> None:
         super().__init__()
         self.id = "PriestKnowledge"
+        self.family, self.version = "Priest Knowledge", "v1"
         self.name = "Priest Knowledge Bot"
         self.description = "Uses Priest seen info to confirm kills."
         self.debug = False

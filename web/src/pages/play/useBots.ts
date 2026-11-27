@@ -1,7 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 
 // One bot from the bots/ folder, as listed by server.py's GET /api/bots.
-export type BotInfo = { id: string; name: string; description: string };
+// family + version: the setup page shows one card per family with a version
+// dropdown. listed = false: hidden from the library (still valid in a lineup).
+export type BotInfo = { id: string; name: string; description: string; family: string; version: string; listed: boolean };
+
+// The bots grouped by family, in the server's order (the ladder order).
+export type BotFamily = { family: string; versions: BotInfo[] };
+
+export function botFamilies(bots: BotInfo[]): BotFamily[] {
+  const families: BotFamily[] = [];
+  for (const bot of bots) {
+    const family = families.find((f) => f.family === bot.family);
+    if (family) family.versions.push(bot);
+    else families.push({ family: bot.family, versions: [bot] });
+  }
+  return families;
+}
 
 export function useBots() {
   const [bots, setBots] = useState<BotInfo[] | null>(null);

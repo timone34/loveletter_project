@@ -33,6 +33,7 @@ def opponent_seats(view: PlayerView) -> list[int]:
 class CardCounter(NoPrincess):
     def __init__(self) -> None:
         self.id = "CardCounter"
+        self.family, self.version = "Card Counter", "v1"
         self.name = "Card Counter Bot"
         self.description = "This bot keeps track of how many cards are still unknown to it."
         self.debug = False
@@ -84,6 +85,8 @@ class CardCounter(NoPrincess):
 class CardCounterV2(CardCounter):
     def __init__(self) -> None:
         self.id = "CardCounterV2"
+        self.family, self.version = "Card Counter", "v2 (slow)"
+        self.listed = False  # plays the same as FastCardCounterV2; kept for the ladder
         self.name = "Card Counter Bot v2"
         self.description = "It still chooses the most likely card when guessing with the Guard, just in a different way."
         self.debug = False
@@ -129,6 +132,7 @@ class FastCardCounterV2(CardCounter):
 
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
+        self.family, self.version = "Card Counter", "v2"
         self.name = "Fast Card Counter Bot v2"
         self.description = "Card Counter Bot v2 with the same odds, computed much faster."
         self.debug = False

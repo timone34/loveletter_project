@@ -6,7 +6,7 @@ import { Field, Segmented, Stepper, Toggle } from "../../components/Field";
 import { Heart } from "../../components/Heart";
 import { SectionTitle } from "../../components/SectionTitle";
 import { BotTile, LibraryTile, YouTile, type SeatedBot } from "../../components/BotTiles";
-import { useBots, type BotInfo } from "../play/useBots";
+import { botFamilies, useBots, type BotInfo } from "../play/useBots";
 import { randomSeed, saveConfig, type Speed, type Visibility } from "../play/config";
 import { startRun, useLineupSpeeds, useRuns } from "../../sims/api";
 import { count, defaultName, duration, estimate, lineupText, when } from "../../sims/format";
@@ -77,6 +77,9 @@ export default function Setup() {
 
   const config = withKnownBots(draft, bots);
   const botById = new Map((bots ?? []).map((b) => [b.id, b]));
+  const families = botFamilies(bots ?? []).filter((f) => f.versions.some((v) => v.listed));
+  // the version each family card shows when the active seat isn't one of its bots
+  const [shownVersion, setShownVersion] = useState<Record<string, string>>({});
   const mode = MODES.find((m) => m.value === config.mode)!;
   const play = config.mode === "play";
   const simulate = config.mode === "simulate";
@@ -95,8 +98,9 @@ export default function Setup() {
     setActive((active + 1) % slots); // on to the next seat, so a few clicks fill the table
   };
   const randomLineup = () => {
-    if (!bots?.length) return;
-    update({ players: config.players.map((p) => ({ ...p, bot: bots[Math.floor(Math.random() * bots.length)].id })) });
+    const listed = (bots ?? []).filter((b) => b.listed);
+    if (!listed.length) return;
+    update({ players: config.players.map((p) => ({ ...p, bot: listed[Math.floor(Math.random() * listed.length)].id })) });
   };
   // the ladder setup: the bot in seat 1 against three of a fixed opponent
   const versusField = (opponent: string) =>
@@ -218,15 +222,29 @@ export default function Setup() {
             <p className="notice">Loading bots…</p>
           ) : (
             <div className="library">
-              {bots.map((b) => (
-                <LibraryTile
-                  key={b.id}
-                  bot={b}
-                  selected={config.players[active].bot === b.id}
-                  seatedAt={seats.flatMap((s, i) => (s.kind === "bot" && config.players[s.slot].bot === b.id ? [i + 1] : []))}
-                  onPick={() => pickBot(b.id)}
-                />
-              ))}
+              {families.map((f) => {
+                const ids = f.versions.map((v) => v.id);
+                const activeBot = config.players[active].bot;
+                const holdsActive = ids.includes(activeBot); // the seat you're choosing for has one of these
+                const listed = f.versions.filter((v) => v.listed);
+                // shown: the active seat's version, else the one picked in the dropdown, else the latest
+                const shown = botById.get(holdsActive ? activeBot : shownVersion[f.family] ?? "") ?? listed[listed.length - 1];
+                return (
+                  <LibraryTile
+                    key={f.family}
+                    family={f}
+                    shown={shown}
+                    versions={listed.includes(shown) ? listed : [...listed, shown]}
+                    selected={holdsActive}
+                    seatedAt={seats.flatMap((s, i) => (s.kind === "bot" && ids.includes(config.players[s.slot].bot) ? [i + 1] : []))}
+                    onPick={() => pickBot(shown.id)}
+                    onVersion={(id) => {
+                      setShownVersion({ ...shownVersion, [f.family]: id });
+                      if (holdsActive) setPlayer(active, { bot: id }); // switching the version of a seated bot
+                    }}
+                  />
+                );
+              })}
             </div>
           )}
 
