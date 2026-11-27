@@ -124,10 +124,10 @@ class CardCounterV2(CardCounter):
 
 
 class FastCardCounterV2(CardCounter):
-    """Faster CardCounterV2 with the same odds. When every opponent is either unknown
-    (all types possible) or known (one type), no loop is needed: the unknown
-    opponents just get CardCounter's count / number_unseen_cards. Only when
-    someone is narrowed down to 2-7 types does it use CardCounterV2's loop."""
+    """Faster CardCounterV2 with the same odds. While nobody's hand is narrowed
+    down (all types possible for everyone), no loop is needed: every opponent
+    just gets CardCounter's count / number_unseen_cards. As soon as a subclass
+    narrows someone down in possible_cards, it uses CardCounterV2's loop."""
 
     def __init__(self) -> None:
         self.id = "FastCardCounterV2"
@@ -142,27 +142,18 @@ class FastCardCounterV2(CardCounter):
     def hand_odds(self, view: PlayerView) -> dict[int, dict[type[Card], float]]:
         possible = self.possible_cards(view)
 
-        # someone narrowed down to 2-7 types: the loop
-        if any(len(types) not in (1, len(CARD_TYPES)) for types in possible.values()):
+        # someone's hand narrowed down (by a subclass that knows more): the loop
+        if any(len(types) != len(CARD_TYPES) for types in possible.values()):
             return self.narrowed_hand_odds(view, possible)
 
-        # a card we know someone holds is out of the pool for the others
-        pool = unseen(view)
-        for types in possible.values():
-            if len(types) == 1:
-                (card_type,) = types
-                pool[card_type] -= 1
-
-        number_unknown = sum(len(types) == len(CARD_TYPES) for types in possible.values())
-        number_left = sum(pool.values())
-        if any(count < 0 for count in pool.values()) or number_left < number_unknown:
-            return {seat: {} for seat in possible}  # impossible knowledge, like CardCounterV2
-
-        odds = {card_type: pool[card_type] / number_left for card_type in CARD_TYPES if pool[card_type] > 0}
-        return {
-            seat: {next(iter(types)): 1.0} if len(types) == 1 else dict(odds)
-            for seat, types in possible.items()
+        # nobody narrowed down: everyone holds a random one of the unseen cards
+        unseen_cards = unseen(view)
+        number_unseen_cards = sum(unseen_cards.values())
+        odds = {
+            card_type: unseen_cards[card_type] / number_unseen_cards
+            for card_type in CARD_TYPES if unseen_cards[card_type] > 0
         }
+        return {seat: dict(odds) for seat in possible}
 
     def narrowed_hand_odds(self, view: PlayerView, possible: dict[int, set[type[Card]]]) -> dict[int, dict[type[Card], float]]:
         """CardCounterV2.hand_odds: every combination of cards the opponents could
@@ -187,7 +178,8 @@ class FastCardCounterV2(CardCounter):
 
         if total_weight == 0:
             return {seat: {} for seat in seats}
+        # in CARD_TYPES order, like hand_odds (the order decides ties in guard_guess)
         return {
-            seat: {card_type: w / total_weight for card_type, w in totals[seat].items()}
+            seat: {card_type: totals[seat][card_type] / total_weight for card_type in CARD_TYPES if totals[seat][card_type] > 0}
             for seat in seats
         }
